@@ -5,8 +5,13 @@
 //! distance equals the radius of the tool (and, for more passes, the radius plus one stepover each time). Overlapping tracks and pads need no special care: the grid has no overlaps.
 
 pub mod bitmap;
+pub mod config;
 pub mod contour;
+pub mod drc;
+pub mod drill;
 pub mod edt;
 pub mod gcode;
 pub mod hpgl;
 pub mod isolate;
+pub mod order;
+pub mod transform;

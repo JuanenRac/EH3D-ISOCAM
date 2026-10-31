@@ -181,3 +181,60 @@ fn open(points: &[(f64, f64)], tol: f64) -> Vec<(f64, f64)> {
         .map(|(p, _)| *p)
         .collect()
 }
+
+/// Douglas-Peucker on an open run of points (the ends stay).
+pub fn simplify_open(points: &[(f64, f64)], tolerance_mm: f64) -> Vec<(f64, f64)> {
+    if points.len() < 3 || tolerance_mm <= 0.0 {
+        return points.to_vec();
+    }
+    open(points, tolerance_mm)
+}
+
+impl Grid<'_> {
+    /// The distance at a point of the board (the nearest cell), or `None` outside the grid.
+    pub fn sample(&self, x: f64, y: f64) -> Option<f64> {
+        let (fx, fy) = (
+            (x - self.x0) / self.res - 0.5,
+            (y - self.y0) / self.res - 0.5,
+        );
+        let (ix, iy) = (fx.round(), fy.round());
+        if ix < 0.0 || iy < 0.0 || ix >= self.w as f64 || iy >= self.h as f64 {
+            return None;
+        }
+        Some(f64::from(self.dist[iy as usize * self.w + ix as usize]))
+    }
+}
+
+/// Turns a path round when needed so that the copper is on the right of the tool (the tool goes clockwise round an island of copper). The side is found by looking at the
+/// distance to the copper a little to each side of the longest edge: it is smaller on the side of the copper.
+pub fn orient_climb(g: &Grid, path: &mut Loop) {
+    let n = path.len();
+    if n < 3 {
+        return;
+    }
+    let mut best = (0usize, 0.0f64);
+    for i in 0..n {
+        let (a, b) = (path[i], path[(i + 1) % n]);
+        let l = (b.0 - a.0).hypot(b.1 - a.1);
+        if l > best.1 {
+            best = (i, l);
+        }
+    }
+    if best.1 < 1e-9 {
+        return;
+    }
+    let (a, b) = (path[best.0], path[(best.0 + 1) % n]);
+    let (m, len) = (((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0), best.1);
+    let (nx, ny) = ((b.1 - a.1) / len, -(b.0 - a.0) / len);
+    let step = 1.5 * g.res;
+    let right = g.sample(m.0 + nx * step, m.1 + ny * step);
+    let left = g.sample(m.0 - nx * step, m.1 - ny * step);
+    let copper_on_right = match (right, left) {
+        (Some(r), Some(l)) => r < l,
+        (Some(_), None) => true,
+        _ => false,
+    };
+    if !copper_on_right {
+        path.reverse();
+    }
+}

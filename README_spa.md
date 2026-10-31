@@ -18,7 +18,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 17 pruebas que se ejecutan en un ordenador: traza las trayectorias de una fresa alrededor del cobre de una capa Gerber, en varias pasadas, indica los huecos demasiado estrechos para la herramienta y escribe G-code. Todavía no tiene ventana, no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 60 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Todavía no tiene ventana, no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versión | `0.0.1` |
 | Madurez | Andamiaje |
-| Pruebas | 17 |
+| Pruebas | 60 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -45,9 +45,10 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 
 | Área | Estado | Qué significa aquí |
 |---|---|---|
-| Núcleo | 🟡 | traza las trayectorias de una fresa alrededor del cobre de una capa Gerber, en varias pasadas, indica los huecos demasiado estrechos para la herramienta y escribe G-code; probado en un ordenador con entradas normales y dañadas, no con una colección de ficheros reales. |
+| Núcleo | 🟡 | traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, indica los huecos demasiado estrechos para la herramienta y escribe G-code o HP-GL; probado en un ordenador con entradas normales y dañadas, no con una colección de ficheros reales. |
+| Ficheros y disposición | 🟡 | lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, añade agujeros de alineación y comprueba las reglas de diseño con la posición de cada hallazgo; probado en un ordenador, no con ficheros escritos por otros programas ni en una máquina. |
 | Línea de comandos | 🟡 | `eh3d-isocam` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 17 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
+| Pruebas | 🟡 | 60 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🔴 | Previsto: la ventana egui común a la suite; hoy solo existe la línea de comandos. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -59,6 +60,12 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 * **La distancia exacta** (`src/edt.rs`, `src/contour.rs`): la distancia de cada celda al cobre más cercano se calcula exactamente (y se prueba contra fuerza bruta), y la trayectoria de una pasada es la línea donde vale el radio de la herramienta, trazada como polilíneas cerradas y aligerada con una tolerancia de media celda; las pasadas siguientes van un paso lateral más lejos cada una.
 * **Lo que la herramienta no puede hacer** (`src/isolate.rs`): donde dos piezas de cobre separadas están más cerca que el ancho de la herramienta ninguna trayectoria puede pasar entre ellas: `check` lista esos sitios y `isolate` no escribe el G-code hasta que se miren (o `--force`). El G-code (`src/gcode.rs`) levanta la herramienta entre trayectorias, baja a la profundidad elegida y corta después la trayectoria más cercana.
 * **HP-GL para las máquinas Bungard** (`src/hpgl.rs`): con un fichero de salida que acaba en `.plt` las pasadas se escriben como fichero de trazado HP-GL a 40 unidades por milímetro, una plumilla por pasada, que es lo que lee el programa de fresado de las máquinas Bungard.
+* **Varias herramientas y cobre sobrante** (`src/isolate.rs`): un plan tiene hasta cuatro herramientas y corta primero la más ancha; donde una herramienta más ancha ya ha cortado a lo largo de una trayectoria de otra más fina, ese tramo se omite (el resto queda como tramos abiertos), y anillos de una herramienta más ancha, cada uno solapado con el anterior, pueden limpiar el cobre que queda más allá de las pasadas; el G-code se detiene para cambiar de herramienta cuando cambia su ancho.
+* **Sentido, inicio y orden** (`src/order.rs`): las trayectorias se trazan con el cobre a la derecha de la herramienta (fresado en concordancia con un husillo que gira en sentido horario); los ajustes pueden invertirlo (convencional), forzar horario o antihorario, empezar cada trayectoria cerrada en su punto más cercano, en su punto más bajo o donde se trazó, fijar el punto desde el que sale la herramienta y ordenar las trayectorias como se trazaron, la más cercana primero o acortando aún más el recorrido dando la vuelta a tramos del orden; `info` muestra cuántas trayectorias van en cada sentido y el recorrido en vacío.
+* **Taladros y contorno de la placa** (`src/drill.rs`): los ficheros de taladros se leen (los de Bungard en milésimas de pulgada con el lector de los formatos Bungard, los métricos con el lector de la suite) y se escriben en milésimas enteras; el contorno se lee de una capa Gerber de contorno, un dibujo DXF o un fichero de trazado HP-GL, los trazos dibujados uno a uno se unen, y la trayectoria de la herramienta alrededor de la placa y dentro de sus recortes se escribe como HP-GL o como fichero Excellon de fresado.
+* **Dos caras, paneles y agujeros de alineación** (`src/transform.rs`): la capa, los taladros y el contorno se dan la vuelta, se giran en cuartos de vuelta y se repiten en un panel a la vez; los agujeros de alineación se ponen fuera de la placa donde ésta los vuelve a encontrar una vez dada la vuelta (un tercero sobre la línea la distingue de la misma placa girada media vuelta).
+* **Reglas de diseño** (`src/drc.rs`): cobre más estrecho que la regla, piezas de cobre más cerca que la regla o que el ancho de la herramienta, y taladros con menos cobre alrededor que la regla, cada uno con su posición en milímetros.
+* **Un fichero de ajustes** (`src/config.rs`): cada valor que se puede afinar es un ajuste con un valor por defecto, que se lee de un fichero `clave = valor` (`examples/isocam.cfg`) o se da con el mismo nombre como opción de la línea de comandos.
 
 ## 🧩 Papel en EH3D
 
@@ -79,6 +86,7 @@ Cómo encajan las partes de este repositorio: quién lo usa, qué contiene y de 
 * **Pruebas con entradas dañadas:** las pruebas también dan ficheros vacíos, basura, números enormes y ficheros cortados, y ninguna puede provocar un pánico.
 * **Sin adivinar:** un valor que no tiene sentido es un error que dice cuál y por qué, nunca un resultado que solo lo parece.
 * **Sin código unsafe:** `#![forbid(unsafe_code)]` en la biblioteca y el programa.
+* **Cada valor afinado es un ajuste:** nada de lo que una persona pueda querer cambiar está escondido en el código; un valor malo es un error con su línea.
 
 ## 🔒 Seguridad y protección
 
@@ -92,22 +100,42 @@ Cómo encajan las partes de este repositorio: quién lo usa, qué contiene y de 
 
 ## 🔌 Interfaces
 
-La biblioteca es `eh3d_isocam` (`use eh3d_isocam::...`); la línea de comandos es `eh3d-isocam`. Las órdenes son estas; cada una imprime su resultado por la salida estándar e informa de un error por la salida de errores con un código de salida distinto de cero. No hay acceso a la red.
+La biblioteca es `eh3d_isocam` (`use eh3d_isocam::...`); la línea de comandos es `eh3d-isocam`. Cada orden imprime su resultado en la salida estándar y comunica un error en la salida de errores con un código de salida distinto de cero. No hay acceso a la red. El texto de la ayuda (`eh3d-isocam help`) está en inglés:
+
+```text
+eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt     paths round the copper (G-code, or HP-GL for a .plt)
+eh3d-isocam check LAYER.gtl                      places where the tool does not fit between pieces of copper
+eh3d-isocam info LAYER.gtl                       passes, paths each way round, travel through the air
+eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
+eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
+eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
+eh3d-isocam config                               every setting with its default, as a file
+options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15)
+```
 
 ```text
 EH3D-ISOCAM/
 ├── src/
-│   ├── bitmap.rs                                una parte de la lógica
-│   ├── contour.rs                               una parte de la lógica
-│   ├── edt.rs                                   una parte de la lógica
-│   ├── gcode.rs                                 una parte de la lógica
-│   ├── hpgl.rs                                  una parte de la lógica
-│   ├── isolate.rs                               una parte de la lógica
+│   ├── bitmap.rs                                el cobre en una rejilla
+│   ├── config.rs                                todos los valores ajustables, desde un fichero de ajustes
+│   ├── contour.rs                               los recorridos de una pasada, trazados y aligerados
+│   ├── drc.rs                                   reglas de diseño: anchos, separaciones y anillos, con su posición
+│   ├── drill.rs                                 taladros y contorno de la placa, leídos y escritos
+│   ├── edt.rs                                   la distancia exacta al cobre
+│   ├── gcode.rs                                 los recorridos como G-code
+│   ├── hpgl.rs                                  los recorridos como fichero de trazado HP-GL
+│   ├── isolate.rs                               herramientas, pasadas, cobre sobrante y huecos estrechos
 │   ├── lib.rs                                   la biblioteca: lo que usa cada orden
-│   └── main.rs                                  la línea de comandos
+│   ├── main.rs                                  la línea de comandos
+│   ├── order.rs                                 sentido, puntos de inicio y orden de los cortes
+│   └── transform.rs                             doble cara, paneles y agujeros de alineación
 ├── tests/
-│   └── isocam.rs                                pruebas de la biblioteca y la línea de comandos
+│   ├── files.rs                                 pruebas de los ficheros de taladros y contorno
+│   ├── isocam.rs                                pruebas de la biblioteca y la línea de comandos
+│   ├── layout.rs                                pruebas de doble cara, paneles, reglas y la línea de comandos
+│   └── multi.rs                                 pruebas de herramientas, cobre sobrante, sentido, orden y ajustes
 ├── examples/
+│   ├── isocam.cfg                               todos los ajustes con su valor por defecto, para copiar y cambiar
 │   └── sample.gtl                               una muestra para probar el programa
 ├── docs/
 │   ├── architecture.json                        datos de la imagen de Arquitectura
@@ -124,11 +152,11 @@ EH3D-ISOCAM/
 
 ## ⚙️ Configuración
 
-Todavía no hay fichero de configuración: lo que elige la persona se da como argumentos de la línea de comandos (véase Interfaces) y cada valor por defecto está escrito en la ayuda de la orden (`eh3d-isocam help`). Los límites fijos están en el código como constantes con nombre y las pruebas los cubren.
+Cada valor que se puede afinar es un ajuste con un valor por defecto: los diámetros, las pasadas y el paso lateral de la herramienta fina y de la gruesa, la retirada del cobre sobrante, la profundidad, el avance y la velocidad, el sentido, el punto de salida, el inicio de cada trayectoria y el orden, la herramienta que corta la placa, los agujeros de alineación, el espejo, el giro y el panel, y las reglas de diseño. `eh3d-isocam config` los imprime todos como un fichero (`examples/isocam.cfg` es ese fichero); `--config FICHERO` lee uno, y cualquier ajuste puede darse en la línea de comandos como opción con el mismo nombre (`--fine-tool-mm 0.15`), que prevalece sobre el fichero. Un valor sin sentido es un error que indica la línea. Los límites fijos viven en el código como constantes con nombre y están cubiertos por pruebas.
 
 ## 🚀 Inicio rápido
 
-Necesita una cadena de herramientas Rust estable (1.75 o más reciente).
+Necesita una cadena de herramientas Rust estable (1.88 o más reciente).
 
 ```bash
 cargo build --release
@@ -138,7 +166,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Pruebas
 
-El conjunto tiene 17 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 60 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 
@@ -155,11 +183,31 @@ La versión está en `Cargo.toml` y en `eh3d.project.json`; cada versión tiene 
 
 ```text
 EH3D-ISOCAM/
-├── crates/
-│   ├── eh3d-parser-gerber/                      lector Gerber RS-274X
-│   ├── eh3d-parser-excellon/                    lector de ficheros de taladrado Excellon
-│   └── eh3d-parser-gcode/                       lector e intérprete modal de G-code
-├── docs/                                        READERS.md, lo que promete cada lector y lo que no hace, y los datos de las dos imágenes
+├── src/
+│   ├── bitmap.rs                                el cobre en una rejilla
+│   ├── config.rs                                todos los valores ajustables, desde un fichero de ajustes
+│   ├── contour.rs                               los recorridos de una pasada, trazados y aligerados
+│   ├── drc.rs                                   reglas de diseño: anchos, separaciones y anillos, con su posición
+│   ├── drill.rs                                 taladros y contorno de la placa, leídos y escritos
+│   ├── edt.rs                                   la distancia exacta al cobre
+│   ├── gcode.rs                                 los recorridos como G-code
+│   ├── hpgl.rs                                  los recorridos como fichero de trazado HP-GL
+│   ├── isolate.rs                               herramientas, pasadas, cobre sobrante y huecos estrechos
+│   ├── lib.rs                                   la biblioteca: lo que usa cada orden
+│   ├── main.rs                                  la línea de comandos
+│   ├── order.rs                                 sentido, puntos de inicio y orden de los cortes
+│   └── transform.rs                             doble cara, paneles y agujeros de alineación
+├── tests/
+│   ├── files.rs                                 pruebas de los ficheros de taladros y contorno
+│   ├── isocam.rs                                pruebas de la biblioteca y la línea de comandos
+│   ├── layout.rs                                pruebas de doble cara, paneles, reglas y la línea de comandos
+│   └── multi.rs                                 pruebas de herramientas, cobre sobrante, sentido, orden y ajustes
+├── examples/
+│   ├── isocam.cfg                               todos los ajustes con su valor por defecto, para copiar y cambiar
+│   └── sample.gtl                               una muestra para probar el programa
+├── docs/
+│   ├── architecture.json                        datos de la imagen de Arquitectura
+│   └── structure.json                           datos de la imagen de Estructura
 ├── tools/                                       comprobación del CI y del README y herramientas de imágenes
 ├── images/                                      banner y las imágenes de Arquitectura y Estructura del repositorio
 ├── .github/                                     flujos de CI y de publicación, plantillas de issues y pull requests
@@ -177,14 +225,19 @@ EH3D-ISOCAM/
 **Límites conocidos hoy**
 
 * Todavía no tiene ventana: solo existen la biblioteca y la línea de comandos.
-* No se ha probado en una máquina ni con una colección de ficheros reales y no ha tenido revisión independiente.
-* Las trayectorias son exactas a media celda, no a la curva misma, todavía no hay desbaste del cobre ni estrategia Voronoi, no hay ventana y no se ha fresado ninguna placa con ellas.
+* No se ha probado en una máquina ni con una colección de ficheros reales, y no ha tenido revisión independiente.
+* Las trayectorias son exactas a media celda, no a la curva misma; no hay estrategia de Voronoi, ni aislamiento forzado donde la herramienta no cabe (esos sitios solo se indican), ni escalado o compensación de la placa, ni capas de máscara de soldadura o serigrafía, y no se ha fresado ninguna placa con estas trayectorias.
+* La retirada del cobre sobrante son anillos de una herramienta más ancha a cierta distancia del cobre: los sitios más estrechos que esa herramienta conservan su cobre, y no sigue el borde de la placa.
+* Los tramos omitidos para una herramienta más fina se deciden en una rejilla con dos celdas de margen; prefiere cortar un tramo dos veces a dejarlo sin cortar.
+* Los ficheros de taladros se escriben en milésimas de pulgada enteras (la convención de los programas Bungard): un diámetro `T1C0.8` sin unidad se lee como milímetros desde 0,2 y como pulgadas por debajo; los ficheros con ranuras o trayectorias de fresado las dejan fuera, con una nota. Los ficheros escritos solo los han releído los lectores de esta suite, no otros programas ni máquinas.
+* Las reglas de diseño no redondean las esquinas de un pad cuadrado y no comprueban el cobre frente al borde de la placa ni a la máscara de soldadura; la comprobación de los anillos toma el pad tal como está dibujado en la capa Gerber.
 
 **Siguiente**
 
-* Añadir la ventana de la suite, el desbaste de zonas de cobre y la estrategia Voronoi, y comparar las trayectorias con placas fresadas de verdad.
-* Añadir la ventana con el aspecto compartido por los programas de la suite, en los ocho idiomas.
-* Probarlo con ficheros reales y con los demás programas de la suite.
+* Añadir la ventana con el aspecto común a los programas de la suite, en los ocho idiomas, con vista previa de las pasadas y unidades en milésimas de pulgada, milímetros y pulgadas.
+* Aislamiento forzado donde la herramienta no cabe (una pasada más estrecha para ese tramo, con aviso) y la estrategia de Voronoi; ordenar los arcos; escalado y compensación de la placa a partir de los fiduciales de la cámara.
+* Capas de máscara de soldadura y serigrafía.
+* Comparar las trayectorias con placas fresadas de verdad y probarlo con ficheros reales y con los demás programas de la suite.
 
 ## 🌍 Idiomas
 
@@ -193,6 +246,7 @@ El README y los textos existen en inglés, español, francés, italiano, alemán
 ## 🔗 Proyectos relacionados
 
 * [EH3D-CORE-LIBS](https://github.com/JuanenRac/EH3D-CORE-LIBS): los lectores de Gerber, Excellon y G-code
+* [EH3D-COMMON](https://github.com/JuanenRac/EH3D-COMMON): los formatos de ficheros de las máquinas Bungard: taladros, trazado y contornos
 * [EH3D-GERBERVIEWER](https://github.com/JuanenRac/EH3D-GERBERVIEWER): el visor de capas Gerber
 * [EH3D-TOOL-MANAGER](https://github.com/JuanenRac/EH3D-TOOL-MANAGER): el almacén de herramientas que comparten los programas CAM
 * [EH3D-CAM-DEBUGGER](https://github.com/JuanenRac/EH3D-CAM-DEBUGGER): la revisión del G-code antes de llegar a una máquina

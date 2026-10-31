@@ -8,7 +8,9 @@
   "technologies": [
     "Rust",
     "Gerber RS-274X",
+    "Excellon",
     "G-code",
+    "HP-GL",
     "distance transform"
   ],
   "deployment_target": "user-pc",
@@ -18,7 +20,7 @@
   "family": "CNC Workflow Tools",
   "parent": null,
   "build": "cargo build --release; cargo test",
-  "notes": "Scaffolding v0.0.1: a library and a command line that read the copper of a Gerber layer (with the reader of EH3D-CORE-LIBS and the shapes of EH3D-GERBERVIEWER), draw it on a fine grid, work out the exact distance from every point to the copper and trace the paths of the tool at its radius (plus a stepover for each further pass) as closed polylines, report where two pieces of copper are closer than the tool is wide and write the paths as G-code. No window, no Voronoi or rubout and nothing has been milled.",
+  "notes": "Scaffolding: a library and a command line that read the copper of a Gerber layer (with the reader of EH3D-CORE-LIBS and the shapes of EH3D-GERBERVIEWER), draw it on a fine grid, work out the exact distance from every point to the copper and trace the paths of one or several tools at their radius (plus a stepover for each further pass) as closed or open polylines, clear the leftover copper, choose the direction, the starting points and the order of the cuts, report where two pieces of copper are closer than the tool is wide and write the paths as G-code or HP-GL. It also reads and writes drill files and board outlines (with the Bungard formats of EH3D-COMMON), lays a board out for both sides and for a panel with alignment holes and checks the design rules; every tuned value is a setting. No window, no Voronoi strategy and nothing has been milled.",
   "native_version": {
     "file": "Cargo.toml",
     "pattern": "^version\\s*=\\s*\"(\\d+\\.\\d+\\.\\d+)\""

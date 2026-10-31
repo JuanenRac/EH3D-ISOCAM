@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 17 tests that run on a computer: traces the paths of a milling tool around the copper of a Gerber layer, in several passes, reports the gaps that are too narrow for the tool and writes G-code. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 60 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.1` |
 | Maturity | Scaffolding |
-| Tests | 17 |
+| Tests | 60 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -45,9 +45,10 @@ Each line is one part of this repository and the light says how far it is today.
 
 | Area | State | What it means here |
 |---|---|---|
-| Core | 🟡 | traces the paths of a milling tool around the copper of a Gerber layer, in several passes, reports the gaps that are too narrow for the tool and writes G-code; tested on a computer with normal and damaged input, not with a collection of real files. |
+| Core | 🟡 | traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reports the gaps that are too narrow for the tool and writes G-code or HP-GL; tested on a computer with normal and damaged input, not with a collection of real files. |
+| Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 17 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 60 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🔴 | Planned: the egui window common to the suite; today there is only the command line. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -59,6 +60,12 @@ Each line is one part of this repository and the light says how far it is today.
 * **The exact distance** (`src/edt.rs`, `src/contour.rs`): the distance from every cell to the nearest copper is worked out exactly (and tested against a brute force), and the path of a pass is the line where it equals the radius of the tool, traced as closed polylines and made lighter with a tolerance of half a cell; further passes go one stepover farther each.
 * **What the tool cannot do** (`src/isolate.rs`): where two separate pieces of copper are closer than the width of the tool, no path can go between them: `check` lists those places, and `isolate` does not write the G-code until they are looked at (or `--force`). The G-code (`src/gcode.rs`) lifts the tool between paths, goes down to the depth chosen and cuts the nearest path next.
 * **HP-GL for the Bungard machines** (`src/hpgl.rs`): with an output file that ends in `.plt` the passes are written as an HP-GL plot file at 40 units to the millimetre, one pen for each pass, which is what the routing program of the Bungard machines reads.
+* **Several tools and leftover copper** (`src/isolate.rs`): a plan has up to four tools and the widest cuts first; where a wider tool has already cut along a path of a narrower one, that stretch is left out (the rest stays as open runs), and rings of a wider tool, each overlapping the one before, can clear the copper that is left beyond the passes; the G-code stops for a tool change when the width of the tool changes.
+* **Direction, start and order** (`src/order.rs`): the paths are traced with the copper on the right of the tool (climb milling with a spindle that turns clockwise); the settings can turn that round (conventional), force clockwise or counterclockwise, start each closed path at its nearest point, its lowest point or where it was traced, set the point the tool starts from and put the paths in the order they were traced, nearest first, or shortened further by turning stretches of the order round; `info` shows how many paths go each way and the travel through the air.
+* **Holes and board outline** (`src/drill.rs`): drill files are read (Bungard files in mils with the reader of the Bungard formats, metric files with the reader of the suite) and written in whole mils; an outline is read from a Gerber outline layer, a DXF drawing or an HP-GL plot file, strokes drawn one by one are joined, and the path of the tool round the board and inside its cutouts is written as HP-GL or as a routing Excellon file.
+* **Both sides, panels and alignment holes** (`src/transform.rs`): the layer, the holes and the outline are turned over, turned by quarter turns and repeated on a panel together; alignment holes are put outside the board where the turned-over board finds them again (a third one on the line tells it from the same board turned half a turn).
+* **Design rules** (`src/drc.rs`): copper narrower than the rule, pieces of copper closer than the rule or than the tool is wide, and holes with less copper round them than the rule, each with its place in millimetres.
+* **One settings file** (`src/config.rs`): every value that can be tuned is a setting with a default, read from a `key = value` file (`examples/isocam.cfg`) or given by the same name as an option of the command line.
 
 ## 🧩 Role in EH3D
 
@@ -79,6 +86,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 * **Tests with damaged input:** the tests also feed empty files, garbage, huge numbers and cut files, and none of them may panic.
 * **No guessing:** a value that does not make sense is an error that says which value and why, never a result that only looks right.
 * **No unsafe code:** `#![forbid(unsafe_code)]` in the library and the program.
+* **Every tuned value is a setting:** nothing that a person may want to change is hidden in the code; a bad value is an error with its line.
 
 ## 🔒 Security & Safety
 
@@ -92,22 +100,42 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 
 ## 🔌 Interfaces
 
-The library is `eh3d_isocam` (`use eh3d_isocam::...`); the command line is `eh3d-isocam`. The commands are these; each prints its result on the standard output and reports an error on the standard error with a non-zero exit code. There is no network access.
+The library is `eh3d_isocam` (`use eh3d_isocam::...`); the command line is `eh3d-isocam`. Each command prints its result on the standard output and reports an error on the standard error with a non-zero exit code. There is no network access. The text of the help (`eh3d-isocam help`) is in English:
+
+```text
+eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt     paths round the copper (G-code, or HP-GL for a .plt)
+eh3d-isocam check LAYER.gtl                      places where the tool does not fit between pieces of copper
+eh3d-isocam info LAYER.gtl                       passes, paths each way round, travel through the air
+eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
+eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
+eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
+eh3d-isocam config                               every setting with its default, as a file
+options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15)
+```
 
 ```text
 EH3D-ISOCAM/
 ├── src/
-│   ├── bitmap.rs                                a part of the logic
-│   ├── contour.rs                               a part of the logic
-│   ├── edt.rs                                   a part of the logic
-│   ├── gcode.rs                                 a part of the logic
-│   ├── hpgl.rs                                  a part of the logic
-│   ├── isolate.rs                               a part of the logic
+│   ├── bitmap.rs                                the copper on a grid
+│   ├── config.rs                                every tunable value, from one settings file
+│   ├── contour.rs                               the paths of a pass, traced and made lighter
+│   ├── drc.rs                                   design rules: widths, gaps and rings, with places
+│   ├── drill.rs                                 holes and board outline, read and written
+│   ├── edt.rs                                   the exact distance to the copper
+│   ├── gcode.rs                                 the paths as G-code
+│   ├── hpgl.rs                                  the paths as an HP-GL plot file
+│   ├── isolate.rs                               tools, passes, leftover copper and narrow gaps
 │   ├── lib.rs                                   the library: what every command uses
-│   └── main.rs                                  the command line
+│   ├── main.rs                                  the command line
+│   ├── order.rs                                 direction, starting points and order of the cuts
+│   └── transform.rs                             both sides, panels and alignment holes
 ├── tests/
-│   └── isocam.rs                                tests of the library and the command line
+│   ├── files.rs                                 tests of the drill and outline files
+│   ├── isocam.rs                                tests of the library and the command line
+│   ├── layout.rs                                tests of both sides, panels, rules and the command line
+│   └── multi.rs                                 tests of tools, rubout, direction, order and settings
 ├── examples/
+│   ├── isocam.cfg                               every setting with its default, to copy and change
 │   └── sample.gtl                               a sample to try the program with
 ├── docs/
 │   ├── architecture.json                        data of the Architecture picture
@@ -124,11 +152,11 @@ EH3D-ISOCAM/
 
 ## ⚙️ Configuration
 
-There is no configuration file yet: what a person chooses is given as arguments of the command line (see Interfaces) and every default is written in the help of the command (`eh3d-isocam help`). The fixed limits live in the code as named constants and are covered by tests.
+Every value that can be tuned is a setting with a default: the diameters, passes and stepover of the fine and the coarse tool, the removal of the leftover copper, the depth, feed and speed, the direction, the starting point, the start of each path and the ordering, the tool that cuts out the board, the alignment holes, the mirror, turn and panel, and the design rules. `eh3d-isocam config` prints them all as a file (`examples/isocam.cfg` is that file); `--config FILE` reads one, and any setting can be given on the command line as an option with the same name (`--fine-tool-mm 0.15`), which wins over the file. A value that makes no sense is an error that says the line. The fixed limits live in the code as named constants and are covered by tests.
 
 ## 🚀 Quick start
 
-You need a stable Rust toolchain (1.75 or newer).
+You need a stable Rust toolchain (1.88 or newer).
 
 ```bash
 cargo build --release
@@ -138,7 +166,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Testing
 
-The suite has 17 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 60 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -155,11 +183,31 @@ The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has i
 
 ```text
 EH3D-ISOCAM/
-├── crates/
-│   ├── eh3d-parser-gerber/                      Gerber RS-274X reader
-│   ├── eh3d-parser-excellon/                    Excellon drill file reader
-│   └── eh3d-parser-gcode/                       G-code reader and modal interpreter
-├── docs/                                        READERS.md, what every reader promises and what it does not do, and the data of the two pictures
+├── src/
+│   ├── bitmap.rs                                the copper on a grid
+│   ├── config.rs                                every tunable value, from one settings file
+│   ├── contour.rs                               the paths of a pass, traced and made lighter
+│   ├── drc.rs                                   design rules: widths, gaps and rings, with places
+│   ├── drill.rs                                 holes and board outline, read and written
+│   ├── edt.rs                                   the exact distance to the copper
+│   ├── gcode.rs                                 the paths as G-code
+│   ├── hpgl.rs                                  the paths as an HP-GL plot file
+│   ├── isolate.rs                               tools, passes, leftover copper and narrow gaps
+│   ├── lib.rs                                   the library: what every command uses
+│   ├── main.rs                                  the command line
+│   ├── order.rs                                 direction, starting points and order of the cuts
+│   └── transform.rs                             both sides, panels and alignment holes
+├── tests/
+│   ├── files.rs                                 tests of the drill and outline files
+│   ├── isocam.rs                                tests of the library and the command line
+│   ├── layout.rs                                tests of both sides, panels, rules and the command line
+│   └── multi.rs                                 tests of tools, rubout, direction, order and settings
+├── examples/
+│   ├── isocam.cfg                               every setting with its default, to copy and change
+│   └── sample.gtl                               a sample to try the program with
+├── docs/
+│   ├── architecture.json                        data of the Architecture picture
+│   └── structure.json                           data of the Repository Structure picture
 ├── tools/                                       CI check, README check and the picture tools
 ├── images/                                      banner and the Architecture and Repository Structure pictures
 ├── .github/                                     CI and release workflows, issue and pull-request templates
@@ -178,13 +226,18 @@ EH3D-ISOCAM/
 
 * It has no window yet: only the library and the command line exist.
 * It has not been tried on a machine nor with a collection of real files, and it has had no independent review.
-* The paths are exact to half a cell, not to the curve itself, there is no copper rubout or Voronoi strategy yet, there is no window, and no board has been milled with them.
+* The paths are exact to half a cell, not to the curve itself; there is no Voronoi strategy, no forced isolation where the tool does not fit (those places are only reported), no scaling or compensation of the board, no solder mask or silkscreen layers, and no board has been milled with these paths.
+* The removal of the leftover copper is rings of one wider tool at a distance from the copper: places narrower than that tool keep their copper, and it does not follow the edge of the board.
+* The stretches left out for a narrower tool are decided on a grid with two cells of margin; it prefers cutting a stretch twice to leaving it uncut.
+* Drill files are written in whole mils (the convention of the Bungard programs): a diameter `T1C0.8` with no unit is read as millimetres from 0.2 up and as inches below it; files with slots or routed paths have those left out, with a note. The files written have only been read back by the readers of this suite, not by other programs or machines.
+* The design rules do not round off the corners of a square pad and do not check the copper against the board edge or the solder mask; the check of the rings takes the pad as drawn in the Gerber layer.
 
 **Next**
 
-* Add the window of the suite, the removal of copper areas and the Voronoi strategy, and compare the paths with boards that were really milled.
-* Add the window in the look shared by the programs of the suite, in the eight languages.
-* Try it with real files and with the other programs of the suite.
+* Add the window in the look shared by the programs of the suite, in the eight languages, with a preview of the passes and units in mils, millimetres and inches.
+* Isolation forced where the tool does not fit (a narrower pass for that stretch, with a warning) and the Voronoi strategy; tidy the arcs; scaling and compensation of the board from the fiducials of the camera.
+* Solder mask and silkscreen layers.
+* Compare the paths with boards that were really milled and try it with real files and with the other programs of the suite.
 
 ## 🌍 Languages
 
@@ -193,6 +246,7 @@ README and texts exist in English, Spanish, French, Italian, German, Chinese, Ja
 ## 🔗 Related Projects
 
 * [EH3D-CORE-LIBS](https://github.com/JuanenRac/EH3D-CORE-LIBS): the readers of Gerber, Excellon and G-code
+* [EH3D-COMMON](https://github.com/JuanenRac/EH3D-COMMON): the file formats of the Bungard machines: drill, plot and outline files
 * [EH3D-GERBERVIEWER](https://github.com/JuanenRac/EH3D-GERBERVIEWER): the viewer of Gerber layers
 * [EH3D-TOOL-MANAGER](https://github.com/JuanenRac/EH3D-TOOL-MANAGER): the tool crib shared by the CAM programs
 * [EH3D-CAM-DEBUGGER](https://github.com/JuanenRac/EH3D-CAM-DEBUGGER): the checking of G-code before it reaches a machine

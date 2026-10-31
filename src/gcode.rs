@@ -1,7 +1,8 @@
-//! The G-code of the passes: the tool goes up to the safe height, travels, goes down to the depth of the cut and follows the closed path. The nearest path is cut next.
+//! The G-code of the passes: the tool goes up to the safe height, travels, goes down to the depth of the cut and follows the path. The order, the direction and the starting points come from the settings; by default the nearest path is cut next.
 
 use crate::contour::Loop;
 use crate::isolate::Pass;
+use crate::order::{arrange, Order};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Job {
@@ -70,48 +71,50 @@ pub fn length(paths: &[Loop]) -> f64 {
         .sum()
 }
 
-/// The passes as G-code, a pass after the other, each path starting at its point nearest to where the tool is.
+/// The passes as G-code in the default order: the nearest path next, each starting at its point nearest to where the tool is, going the way they were traced.
 pub fn write(passes: &[Pass], job: &Job) -> Result<String, String> {
+    write_with(passes, job, &Order::default())
+}
+
+/// The passes as G-code, a pass after the other, with the paths in the order, direction and starting points that `order` says. When the width of the tool changes from one pass to
+/// the next the program stops (`M0`) for the tool to be changed by hand.
+pub fn write_with(passes: &[Pass], job: &Job, order: &Order) -> Result<String, String> {
     job.validate()?;
+    if !(order.start.0.is_finite() && order.start.1.is_finite()) {
+        return Err("the starting point of the tool is not a number".into());
+    }
     let mut g = format!(
         "G21\nG90\nG0 Z{}\nM3 S{}\n",
         n(job.safe_z_mm),
         n(job.spindle_rpm)
     );
-    let mut at = (0.0, 0.0);
+    let mut at = order.start;
+    let mut tool: Option<f64> = None;
     for (k, pass) in passes.iter().enumerate() {
+        let (cuts, end) = arrange(&pass.cuts(), order, at);
+        if cuts.is_empty() {
+            continue;
+        }
+        if pass.diameter_mm > 0.0 {
+            if tool.is_some_and(|t| (t - pass.diameter_mm).abs() > 1e-9) {
+                g.push_str(&format!(
+                    "M5\nG0 Z{}\n(change to a tool of {} mm)\nM0\nM3 S{}\n",
+                    n(job.safe_z_mm),
+                    n(pass.diameter_mm),
+                    n(job.spindle_rpm)
+                ));
+            }
+            tool = Some(pass.diameter_mm);
+        }
         g.push_str(&format!(
-            "(pass {} at {} mm from the copper, {} paths)\n",
+            "({} {} at {} mm from the copper, {} paths)\n",
+            if pass.rubout { "ring" } else { "pass" },
             k + 1,
             n(pass.offset_mm),
-            pass.paths.len()
+            cuts.len()
         ));
-        let mut left: Vec<&Loop> = pass.paths.iter().filter(|p| p.len() >= 3).collect();
-        while !left.is_empty() {
-            let d = |p: &Loop| {
-                p.iter()
-                    .map(|q| (q.0 - at.0).powi(2) + (q.1 - at.1).powi(2))
-                    .fold(f64::INFINITY, f64::min)
-            };
-            let i = left
-                .iter()
-                .enumerate()
-                .min_by(|a, b| {
-                    d(a.1)
-                        .partial_cmp(&d(b.1))
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                })
-                .map(|(i, _)| i)
-                .unwrap_or(0);
-            let path = left.remove(i);
-            let s = (0..path.len())
-                .min_by(|&a, &b| {
-                    ((path[a].0 - at.0).powi(2) + (path[a].1 - at.1).powi(2))
-                        .partial_cmp(&((path[b].0 - at.0).powi(2) + (path[b].1 - at.1).powi(2)))
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                })
-                .unwrap_or(0);
-            let start = path[s];
+        for cut in &cuts {
+            let start = cut.pts[0];
             g.push_str(&format!(
                 "G0 X{} Y{}\nG1 Z{} F{}\n",
                 n(start.0),
@@ -119,8 +122,13 @@ pub fn write(passes: &[Pass], job: &Job) -> Result<String, String> {
                 n(-job.depth_mm),
                 n(job.plunge_mm_min)
             ));
-            for j in 1..=path.len() {
-                let p = path[(s + j) % path.len()];
+            let count = if cut.closed {
+                cut.pts.len()
+            } else {
+                cut.pts.len() - 1
+            };
+            for j in 1..=count {
+                let p = cut.pts[j % cut.pts.len()];
                 if j == 1 {
                     g.push_str(&format!(
                         "G1 X{} Y{} F{}\n",
@@ -133,8 +141,8 @@ pub fn write(passes: &[Pass], job: &Job) -> Result<String, String> {
                 }
             }
             g.push_str(&format!("G0 Z{}\n", n(job.safe_z_mm)));
-            at = start;
         }
+        at = end;
     }
     g.push_str("M5\nM2\n");
     Ok(g)

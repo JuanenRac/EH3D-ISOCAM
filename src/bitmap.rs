@@ -49,6 +49,47 @@ impl Bitmap {
         )
     }
 
+    /// The index of the cell that holds a point of the board, or `None` outside the grid.
+    pub fn index_at(&self, x: f64, y: f64) -> Option<usize> {
+        let (fx, fy) = (
+            ((x - self.x0) / self.res).floor(),
+            ((y - self.y0) / self.res).floor(),
+        );
+        if !(fx >= 0.0 && fy >= 0.0 && fx < self.w as f64 && fy < self.h as f64) {
+            return None;
+        }
+        Some(fy as usize * self.w + fx as usize)
+    }
+
+    /// Whether a point of the board is copper (`None` outside the grid).
+    pub fn at(&self, x: f64, y: f64) -> Option<bool> {
+        self.index_at(x, y).map(|i| self.on[i])
+    }
+
+    /// Draws the area inside closed paths, even-odd: a path inside another one is a hole (a board with its cutouts).
+    pub fn draw_even_odd(&mut self, paths: &[Vec<(f64, f64)>]) {
+        let (mut x0, mut x1, mut y0, mut y1) = (
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        );
+        for p in paths.iter().flatten() {
+            x0 = x0.min(p.0);
+            x1 = x1.max(p.0);
+            y0 = y0.min(p.1);
+            y1 = y1.max(p.1);
+        }
+        if x0 <= x1 && y0 <= y1 {
+            self.fill(x0, x1, y0, y1, |px, py| {
+                paths
+                    .iter()
+                    .filter(|p| p.len() >= 3)
+                    .fold(false, |a, p| a ^ inside_polygon(px, py, p))
+            });
+        }
+    }
+
     pub fn count(&self) -> usize {
         self.on.iter().filter(|b| **b).count()
     }
@@ -120,6 +161,8 @@ impl Bitmap {
                         |px, py| capsule_distance(px, py, *x0, *y0, *x1, *y1) <= r,
                     )
                 }
+                // a region with fewer than three points has no inside
+                Shape::Region { pts } if pts.len() < 3 => {}
                 Shape::Region { pts } => {
                     let (min_x, max_x) = (
                         pts.iter().map(|p| p.0).fold(f64::INFINITY, f64::min),

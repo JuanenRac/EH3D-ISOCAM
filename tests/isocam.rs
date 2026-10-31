@@ -486,7 +486,7 @@ fn more_passes_than_pens_are_refused() {
     let many: Vec<eh3d_isocam::isolate::Pass> = (0..9)
         .map(|k| eh3d_isocam::isolate::Pass {
             offset_mm: 0.1 * f64::from(k),
-            paths: vec![],
+            ..Default::default()
         })
         .collect();
     assert!(eh3d_isocam::hpgl::write(&many)

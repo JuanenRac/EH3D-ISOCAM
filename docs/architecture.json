@@ -1,8 +1,8 @@
 {
   "repo": "EH3D-ISOCAM",
   "ecosystem": "eh3d",
-  "tagline": "The copper of a layer, offset exactly, as paths of a tool.",
-  "description": "EH3D-ISOCAM is a Rust library and command line that read a Gerber layer, draw its copper on a fine grid, trace the paths of an isolation milling tool at the exact distance and write them as G-code. It has no window yet.",
+  "tagline": "The copper of a layer, offset exactly, as paths of the tools.",
+  "description": "EH3D-ISOCAM is a Rust library and command line that read a Gerber layer, draw its copper on a fine grid, trace the paths of one or several isolation milling tools at the exact distance, remove the leftover copper, choose the direction and the order of the cuts and write them as G-code or HP-GL; it also reads and writes drill and outline files, lays a board out for both sides and a panel, and checks the design rules. It has no window yet.",
   "columns": [
     "WHO USES IT",
     "THIS REPOSITORY",
@@ -15,9 +15,10 @@
       "level": "external",
       "title": "A person",
       "lines": [
-        "has a Gerber layer and a",
-        "milling tool"
-      ]
+        "has a Gerber layer, holes",
+        "and milling tools"
+      ],
+      "code": []
     },
     {
       "id": "next",
@@ -27,7 +28,8 @@
       "lines": [
         "planned: CAM-DEBUGGER checks",
         "the file, MOTIONCNC runs it"
-      ]
+      ],
+      "code": []
     },
     {
       "id": "bitmap",
@@ -49,24 +51,69 @@
       "level": "tested",
       "title": "isolate and contour",
       "lines": [
-        "the passes as closed paths and",
-        "the gaps that are too narrow"
+        "tools, passes, leftover copper",
+        "and the gaps too narrow"
       ],
       "code": [
-        "src/isolate.rs::pub fn isolate",
+        "src/isolate.rs::pub fn plan",
         "src/contour.rs::pub fn loops"
       ]
     },
     {
-      "id": "gcode",
+      "id": "order",
       "column": 1,
       "level": "tested",
-      "title": "gcode",
+      "title": "order, gcode, hpgl",
       "lines": [
-        "lift, plunge, cut nearest next"
+        "direction, start, order of the",
+        "cuts, written as G-code or HP-GL"
       ],
       "code": [
-        "src/gcode.rs::pub fn write"
+        "src/order.rs::pub fn arrange",
+        "src/gcode.rs::pub fn write_with",
+        "src/hpgl.rs::pub fn write_with"
+      ]
+    },
+    {
+      "id": "drill",
+      "column": 1,
+      "level": "tested",
+      "title": "drill",
+      "lines": [
+        "holes and board outline,",
+        "read and written"
+      ],
+      "code": [
+        "src/drill.rs::pub fn read_drills",
+        "src/drill.rs::pub fn route_outline"
+      ]
+    },
+    {
+      "id": "transform",
+      "column": 1,
+      "level": "tested",
+      "title": "transform",
+      "lines": [
+        "both sides, panel and",
+        "alignment holes"
+      ],
+      "code": [
+        "src/transform.rs::pub fn lay_out",
+        "src/transform.rs::pub fn alignment_holes"
+      ]
+    },
+    {
+      "id": "drc",
+      "column": 1,
+      "level": "tested",
+      "title": "drc and config",
+      "lines": [
+        "design rules; every value in",
+        "one settings file"
+      ],
+      "code": [
+        "src/drc.rs::pub fn check",
+        "src/config.rs::pub struct Settings"
       ]
     },
     {
@@ -88,10 +135,25 @@
       "level": "external",
       "title": "EH3D-CORE-LIBS",
       "lines": [
-        "the Gerber reader"
+        "the Gerber and Excellon",
+        "readers"
       ],
       "code": [
-        "Cargo.toml::eh3d-parser-gerber"
+        "Cargo.toml::eh3d-parser-gerber",
+        "Cargo.toml::eh3d-parser-excellon"
+      ]
+    },
+    {
+      "id": "common",
+      "column": 2,
+      "level": "external",
+      "title": "EH3D-COMMON",
+      "lines": [
+        "the Bungard file formats:",
+        "drills, outlines, plots"
+      ],
+      "code": [
+        "Cargo.toml::eh3d-bungard-formats"
       ]
     }
   ],
@@ -104,14 +166,24 @@
     },
     {
       "from": "person",
-      "to": "bitmap",
+      "to": "drill",
+      "level": "tested"
+    },
+    {
+      "from": "person",
+      "to": "drc",
       "level": "tested"
     },
     {
       "from": "next",
-      "to": "gcode",
+      "to": "order",
       "label": "planned",
       "level": "config"
+    },
+    {
+      "from": "isolate",
+      "to": "bitmap",
+      "level": "tested"
     },
     {
       "from": "bitmap",
@@ -122,10 +194,15 @@
       "from": "bitmap",
       "to": "libs",
       "level": "tested"
+    },
+    {
+      "from": "drill",
+      "to": "common",
+      "level": "tested"
     }
   ],
   "legend": {
-    "tested": "covered by tests on a computer (17 tests)",
+    "tested": "covered by tests on a computer (60 tests)",
     "config": "planned, not used today",
     "external": "a person, a file or another repository"
   },

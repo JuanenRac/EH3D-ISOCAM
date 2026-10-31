@@ -1,8 +1,9 @@
 //! The passes of the tool around the copper, and the places where two pieces of copper are too close for the tool to go between them.
 
-use crate::bitmap::from_scene;
-use crate::contour::{loops, simplify, Grid, Loop};
+use crate::bitmap::{from_scene, Bitmap};
+use crate::contour::{loops, orient_climb, simplify, simplify_open, Grid, Loop};
 use crate::edt::distance_mm;
+use crate::order::Cut;
 use eh3d_gerberviewer::scene::Scene;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -57,17 +58,245 @@ impl Params {
     }
 }
 
+/// One tool of the isolation: its width and how many passes it makes, each one a stepover farther from the copper.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Tool {
+    pub diameter_mm: f64,
+    pub passes: usize,
+    pub stepover_mm: f64,
+}
+
+impl Tool {
+    /// The distance from the copper to the centre of the tool in its last pass.
+    pub fn last_offset_mm(&self) -> f64 {
+        self.diameter_mm / 2.0 + (self.passes.max(1) - 1) as f64 * self.stepover_mm
+    }
+}
+
+/// The removal of the copper that is left over beyond the passes of isolation: rings of a wider tool, each one overlapping the one before.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Rubout {
+    pub tool_mm: f64,
+    /// How far from the copper the rings go, measured to the edge of the cut.
+    pub width_mm: f64,
+    /// The part of the width of the tool that a ring shares with the one before (0 to 0.9).
+    pub overlap: f64,
+}
+
+/// Everything the isolation of a layer needs: one tool or several (the widest cuts first), the optional removal of the leftover copper and the size of the cell.
 #[derive(Debug, Clone, PartialEq)]
+pub struct Plan {
+    pub tools: Vec<Tool>,
+    pub rubout: Option<Rubout>,
+    pub res_mm: f64,
+    /// Leave out the stretches of a narrower tool that a wider one has already cut along.
+    pub trim: bool,
+}
+
+/// The most rings of the removal of the leftover copper.
+pub const MAX_RUBOUT_RINGS: usize = 200;
+
+impl Plan {
+    pub fn validate(&self) -> Result<(), String> {
+        let range = |name: &str, v: f64, lo: f64, hi: f64| {
+            if v.is_finite() && v >= lo && v <= hi {
+                Ok(())
+            } else {
+                Err(format!("{name} is {v}: it must be from {lo} to {hi}"))
+            }
+        };
+        if !(1..=4).contains(&self.tools.len()) {
+            return Err(format!(
+                "{} tools: there must be from 1 to 4",
+                self.tools.len()
+            ));
+        }
+        range("res_mm", self.res_mm, 0.002, 1.0)?;
+        let mut passes = 0;
+        for t in &self.tools {
+            range("tool_diameter_mm", t.diameter_mm, 0.02, 10.0)?;
+            range("stepover_mm", t.stepover_mm, 0.01, 10.0)?;
+            if !(1..=10).contains(&t.passes) {
+                return Err(format!("passes is {}: it must be from 1 to 10", t.passes));
+            }
+            if self.res_mm > t.diameter_mm / 2.0 {
+                return Err(format!("the cell of {} mm is too coarse for a tool of {} mm: it must be at most half of it", self.res_mm, t.diameter_mm));
+            }
+            passes += t.passes;
+        }
+        if passes > 40 {
+            return Err(format!("{passes} passes in all: at most 40"));
+        }
+        if let Some(r) = &self.rubout {
+            range("rubout_tool_mm", r.tool_mm, 0.1, 10.0)?;
+            range("rubout_width_mm", r.width_mm, 0.05, 50.0)?;
+            range("rubout_overlap", r.overlap, 0.0, 0.9)?;
+            if self.res_mm > r.tool_mm / 2.0 {
+                return Err(format!("the cell of {} mm is too coarse for a tool of {} mm: it must be at most half of it", self.res_mm, r.tool_mm));
+            }
+        }
+        Ok(())
+    }
+
+    /// The narrowest tool, which is the one that has to fit between the pieces of copper.
+    pub fn finest_mm(&self) -> f64 {
+        self.tools
+            .iter()
+            .map(|t| t.diameter_mm)
+            .fold(f64::INFINITY, f64::min)
+    }
+
+    /// The farthest the grid has to reach from the copper.
+    pub fn reach_mm(&self) -> f64 {
+        let tools = self
+            .tools
+            .iter()
+            .map(|t| t.last_offset_mm() + t.diameter_mm / 2.0)
+            .fold(0.0, f64::max);
+        match &self.rubout {
+            Some(r) => tools.max(r.width_mm + r.tool_mm * 1.5),
+            None => tools,
+        }
+    }
+}
+
+impl Params {
+    /// The same isolation as a plan with one tool.
+    pub fn plan(&self) -> Plan {
+        Plan {
+            tools: vec![Tool {
+                diameter_mm: self.tool_diameter_mm,
+                passes: self.passes,
+                stepover_mm: self.stepover_mm,
+            }],
+            rubout: None,
+            res_mm: self.res_mm,
+            trim: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Pass {
     /// The distance from the edge of the copper to the centre of the tool.
     pub offset_mm: f64,
+    /// The closed paths.
     pub paths: Vec<Loop>,
+    /// Runs that are not closed: what is left of a path of a narrower tool where a wider one has cut already.
+    pub open: Vec<Loop>,
+    /// The tool (its place in the plan; the rings of the removal of leftover copper come after the tools).
+    pub tool: usize,
+    /// The width of the tool; 0 when it is not known.
+    pub diameter_mm: f64,
+    /// True for a ring of the removal of leftover copper.
+    pub rubout: bool,
+}
+
+impl Pass {
+    /// Everything this pass cuts, closed paths first.
+    pub fn cuts(&self) -> Vec<Cut> {
+        self.paths
+            .iter()
+            .filter(|p| p.len() >= 3)
+            .map(|p| Cut {
+                pts: p.clone(),
+                closed: true,
+            })
+            .chain(self.open.iter().filter(|p| p.len() >= 2).map(|p| Cut {
+                pts: p.clone(),
+                closed: false,
+            }))
+            .collect()
+    }
 }
 
 /// The passes, from the first one (the tool touching the copper) outwards.
 pub fn isolate(scene: &Scene, p: &Params) -> Result<Vec<Pass>, String> {
     p.validate()?;
-    let bm = from_scene(scene, p.reach_mm() + 4.0 * p.res_mm, p.res_mm)?;
+    plan(scene, &p.plan())
+}
+
+fn mark(bm: &Bitmap, mask: &mut [bool], pts: &[(f64, f64)], closed: bool) {
+    let n = pts.len();
+    let segs = if closed { n } else { n.saturating_sub(1) };
+    for i in 0..segs {
+        let (a, b) = (pts[i], pts[(i + 1) % n]);
+        let steps = ((b.0 - a.0).hypot(b.1 - a.1) / (bm.res / 2.0))
+            .ceil()
+            .max(1.0) as usize;
+        for k in 0..=steps {
+            let t = k as f64 / steps as f64;
+            if let Some(ix) = bm.index_at(a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t) {
+                mask[ix] = true;
+            }
+        }
+    }
+}
+
+/// The points of a closed path with none farther than `step` from the next.
+fn resample(path: &[(f64, f64)], step: f64) -> Vec<(f64, f64)> {
+    let n = path.len();
+    let mut out = Vec::new();
+    for i in 0..n {
+        let (a, b) = (path[i], path[(i + 1) % n]);
+        let parts = ((b.0 - a.0).hypot(b.1 - a.1) / step).ceil().max(1.0) as usize;
+        for k in 0..parts {
+            let t = k as f64 / parts as f64;
+            out.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+        }
+    }
+    out
+}
+
+/// What is left of a closed path where `covered` says the ground has been cut already: the path itself when none of it is, nothing when all of it is, otherwise the open runs
+/// that are not (each run takes one covered point at each end so that no gap is left).
+fn trim_path(
+    path: &[(f64, f64)],
+    covered: &dyn Fn((f64, f64)) -> bool,
+    res: f64,
+) -> (Option<Loop>, Vec<Loop>) {
+    let pts = resample(path, res);
+    let flags: Vec<bool> = pts.iter().map(|p| covered(*p)).collect();
+    if flags.iter().all(|c| !*c) {
+        return (Some(path.to_vec()), Vec::new());
+    }
+    if flags.iter().all(|c| *c) {
+        return (None, Vec::new());
+    }
+    let n = pts.len();
+    let first = (0..n)
+        .find(|&i| flags[i] && !flags[(i + n - 1) % n])
+        .unwrap_or(0);
+    let (mut runs, mut cur) = (Vec::new(), Vec::new());
+    for j in 0..n {
+        let i = (first + j) % n;
+        if !flags[i] {
+            if cur.is_empty() {
+                cur.push(pts[(i + n - 1) % n]);
+            }
+            cur.push(pts[i]);
+        } else if !cur.is_empty() {
+            cur.push(pts[i]);
+            runs.push(std::mem::take(&mut cur));
+        }
+    }
+    if !cur.is_empty() {
+        cur.push(pts[first]);
+        runs.push(cur);
+    }
+    let runs = runs
+        .into_iter()
+        .map(|r| simplify_open(&r, res / 2.0))
+        .filter(|r| r.len() >= 2)
+        .collect();
+    (None, runs)
+}
+
+/// The passes of every tool of the plan, the widest tool first, and then the rings that remove the leftover copper.
+pub fn plan(scene: &Scene, p: &Plan) -> Result<Vec<Pass>, String> {
+    p.validate()?;
+    let res = p.res_mm;
+    let bm = from_scene(scene, p.reach_mm() + 4.0 * res, res)?;
     let dist = distance_mm(&bm.on, bm.w, bm.h, bm.res);
     let grid = Grid {
         dist: &dist,
@@ -77,21 +306,93 @@ pub fn isolate(scene: &Scene, p: &Params) -> Result<Vec<Pass>, String> {
         x0: bm.x0,
         y0: bm.y0,
     };
-    Ok((0..p.passes)
-        .map(|k| {
-            let offset = p.tool_diameter_mm / 2.0 + k as f64 * p.stepover_mm;
-            // the distance is measured between centres of cells, which puts the edge of the copper half a cell away
-            let paths = loops(&grid, offset + p.res_mm / 2.0)
-                .into_iter()
-                .map(|l| simplify(&l, p.res_mm / 2.0))
-                .filter(|l| l.len() >= 3)
-                .collect();
-            Pass {
+    // the distance is measured between centres of cells, which puts the edge of the copper half a cell away
+    let traced = |offset: f64| -> Vec<Loop> {
+        loops(&grid, offset + res / 2.0)
+            .into_iter()
+            .map(|l| simplify(&l, res / 2.0))
+            .filter(|l| l.len() >= 3)
+            .map(|mut l| {
+                orient_climb(&grid, &mut l);
+                l
+            })
+            .collect()
+    };
+    let mut order: Vec<usize> = (0..p.tools.len()).collect();
+    order.sort_by(|&a, &b| {
+        p.tools[b]
+            .diameter_mm
+            .partial_cmp(&p.tools[a].diameter_mm)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    let mut cut = vec![false; bm.w * bm.h];
+    let mut out = Vec::new();
+    for (rank, &ti) in order.iter().enumerate() {
+        let t = &p.tools[ti];
+        let mut path_cells = vec![false; bm.w * bm.h];
+        for k in 0..t.passes {
+            let offset = t.diameter_mm / 2.0 + k as f64 * t.stepover_mm;
+            let mut pass = Pass {
                 offset_mm: offset,
-                paths,
+                tool: ti,
+                diameter_mm: t.diameter_mm,
+                ..Pass::default()
+            };
+            for l in traced(offset) {
+                if p.trim && rank > 0 {
+                    let covered = |q: (f64, f64)| bm.index_at(q.0, q.1).is_some_and(|ix| cut[ix]);
+                    let (whole, runs) = trim_path(&l, &covered, res);
+                    if let Some(w) = whole {
+                        mark(&bm, &mut path_cells, &w, true);
+                        pass.paths.push(w);
+                    }
+                    for r in runs {
+                        mark(&bm, &mut path_cells, &r, false);
+                        pass.open.push(r);
+                    }
+                } else {
+                    mark(&bm, &mut path_cells, &l, true);
+                    pass.paths.push(l);
+                }
             }
-        })
-        .collect())
+            out.push(pass);
+        }
+        if p.trim && rank + 1 < order.len() {
+            // the ground this tool has cut: within its radius of its paths (less two cells, so that a stretch is only left out when it is surely cut)
+            let near = distance_mm(&path_cells, bm.w, bm.h, bm.res);
+            let reach = (t.diameter_mm / 2.0 - 2.0 * res).max(0.0);
+            for (c, d) in cut.iter_mut().zip(&near) {
+                if f64::from(*d) <= reach {
+                    *c = true;
+                }
+            }
+        }
+    }
+    if let Some(r) = &p.rubout {
+        let edge = p
+            .tools
+            .iter()
+            .map(|t| t.last_offset_mm() + t.diameter_mm / 2.0)
+            .fold(0.0, f64::max);
+        let rr = r.tool_mm / 2.0;
+        let step = r.tool_mm * (1.0 - r.overlap);
+        let first = rr.max(edge + rr - r.tool_mm * r.overlap);
+        for k in 0..MAX_RUBOUT_RINGS {
+            let offset = first + k as f64 * step;
+            if offset - rr >= r.width_mm {
+                break;
+            }
+            out.push(Pass {
+                offset_mm: offset,
+                paths: traced(offset),
+                tool: p.tools.len(),
+                diameter_mm: r.tool_mm,
+                rubout: true,
+                ..Pass::default()
+            });
+        }
+    }
+    Ok(out)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -104,7 +405,7 @@ pub struct Closeness {
 }
 
 /// Labels the connected cells of a grid (8 neighbours): the number of each cell's piece (0 for no copper) and how many pieces there are.
-fn label(on: &[bool], w: usize, h: usize) -> (Vec<u32>, u32) {
+pub(crate) fn label(on: &[bool], w: usize, h: usize) -> (Vec<u32>, u32) {
     let (mut id, mut n, mut stack) = (vec![0u32; w * h], 0u32, Vec::new());
     for s in 0..w * h {
         if !on[s] || id[s] != 0 {

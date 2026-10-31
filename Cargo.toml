@@ -2,7 +2,7 @@
 name = "eh3d-isocam"
 version = "0.0.1"
 edition = "2021"
-rust-version = "1.82"
+rust-version = "1.88"
 description = "Isolation milling of copper from a Gerber layer: exact offsets of the copper, several passes, checks for gaps the tool cannot cut, and G-code"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/JuanenRac/EH3D-ISOCAM"
@@ -20,6 +20,9 @@ path = "src/main.rs"
 # the readers and the shapes of the suite (path dependencies on the sibling repositories)
 eh3d-parser-gerber = { path = "../EH3D-CORE-LIBS/crates/eh3d-parser-gerber" }
 eh3d-gerberviewer = { path = "../EH3D-GERBERVIEWER" }
+eh3d-parser-excellon = { path = "../EH3D-CORE-LIBS/crates/eh3d-parser-excellon" }
+# the Bungard file formats: Excellon (mils), plotter files, board outlines (Gerber and DXF)
+eh3d-bungard-formats = { path = "../EH3D-COMMON/crates/formats" }
 
 [profile.release]
 opt-level = 3

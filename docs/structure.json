@@ -29,79 +29,118 @@
         {
           "name": "bitmap.rs",
           "desc": {
-            "en": "a part of the logic",
-            "es": "una parte de la lógica",
-            "de": "ein Teil der Logik",
-            "fr": "une partie de la logique",
-            "it": "una parte della logica",
-            "ja": "ロジックの一部",
-            "zh": "逻辑的一部分",
-            "pt": "uma parte da lógica"
+            "en": "the copper on a grid",
+            "es": "el cobre en una rejilla",
+            "de": "das Kupfer auf einem Raster",
+            "fr": "le cuivre sur une grille",
+            "it": "il rame su una griglia",
+            "ja": "グリッド上の銅",
+            "zh": "网格上的铜箔",
+            "pt": "o cobre numa grelha"
+          }
+        },
+        {
+          "name": "config.rs",
+          "desc": {
+            "en": "every tunable value, from one settings file",
+            "es": "todos los valores ajustables, desde un fichero de ajustes",
+            "de": "alle einstellbaren Werte aus einer Einstellungsdatei",
+            "fr": "toutes les valeurs réglables, depuis un fichier de réglages",
+            "it": "tutti i valori regolabili, da un file di impostazioni",
+            "ja": "調整可能な値はすべて設定ファイルから",
+            "zh": "所有可调值都来自一个设置文件",
+            "pt": "todos os valores ajustáveis, a partir de um ficheiro de definições"
           }
         },
         {
           "name": "contour.rs",
           "desc": {
-            "en": "a part of the logic",
-            "es": "una parte de la lógica",
-            "de": "ein Teil der Logik",
-            "fr": "une partie de la logique",
-            "it": "una parte della logica",
-            "ja": "ロジックの一部",
-            "zh": "逻辑的一部分",
-            "pt": "uma parte da lógica"
+            "en": "the paths of a pass, traced and made lighter",
+            "es": "los recorridos de una pasada, trazados y aligerados",
+            "de": "die Bahnen eines Durchgangs, verfolgt und vereinfacht",
+            "fr": "les trajets d'une passe, tracés et allégés",
+            "it": "i percorsi di una passata, tracciati e alleggeriti",
+            "ja": "1回分のパスをたどって軽量化",
+            "zh": "追踪并简化一次走刀的路径",
+            "pt": "os percursos de uma passagem, traçados e aligeirados"
+          }
+        },
+        {
+          "name": "drc.rs",
+          "desc": {
+            "en": "design rules: widths, gaps and rings, with places",
+            "es": "reglas de diseño: anchos, separaciones y anillos, con su posición",
+            "de": "Entwurfsregeln: Breiten, Abstände und Ringe, mit Orten",
+            "fr": "règles de conception : largeurs, écarts et anneaux, avec les endroits",
+            "it": "regole di progetto: larghezze, distanze e anelli, con le posizioni",
+            "ja": "設計ルール：幅・間隔・リング（位置つき）",
+            "zh": "设计规则：线宽、间距和焊环，并给出位置",
+            "pt": "regras de projeto: larguras, distâncias e anéis, com as posições"
+          }
+        },
+        {
+          "name": "drill.rs",
+          "desc": {
+            "en": "holes and board outline, read and written",
+            "es": "taladros y contorno de la placa, leídos y escritos",
+            "de": "Bohrungen und Platinenkontur lesen und schreiben",
+            "fr": "perçages et contour de la carte, lus et écrits",
+            "it": "fori e contorno della scheda, letti e scritti",
+            "ja": "穴と基板外形の読み書き",
+            "zh": "钻孔和板框的读取与写入",
+            "pt": "furos e contorno da placa, lidos e escritos"
           }
         },
         {
           "name": "edt.rs",
           "desc": {
-            "en": "a part of the logic",
-            "es": "una parte de la lógica",
-            "de": "ein Teil der Logik",
-            "fr": "une partie de la logique",
-            "it": "una parte della logica",
-            "ja": "ロジックの一部",
-            "zh": "逻辑的一部分",
-            "pt": "uma parte da lógica"
+            "en": "the exact distance to the copper",
+            "es": "la distancia exacta al cobre",
+            "de": "der genaue Abstand zum Kupfer",
+            "fr": "la distance exacte au cuivre",
+            "it": "la distanza esatta dal rame",
+            "ja": "銅までの正確な距離",
+            "zh": "到铜箔的精确距离",
+            "pt": "a distância exata ao cobre"
           }
         },
         {
           "name": "gcode.rs",
           "desc": {
-            "en": "a part of the logic",
-            "es": "una parte de la lógica",
-            "de": "ein Teil der Logik",
-            "fr": "une partie de la logique",
-            "it": "una parte della logica",
-            "ja": "ロジックの一部",
-            "zh": "逻辑的一部分",
-            "pt": "uma parte da lógica"
+            "en": "the paths as G-code",
+            "es": "los recorridos como G-code",
+            "de": "die Bahnen als G-Code",
+            "fr": "les trajets en G-code",
+            "it": "i percorsi come G-code",
+            "ja": "パスをGコードに",
+            "zh": "把路径写成G代码",
+            "pt": "os percursos como G-code"
           }
         },
         {
           "name": "hpgl.rs",
           "desc": {
-            "en": "a part of the logic",
-            "es": "una parte de la lógica",
-            "de": "ein Teil der Logik",
-            "fr": "une partie de la logique",
-            "it": "una parte della logica",
-            "ja": "ロジックの一部",
-            "zh": "逻辑的一部分",
-            "pt": "uma parte da lógica"
+            "en": "the paths as an HP-GL plot file",
+            "es": "los recorridos como fichero de trazado HP-GL",
+            "de": "die Bahnen als HP-GL-Plotdatei",
+            "fr": "les trajets en fichier de tracé HP-GL",
+            "it": "i percorsi come file di tracciamento HP-GL",
+            "ja": "パスをHP-GLプロットファイルに",
+            "zh": "把路径写成HP-GL绘图文件",
+            "pt": "os percursos como ficheiro de traçado HP-GL"
           }
         },
         {
           "name": "isolate.rs",
           "desc": {
-            "en": "a part of the logic",
-            "es": "una parte de la lógica",
-            "de": "ein Teil der Logik",
-            "fr": "une partie de la logique",
-            "it": "una parte della logica",
-            "ja": "ロジックの一部",
-            "zh": "逻辑的一部分",
-            "pt": "uma parte da lógica"
+            "en": "tools, passes, leftover copper and narrow gaps",
+            "es": "herramientas, pasadas, cobre sobrante y huecos estrechos",
+            "de": "Werkzeuge, Durchgänge, Restkupfer und enge Lücken",
+            "fr": "outils, passes, cuivre restant et écarts étroits",
+            "it": "utensili, passate, rame residuo e fessure strette",
+            "ja": "工具・パス・残り銅・狭い隙間",
+            "zh": "刀具、走刀、残余铜箔和过窄的间隙",
+            "pt": "ferramentas, passagens, cobre restante e folgas estreitas"
           }
         },
         {
@@ -129,6 +168,32 @@
             "zh": "命令行",
             "pt": "a linha de comandos"
           }
+        },
+        {
+          "name": "order.rs",
+          "desc": {
+            "en": "direction, starting points and order of the cuts",
+            "es": "sentido, puntos de inicio y orden de los cortes",
+            "de": "Richtung, Startpunkte und Reihenfolge der Schnitte",
+            "fr": "sens, points de départ et ordre des coupes",
+            "it": "verso, punti di partenza e ordine dei tagli",
+            "ja": "切削の向き・開始点・順序",
+            "zh": "切削方向、起点和顺序",
+            "pt": "sentido, pontos de início e ordem dos cortes"
+          }
+        },
+        {
+          "name": "transform.rs",
+          "desc": {
+            "en": "both sides, panels and alignment holes",
+            "es": "doble cara, paneles y agujeros de alineación",
+            "de": "beide Seiten, Nutzen und Passlöcher",
+            "fr": "double face, panneaux et trous d'alignement",
+            "it": "doppia faccia, pannelli e fori di allineamento",
+            "ja": "両面・パネル・位置合わせ穴",
+            "zh": "双面、拼板和对位孔",
+            "pt": "dupla face, painéis e furos de alinhamento"
+          }
         }
       ]
     },
@@ -137,6 +202,19 @@
       "span": 3,
       "accent": "d",
       "rows": [
+        {
+          "name": "files.rs",
+          "desc": {
+            "en": "tests of the drill and outline files",
+            "es": "pruebas de los ficheros de taladros y contorno",
+            "de": "Tests der Bohr- und Konturdateien",
+            "fr": "tests des fichiers de perçage et de contour",
+            "it": "test dei file di foratura e contorno",
+            "ja": "ドリル・外形ファイルのテスト",
+            "zh": "钻孔与板框文件的测试",
+            "pt": "testes dos ficheiros de furação e contorno"
+          }
+        },
         {
           "name": "isocam.rs",
           "desc": {
@@ -149,6 +227,32 @@
             "zh": "库和命令行的测试",
             "pt": "testes da biblioteca e da linha de comandos"
           }
+        },
+        {
+          "name": "layout.rs",
+          "desc": {
+            "en": "tests of both sides, panels, rules and the command line",
+            "es": "pruebas de doble cara, paneles, reglas y la línea de comandos",
+            "de": "Tests zu beiden Seiten, Nutzen, Regeln und der Kommandozeile",
+            "fr": "tests du double face, des panneaux, des règles et de la ligne de commande",
+            "it": "test di doppia faccia, pannelli, regole e riga di comando",
+            "ja": "両面・パネル・ルール・コマンドラインのテスト",
+            "zh": "双面、拼板、规则和命令行的测试",
+            "pt": "testes de dupla face, painéis, regras e linha de comandos"
+          }
+        },
+        {
+          "name": "multi.rs",
+          "desc": {
+            "en": "tests of tools, rubout, direction, order and settings",
+            "es": "pruebas de herramientas, cobre sobrante, sentido, orden y ajustes",
+            "de": "Tests zu Werkzeugen, Restkupfer, Richtung, Reihenfolge und Einstellungen",
+            "fr": "tests des outils, du cuivre restant, du sens, de l'ordre et des réglages",
+            "it": "test di utensili, rame residuo, verso, ordine e impostazioni",
+            "ja": "工具・残り銅・向き・順序・設定のテスト",
+            "zh": "刀具、残余铜箔、方向、顺序和设置的测试",
+            "pt": "testes de ferramentas, cobre restante, sentido, ordem e definições"
+          }
         }
       ]
     },
@@ -157,6 +261,19 @@
       "span": 3,
       "accent": "d",
       "rows": [
+        {
+          "name": "isocam.cfg",
+          "desc": {
+            "en": "every setting with its default, to copy and change",
+            "es": "todos los ajustes con su valor por defecto, para copiar y cambiar",
+            "de": "alle Einstellungen mit ihrem Standardwert, zum Kopieren und Ändern",
+            "fr": "tous les réglages avec leur valeur par défaut, à copier et modifier",
+            "it": "tutte le impostazioni con il valore predefinito, da copiare e modificare",
+            "ja": "すべての設定と既定値（コピーして変更用）",
+            "zh": "所有设置及其默认值，可复制后修改",
+            "pt": "todas as definições com o valor por omissão, para copiar e alterar"
+          }
+        },
         {
           "name": "sample.gtl",
           "desc": {
