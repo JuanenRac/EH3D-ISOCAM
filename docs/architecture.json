@@ -1,0 +1,133 @@
+{
+  "repo": "EH3D-ISOCAM",
+  "ecosystem": "eh3d",
+  "tagline": "The copper of a layer, offset exactly, as paths of a tool.",
+  "description": "EH3D-ISOCAM is a Rust library and command line that read a Gerber layer, draw its copper on a fine grid, trace the paths of an isolation milling tool at the exact distance and write them as G-code. It has no window yet.",
+  "columns": [
+    "WHO USES IT",
+    "THIS REPOSITORY",
+    "WHAT IT DEPENDS ON"
+  ],
+  "nodes": [
+    {
+      "id": "person",
+      "column": 0,
+      "level": "external",
+      "title": "A person",
+      "lines": [
+        "has a Gerber layer and a",
+        "milling tool"
+      ]
+    },
+    {
+      "id": "next",
+      "column": 0,
+      "level": "config",
+      "title": "Debugger and machine",
+      "lines": [
+        "planned: CAM-DEBUGGER checks",
+        "the file, MOTIONCNC runs it"
+      ]
+    },
+    {
+      "id": "bitmap",
+      "column": 1,
+      "level": "tested",
+      "title": "bitmap and edt",
+      "lines": [
+        "the copper on a grid and the",
+        "exact distance to it"
+      ],
+      "code": [
+        "src/bitmap.rs::pub fn from_scene",
+        "src/edt.rs::pub fn squared_distance"
+      ]
+    },
+    {
+      "id": "isolate",
+      "column": 1,
+      "level": "tested",
+      "title": "isolate and contour",
+      "lines": [
+        "the passes as closed paths and",
+        "the gaps that are too narrow"
+      ],
+      "code": [
+        "src/isolate.rs::pub fn isolate",
+        "src/contour.rs::pub fn loops"
+      ]
+    },
+    {
+      "id": "gcode",
+      "column": 1,
+      "level": "tested",
+      "title": "gcode",
+      "lines": [
+        "lift, plunge, cut nearest next"
+      ],
+      "code": [
+        "src/gcode.rs::pub fn write"
+      ]
+    },
+    {
+      "id": "viewer",
+      "column": 2,
+      "level": "external",
+      "title": "EH3D-GERBERVIEWER",
+      "lines": [
+        "the shapes of a layer in",
+        "millimetres"
+      ],
+      "code": [
+        "Cargo.toml::eh3d-gerberviewer"
+      ]
+    },
+    {
+      "id": "libs",
+      "column": 2,
+      "level": "external",
+      "title": "EH3D-CORE-LIBS",
+      "lines": [
+        "the Gerber reader"
+      ],
+      "code": [
+        "Cargo.toml::eh3d-parser-gerber"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "person",
+      "to": "isolate",
+      "label": "isolate",
+      "level": "tested"
+    },
+    {
+      "from": "person",
+      "to": "bitmap",
+      "level": "tested"
+    },
+    {
+      "from": "next",
+      "to": "gcode",
+      "label": "planned",
+      "level": "config"
+    },
+    {
+      "from": "bitmap",
+      "to": "viewer",
+      "level": "tested"
+    },
+    {
+      "from": "bitmap",
+      "to": "libs",
+      "level": "tested"
+    }
+  ],
+  "legend": {
+    "tested": "covered by tests on a computer (15 tests)",
+    "config": "planned, not used today",
+    "external": "a person, a file or another repository"
+  },
+  "footer": "No board has been milled with these paths yet."
+}

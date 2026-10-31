@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "EH3D",
+  "name": "EH3D-ISOCAM",
+  "version": "0.0.1",
+  "role": "tool",
+  "stack": "rust",
+  "technologies": [
+    "Rust",
+    "Gerber RS-274X",
+    "G-code",
+    "distance transform"
+  ],
+  "deployment_target": "user-pc",
+  "maturity": "scaffolding",
+  "evidence": "host-test",
+  "hardware_bound": false,
+  "family": "CNC Workflow Tools",
+  "parent": null,
+  "build": "cargo build --release; cargo test",
+  "notes": "Scaffolding v0.0.1: a library and a command line that read the copper of a Gerber layer (with the reader of EH3D-CORE-LIBS and the shapes of EH3D-GERBERVIEWER), draw it on a fine grid, work out the exact distance from every point to the copper and trace the paths of the tool at its radius (plus a stepover for each further pass) as closed polylines, report where two pieces of copper are closer than the tool is wide and write the paths as G-code. No window, no Voronoi or rubout and nothing has been milled.",
+  "native_version": {
+    "file": "Cargo.toml",
+    "pattern": "^version\\s*=\\s*\"(\\d+\\.\\d+\\.\\d+)\""
+  }
+}
