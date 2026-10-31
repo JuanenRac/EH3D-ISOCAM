@@ -8,4 +8,5 @@ pub mod bitmap;
 pub mod contour;
 pub mod edt;
 pub mod gcode;
+pub mod hpgl;
 pub mod isolate;

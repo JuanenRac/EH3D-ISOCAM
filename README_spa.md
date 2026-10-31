@@ -18,7 +18,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 15 pruebas que se ejecutan en un ordenador: traza las trayectorias de una fresa alrededor del cobre de una capa Gerber, en varias pasadas, indica los huecos demasiado estrechos para la herramienta y escribe G-code. Todavía no tiene ventana, no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 17 pruebas que se ejecutan en un ordenador: traza las trayectorias de una fresa alrededor del cobre de una capa Gerber, en varias pasadas, indica los huecos demasiado estrechos para la herramienta y escribe G-code. Todavía no tiene ventana, no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versión | `0.0.1` |
 | Madurez | Andamiaje |
-| Pruebas | 15 |
+| Pruebas | 17 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -47,7 +47,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 |---|---|---|
 | Núcleo | 🟡 | traza las trayectorias de una fresa alrededor del cobre de una capa Gerber, en varias pasadas, indica los huecos demasiado estrechos para la herramienta y escribe G-code; probado en un ordenador con entradas normales y dañadas, no con una colección de ficheros reales. |
 | Línea de comandos | 🟡 | `eh3d-isocam` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 15 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
+| Pruebas | 🟡 | 17 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🔴 | Previsto: la ventana egui común a la suite; hoy solo existe la línea de comandos. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -58,6 +58,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 * **El cobre en una rejilla** (`src/bitmap.rs`): pads (redondos, rectangulares, ovalados), pistas y regiones se dibujan en celdas del tamaño elegido; las pistas y pads solapados son una sola pieza porque una rejilla no tiene solapes, así que no hace falta ningún caso especial; una rejilla que no cupiera en memoria se rechaza.
 * **La distancia exacta** (`src/edt.rs`, `src/contour.rs`): la distancia de cada celda al cobre más cercano se calcula exactamente (y se prueba contra fuerza bruta), y la trayectoria de una pasada es la línea donde vale el radio de la herramienta, trazada como polilíneas cerradas y aligerada con una tolerancia de media celda; las pasadas siguientes van un paso lateral más lejos cada una.
 * **Lo que la herramienta no puede hacer** (`src/isolate.rs`): donde dos piezas de cobre separadas están más cerca que el ancho de la herramienta ninguna trayectoria puede pasar entre ellas: `check` lista esos sitios y `isolate` no escribe el G-code hasta que se miren (o `--force`). El G-code (`src/gcode.rs`) levanta la herramienta entre trayectorias, baja a la profundidad elegida y corta después la trayectoria más cercana.
+* **HP-GL para las máquinas Bungard** (`src/hpgl.rs`): con un fichero de salida que acaba en `.plt` las pasadas se escriben como fichero de trazado HP-GL a 40 unidades por milímetro, una plumilla por pasada, que es lo que lee el programa de fresado de las máquinas Bungard.
 
 ## 🧩 Papel en EH3D
 
@@ -100,6 +101,7 @@ EH3D-ISOCAM/
 │   ├── contour.rs                               una parte de la lógica
 │   ├── edt.rs                                   una parte de la lógica
 │   ├── gcode.rs                                 una parte de la lógica
+│   ├── hpgl.rs                                  una parte de la lógica
 │   ├── isolate.rs                               una parte de la lógica
 │   ├── lib.rs                                   la biblioteca: lo que usa cada orden
 │   └── main.rs                                  la línea de comandos
@@ -136,7 +138,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Pruebas
 
-El conjunto tiene 15 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 17 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 

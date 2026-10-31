@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 15 tests that run on a computer: traces the paths of a milling tool around the copper of a Gerber layer, in several passes, reports the gaps that are too narrow for the tool and writes G-code. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 17 tests that run on a computer: traces the paths of a milling tool around the copper of a Gerber layer, in several passes, reports the gaps that are too narrow for the tool and writes G-code. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.1` |
 | Maturity | Scaffolding |
-| Tests | 15 |
+| Tests | 17 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,7 +47,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | traces the paths of a milling tool around the copper of a Gerber layer, in several passes, reports the gaps that are too narrow for the tool and writes G-code; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 15 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 17 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🔴 | Planned: the egui window common to the suite; today there is only the command line. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -58,6 +58,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **The copper on a grid** (`src/bitmap.rs`): pads (round, rectangular, obround), tracks and regions are drawn on cells of the size you choose; overlapping tracks and pads are one piece because a grid has no overlaps, so no special case is needed; a grid that would not fit in memory is refused.
 * **The exact distance** (`src/edt.rs`, `src/contour.rs`): the distance from every cell to the nearest copper is worked out exactly (and tested against a brute force), and the path of a pass is the line where it equals the radius of the tool, traced as closed polylines and made lighter with a tolerance of half a cell; further passes go one stepover farther each.
 * **What the tool cannot do** (`src/isolate.rs`): where two separate pieces of copper are closer than the width of the tool, no path can go between them: `check` lists those places, and `isolate` does not write the G-code until they are looked at (or `--force`). The G-code (`src/gcode.rs`) lifts the tool between paths, goes down to the depth chosen and cuts the nearest path next.
+* **HP-GL for the Bungard machines** (`src/hpgl.rs`): with an output file that ends in `.plt` the passes are written as an HP-GL plot file at 40 units to the millimetre, one pen for each pass, which is what the routing program of the Bungard machines reads.
 
 ## 🧩 Role in EH3D
 
@@ -100,6 +101,7 @@ EH3D-ISOCAM/
 │   ├── contour.rs                               a part of the logic
 │   ├── edt.rs                                   a part of the logic
 │   ├── gcode.rs                                 a part of the logic
+│   ├── hpgl.rs                                  a part of the logic
 │   ├── isolate.rs                               a part of the logic
 │   ├── lib.rs                                   the library: what every command uses
 │   └── main.rs                                  the command line
@@ -136,7 +138,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Testing
 
-The suite has 15 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 17 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 

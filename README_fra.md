@@ -18,7 +18,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 15 tests exécutés sur un ordinateur : trace les trajets d'une fraise autour du cuivre d'une couche Gerber, en plusieurs passes, signale les espaces trop étroits pour l'outil et écrit du G-code. Il n'a pas encore de fenêtre, n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 17 tests exécutés sur un ordinateur : trace les trajets d'une fraise autour du cuivre d'une couche Gerber, en plusieurs passes, signale les espaces trop étroits pour l'outil et écrit du G-code. Il n'a pas encore de fenêtre, n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.1` |
 | Maturité | Échafaudage |
-| Tests | 15 |
+| Tests | 17 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -47,7 +47,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Cœur | 🟡 | trace les trajets d'une fraise autour du cuivre d'une couche Gerber, en plusieurs passes, signale les espaces trop étroits pour l'outil et écrit du G-code ; testé sur un ordinateur avec des entrées normales et abîmées, pas avec une collection de fichiers réels. |
 | Ligne de commande | 🟡 | `eh3d-isocam` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 15 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
+| Tests | 🟡 | 17 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🔴 | Prévu : la fenêtre egui commune à la suite ; aujourd'hui il n'y a que la ligne de commande. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -58,6 +58,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 * **Le cuivre sur une grille** (`src/bitmap.rs`) : pastilles (rondes, rectangulaires, oblongues), pistes et régions sont dessinées sur des cellules de la taille choisie ; les pistes et pastilles qui se chevauchent forment une seule pièce car une grille n'a pas de chevauchements, donc aucun cas particulier ; une grille qui ne tiendrait pas en mémoire est refusée.
 * **La distance exacte** (`src/edt.rs`, `src/contour.rs`) : la distance de chaque cellule au cuivre le plus proche est calculée exactement (et testée contre la force brute), et le trajet d'une passe est la ligne où elle vaut le rayon de l'outil, tracée en polylignes fermées et allégée avec une tolérance d'une demi-cellule ; les passes suivantes vont chacune un pas latéral plus loin.
 * **Ce que l'outil ne peut pas faire** (`src/isolate.rs`) : là où deux pièces de cuivre séparées sont plus proches que la largeur de l'outil, aucun trajet ne peut passer entre elles : `check` liste ces endroits et `isolate` n'écrit pas le G-code tant qu'on ne les a pas regardés (ou `--force`). Le G-code (`src/gcode.rs`) lève l'outil entre les trajets, descend à la profondeur choisie et coupe ensuite le trajet le plus proche.
+* **HP-GL pour les machines Bungard** (`src/hpgl.rs`) : avec un fichier de sortie qui se termine par `.plt`, les passes sont écrites en fichier de tracé HP-GL à 40 unités au millimètre, un stylo par passe, ce que lit le programme de fraisage des machines Bungard.
 
 ## 🧩 Rôle dans EH3D
 
@@ -100,6 +101,7 @@ EH3D-ISOCAM/
 │   ├── contour.rs                               une partie de la logique
 │   ├── edt.rs                                   une partie de la logique
 │   ├── gcode.rs                                 une partie de la logique
+│   ├── hpgl.rs                                  une partie de la logique
 │   ├── isolate.rs                               une partie de la logique
 │   ├── lib.rs                                   la bibliothèque : ce que chaque commande utilise
 │   └── main.rs                                  la ligne de commande
@@ -136,7 +138,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Tests
 
-La suite compte 15 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 17 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 

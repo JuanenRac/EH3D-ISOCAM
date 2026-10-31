@@ -11,7 +11,7 @@ use std::process::ExitCode;
 
 const HELP: &str = "eh3d-isocam: isolation milling of copper from a Gerber layer
 
-  eh3d-isocam isolate LAYER.gtl OUT.nc [--tool 0.2] [--passes 1] [--stepover 0.1] [--res 0.02] [--depth 0.06] [--feed 300] [--plunge 60] [--safe 2] [--rpm 24000] [--force]
+  eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt [--tool 0.2] [--passes 1] [--stepover 0.1] [--res 0.02] [--depth 0.06] [--feed 300] [--plunge 60] [--safe 2] [--rpm 24000] [--force]
   eh3d-isocam check LAYER.gtl [--tool 0.2] [--res 0.02]     the places where two pieces of copper are closer than the tool is wide
 
 isolate refuses to write when the tool does not fit between pieces of copper (run check to see where) unless --force is given.
@@ -110,7 +110,11 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 return Err(format!("the tool does not fit between pieces of copper in {} places (run check to see them, or --force)", close.len()));
             }
             let passes = isolate(&scene, &p)?;
-            let text = write(&passes, &job)?;
+            let text = if out.to_ascii_lowercase().ends_with(".plt") {
+                eh3d_isocam::hpgl::write(&passes)?
+            } else {
+                write(&passes, &job)?
+            };
             fs::write(out, text).map_err(|e| format!("{out}: {e}"))?;
             let total: f64 = passes.iter().map(|ps| length(&ps.paths)).sum();
             println!(

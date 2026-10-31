@@ -440,3 +440,56 @@ fn garbage_layers_do_not_panic() {
         let _ = close_pieces(&sc, 0.2, 0.02);
     }
 }
+
+#[test]
+fn the_passes_as_hpgl_use_one_pen_for_each_pass_and_forty_units_to_the_millimetre() {
+    let s = scene(vec![disc(5.0, 5.0, 1.0)]);
+    let passes = isolate(
+        &s,
+        &Params {
+            passes: 2,
+            ..Params::default()
+        },
+    )
+    .unwrap();
+    let h = eh3d_isocam::hpgl::write(&passes).unwrap();
+    assert!(
+        h.starts_with(
+            "IN;
+SP1;
+PU"
+        ) && h.ends_with(
+            "PU0,0;SP0;
+"
+        )
+    );
+    assert!(h.contains("SP2;"));
+    assert_eq!(h.matches("PD").count(), 2, "one closed path in each pass");
+    // the first pass is 1.1 mm from the centre of the disc: the point at the right is at 6.1 mm = 244 units
+    assert!(h.contains(",244") || h.contains("244,"), "{h}");
+    // no coordinate is negative in a plot file
+    let moved = eh3d_isocam::hpgl::write(
+        &isolate(&scene(vec![disc(0.0, 0.0, 1.0)]), &Params::default()).unwrap(),
+    )
+    .unwrap();
+    assert!(
+        !moved.contains(",-")
+            && !moved.contains("PU-")
+            && !moved.contains("PD-")
+            && !moved.contains(";-"),
+        "{moved}"
+    );
+}
+
+#[test]
+fn more_passes_than_pens_are_refused() {
+    let many: Vec<eh3d_isocam::isolate::Pass> = (0..9)
+        .map(|k| eh3d_isocam::isolate::Pass {
+            offset_mm: 0.1 * f64::from(k),
+            paths: vec![],
+        })
+        .collect();
+    assert!(eh3d_isocam::hpgl::write(&many)
+        .unwrap_err()
+        .contains("pens"));
+}
