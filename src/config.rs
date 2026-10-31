@@ -76,7 +76,7 @@ impl Default for Settings {
             start_x_mm: 0.0,
             start_y_mm: 0.0,
             loop_start: LoopStart::Nearest,
-            ordering: Strategy::Nearest,
+            ordering: Strategy::Optimized,
             optimize_max_paths: 300,
             route_tool_mm: 1.0,
             alignment_hole_mm: 3.0,
