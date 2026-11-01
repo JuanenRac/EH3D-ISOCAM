@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.3] - Forced isolation, optimization, scale and fiducials, solder mask, units and a preview
+
 - **Forced isolation** (off by default, `forced_isolation = yes`): a path is also laid along the middle of every gap that the finest tool does not fit in, as long as the gap is not narrower than `forced_min_gap_mm`; every place is reported with its coordinates and its gap, the narrower gaps are listed and left alone, and `isolate` still refuses to write for those unless `--force` is given. With the setting off, the places are only reported, as before. The tool is wider than such a gap, so it touches the copper on both sides there; that is only warned about, with the place.
 - **Lighter paths** (`optimize_tolerance_mm` = 0.01 and `spike_max_mm` = 0.02 by default, 0 switches each off; `spike_angle_deg`): spikes where the path turns back on itself are taken out, repeated points are joined and points on a straight line within the tolerance become one move; arcs are not fitted, by decision: the paths stay straight moves.
 - **Scale and correction of the board:** `scale_x` and `scale_y` scale the work about the centre of the board (the centre stays where it is, and a scale of 1 changes nothing), and pairs of reference points, given relative to that centre (`--fiducial "DESIGN_X,DESIGN_Y,MEASURED_X,MEASURED_Y"`, two or more times) give a similarity (two pairs) or a least-squares affine fit (three or more) applied to every path, hole and outline; a fit that turns the board over, collapses it, scales an axis more than `fiducial_max_scale_deviation` away from 1 or leaves a mark more than `fiducial_max_residual_mm` from where it should be is refused with the reason.
