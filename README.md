@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 91 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 107 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.3` |
 | Maturity | Scaffolding |
-| Tests | 91 |
+| Tests | 107 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -49,7 +49,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 91 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 107 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🔴 | Planned: the egui window common to the suite; today there is only the command line. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -71,6 +71,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **Lighter paths, scale and correction** (`src/optimize.rs`, `src/fiducial.rs`): spikes are taken out and points on a straight line (within `optimize_tolerance_mm`) become one move, on by default (0.01 mm and 0.02 mm, 0 switches them off); the work can be scaled about the centre of the board, and pairs of reference points relative to that centre (where a mark should be and where it was measured) give a similarity (two pairs) or an affine fit (three or more, least squares) that is applied to every path and hole; it is refused when the scale is far from 1 or a mark does not fit.
 * **Solder mask** (`src/mask.rs`): the openings are written as a Gerber layer, from the mask layer of the design or from the pads of the copper, each grown by `mask_margin_mm`; tracks stay covered.
 * **Units and preview** (`src/units.rs`, `src/preview.rs`): a length may carry `mm`, `mil` or `in`, the G-code can be written in inches, and `preview` draws the passes over the copper as an SVG drawing or as text.
+* **Old-style Gerber layers** (`src/legacy.rs`): a layer with no format statement (RS-274D, as many older programs write it) is read when its list of apertures is given (`--apertures`, one D code and its size per line) together with its format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); it is rewritten as extended Gerber and goes through the normal reader. Tested with hand-written layers, not with files from other programs.
 
 ## 🧩 Role in EH3D
 
@@ -119,6 +120,7 @@ eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the boar
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
+old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 ```
 
 ```text
@@ -135,6 +137,7 @@ EH3D-ISOCAM/
 │   ├── gcode.rs                                 the paths as G-code
 │   ├── hpgl.rs                                  the paths as an HP-GL plot file
 │   ├── isolate.rs                               tools, passes, leftover copper and narrow gaps
+│   ├── legacy.rs                                old-style Gerber layers: format and list of apertures
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
 │   ├── mask.rs                                  the openings of the solder mask
@@ -148,6 +151,7 @@ EH3D-ISOCAM/
 │   ├── files.rs                                 tests of the drill and outline files
 │   ├── isocam.rs                                tests of the library and the command line
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
+│   ├── legacy.rs                                tests of old-style Gerber layers and the command line
 │   └── multi.rs                                 tests of tools, rubout, direction, order and settings
 ├── examples/
 │   ├── isocam.cfg                               every setting with its default, to copy and change
@@ -181,7 +185,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Testing
 
-The suite has 91 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 107 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -210,6 +214,7 @@ EH3D-ISOCAM/
 │   ├── gcode.rs                                 the paths as G-code
 │   ├── hpgl.rs                                  the paths as an HP-GL plot file
 │   ├── isolate.rs                               tools, passes, leftover copper and narrow gaps
+│   ├── legacy.rs                                old-style Gerber layers: format and list of apertures
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
 │   ├── mask.rs                                  the openings of the solder mask
@@ -223,6 +228,7 @@ EH3D-ISOCAM/
 │   ├── files.rs                                 tests of the drill and outline files
 │   ├── isocam.rs                                tests of the library and the command line
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
+│   ├── legacy.rs                                tests of old-style Gerber layers and the command line
 │   └── multi.rs                                 tests of tools, rubout, direction, order and settings
 ├── examples/
 │   ├── isocam.cfg                               every setting with its default, to copy and change

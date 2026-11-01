@@ -18,7 +18,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有91个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它还没有窗口，没有在机器上试过，也没有用一批真实文件检验过。
+**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有107个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它还没有窗口，没有在机器上试过，也没有用一批真实文件检验过。
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | 版本 | `0.0.3` |
 | 成熟度 | 脚手架 |
-| 测试 | 91 |
+| 测试 | 107 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -49,7 +49,7 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 91 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
+| 测试 | 🟡 | 107 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🔴 | 计划中：套件通用的 egui 窗口；目前只有命令行。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -71,6 +71,7 @@
 * **更轻的路径、缩放与补偿**（`src/optimize.rs`、`src/fiducial.rs`）：去掉尖刺，并把落在直线上的点（在 `optimize_tolerance_mm` 之内）合并为一次移动（两者默认开启：0.01 mm 和 0.02 mm，设为 0 即关闭）；整个作业可以以电路板中心为基准缩放，成对的参考点（相对于该中心，标记应在的位置和实测位置）给出相似变换（两对）或仿射拟合（三对及以上，最小二乘），并应用到每条路径和每个孔；缩放远离 1 或某个标记对不上时会被拒绝。
 * **阻焊层**（`src/mask.rs`）：开窗写成 Gerber 层，来自设计的阻焊层或铜箔的焊盘，每个按 `mask_margin_mm` 外扩；走线保持被覆盖。
 * **单位与预览**（`src/units.rs`、`src/preview.rs`）：长度可以带 `mm`、`mil` 或 `in`，G 代码可以按英寸写出，`preview` 把各遍加工路径画在铜箔上，输出为 SVG 图或文本。
+* **旧式Gerber层**（`src/legacy.rs`）：没有格式语句的层（许多旧程序写出的RS-274D），在给出光圈列表（`--apertures`，每行一个D码及其尺寸）和格式（`--gerber-format 2.3`、`--gerber-zeros`、`--gerber-units`）后即可读取；它会被改写为扩展Gerber，再交给普通读取器。已用手写的层测试，未用其他程序生成的文件测试。
 
 ## 🧩 在 EH3D 中的角色
 
@@ -119,6 +120,7 @@ eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the boar
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
+old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 ```
 
 ```text
@@ -135,6 +137,7 @@ EH3D-ISOCAM/
 │   ├── gcode.rs                                 把路径写成G代码
 │   ├── hpgl.rs                                  把路径写成HP-GL绘图文件
 │   ├── isolate.rs                               刀具、走刀、残余铜箔和过窄的间隙
+│   ├── legacy.rs                                旧式Gerber层：格式与光圈列表
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
 │   ├── mask.rs                                  阻焊层的开窗
@@ -148,6 +151,7 @@ EH3D-ISOCAM/
 │   ├── files.rs                                 钻孔与板框文件的测试
 │   ├── isocam.rs                                库和命令行的测试
 │   ├── layout.rs                                双面、拼板、规则和命令行的测试
+│   ├── legacy.rs                                旧式Gerber层和命令行的测试
 │   └── multi.rs                                 刀具、残余铜箔、方向、顺序和设置的测试
 ├── examples/
 │   ├── isocam.cfg                               所有设置及其默认值，可复制后修改
@@ -181,7 +185,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 测试
 
-测试套件有 91 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 107 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -210,6 +214,7 @@ EH3D-ISOCAM/
 │   ├── gcode.rs                                 把路径写成G代码
 │   ├── hpgl.rs                                  把路径写成HP-GL绘图文件
 │   ├── isolate.rs                               刀具、走刀、残余铜箔和过窄的间隙
+│   ├── legacy.rs                                旧式Gerber层：格式与光圈列表
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
 │   ├── mask.rs                                  阻焊层的开窗
@@ -223,6 +228,7 @@ EH3D-ISOCAM/
 │   ├── files.rs                                 钻孔与板框文件的测试
 │   ├── isocam.rs                                库和命令行的测试
 │   ├── layout.rs                                双面、拼板、规则和命令行的测试
+│   ├── legacy.rs                                旧式Gerber层和命令行的测试
 │   └── multi.rs                                 刀具、残余铜箔、方向、顺序和设置的测试
 ├── examples/
 │   ├── isocam.cfg                               所有设置及其默认值，可复制后修改

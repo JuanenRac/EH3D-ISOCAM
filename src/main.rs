@@ -39,6 +39,8 @@ Every option is a setting of the configuration file: --config FILE reads one, an
 --depth, --feed, --plunge, --safe and --rpm still work). A length may carry its unit (--fine-tool-mm 8mil, --depth-mm 0.002in); a bare number is in --input-units (mm, mil or
 inch). --output-units inch writes G20 and inches, --report-units changes what the screen shows. Also --outline FILE and --drills FILE name the outline and the holes that go
 with the layer, --align adds the holes that hold the board when it is turned over, and --force writes although the tool does not fit between pieces of copper.
+An old-style Gerber layer (no format statement) needs --apertures FILE, the list of its apertures (one D code and its size per line), and the format it is written in
+(--gerber-format 2.3, --gerber-zeros leading|trailing, --gerber-units inch|mm, --aperture-units mil|mm|inch, --aperture-size-column 1).
 isolate refuses to write when the tool does not fit between pieces of copper (run check to see where) unless --force is given; with --forced-isolation yes it lays a path along
 every such gap that is not narrower than --forced-min-gap-mm and refuses only for the narrower ones. --optimize-tolerance-mm and --spike-max-mm make the paths lighter;
 --scale-x/--scale-y (about the centre of the board) and --fiducial \"DESIGN_X,DESIGN_Y,MEASURED_X,MEASURED_Y\" (two or more times) scale and correct the work for a stretched or turned board.";
@@ -52,6 +54,7 @@ struct Cli {
     outline: Option<String>,
     drills: Option<String>,
     mask_layer: Option<String>,
+    apertures: Option<String>,
 }
 
 fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
@@ -63,6 +66,7 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
         outline: None,
         drills: None,
         mask_layer: None,
+        apertures: None,
     };
     // the configuration file first, so that the options on the command line win over it
     if let Some(i) = args.iter().position(|a| a == "--config") {
@@ -87,11 +91,12 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
             "--config" | "--input-units" => {
                 it.next();
             }
-            "--outline" | "--drills" | "--mask-layer" => {
+            "--outline" | "--drills" | "--mask-layer" | "--apertures" => {
                 let v = it.next().ok_or_else(|| format!("{a} needs a file"))?;
                 match a.as_str() {
                     "--outline" => cli.outline = Some(v),
                     "--drills" => cli.drills = Some(v),
+                    "--apertures" => cli.apertures = Some(v),
                     _ => cli.mask_layer = Some(v),
                 }
             }
@@ -109,6 +114,20 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
 fn read(path: &str) -> Result<String, String> {
     let bytes = fs::read(path).map_err(|e| format!("{path}: {e}"))?;
     Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// A Gerber layer read from a file: extended Gerber as it is, an old-style layer with the format and the list of apertures of the settings.
+fn read_layer(cli: &Cli, path: &str) -> Result<eh3d_parser_gerber::GerberFile, String> {
+    let text = read(path)?;
+    let list = match &cli.apertures {
+        Some(f) => Some(read(f)?),
+        None => None,
+    };
+    let text = cli
+        .settings
+        .gerber_text(&text, list.as_deref())
+        .map_err(|e| format!("{path}: {e}"))?;
+    Ok(eh3d_parser_gerber::parse(&text))
 }
 
 fn arg<'a>(cli: &'a Cli, i: usize, what: &str) -> Result<&'a str, String> {
@@ -135,7 +154,7 @@ fn load_board(
 ) -> Result<(Board, eh3d_gerberviewer::scene::Bounds), String> {
     let mut board = Board::default();
     if let Some(l) = layer {
-        board.scene = from_gerber(&eh3d_parser_gerber::parse(&read(l)?));
+        board.scene = from_gerber(&read_layer(cli, l)?);
         for n in &board.scene.notes {
             eprintln!("note: {n}");
         }
@@ -378,9 +397,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         "mask" => {
             let layer = arg(&cli, 0, "mask needs a copper layer")?;
             let out = arg(&cli, 1, "mask needs an output file")?;
-            let copper = from_gerber(&eh3d_parser_gerber::parse(&read(layer)?));
+            let copper = from_gerber(&read_layer(&cli, layer)?);
             let mask_scene = match &cli.mask_layer {
-                Some(m) => Some(from_gerber(&eh3d_parser_gerber::parse(&read(m)?))),
+                Some(m) => Some(from_gerber(&read_layer(&cli, m)?)),
                 None => None,
             };
             let open = mask::openings(&copper, mask_scene.as_ref(), s.mask_margin_mm)?;

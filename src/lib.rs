@@ -15,6 +15,7 @@ pub mod forced;
 pub mod gcode;
 pub mod hpgl;
 pub mod isolate;
+pub mod legacy;
 pub mod mask;
 pub mod optimize;
 pub mod order;

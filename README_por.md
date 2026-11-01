@@ -18,7 +18,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 91 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Ainda não tem janela, não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 107 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Ainda não tem janela, não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versão | `0.0.3` |
 | Maturidade | Estrutura inicial |
-| Testes | 91 |
+| Testes | 107 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -49,7 +49,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ficheiros e disposição | 🟡 | lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, acrescenta furos de alinhamento e verifica as regras de projeto com a posição de cada achado; testado num computador, não com ficheiros escritos por outros programas nem numa máquina. |
 | Isolamento forçado, correção, máscara | 🟡 | percursos forçados nos espaços onde a ferramenta não cabe, percursos mais leves, escala e correção com pontos de referência, aberturas da máscara de soldadura, unidades e pré-visualização das passagens; testado num computador com camadas geradas e entradas danificadas, nunca com placas reais nem numa máquina, e a correção não foi comparada com medições reais de uma câmara. |
 | Linha de comandos | 🟡 | `eh3d-isocam` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 91 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 107 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🔴 | Previsto: a janela egui comum à suíte; hoje existe apenas a linha de comandos. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -71,6 +71,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **Percursos mais leves, escala e correção** (`src/optimize.rs`, `src/fiducial.rs`): os picos são retirados e os pontos numa reta (dentro de `optimize_tolerance_mm`) passam a ser um só movimento, ativado por predefinição (0,01 mm e 0,02 mm; com 0 desativa-se); o trabalho pode ser escalado em relação ao centro da placa, e pares de pontos de referência relativos a esse centro (onde uma marca devia estar e onde foi medida) dão uma semelhança (dois pares) ou um ajuste afim (três ou mais, mínimos quadrados) aplicado a cada percurso e a cada furo; é recusado quando a escala se afasta muito de 1 ou uma marca não encaixa.
 * **Máscara de soldadura** (`src/mask.rs`): as aberturas são escritas como uma camada Gerber, a partir da camada de máscara do desenho ou dos pads do cobre, cada uma alargada de `mask_margin_mm`; as pistas ficam cobertas.
 * **Unidades e pré-visualização** (`src/units.rs`, `src/preview.rs`): um comprimento pode levar `mm`, `mil` ou `in`, o G-code pode ser escrito em polegadas, e `preview` desenha as passagens sobre o cobre como desenho SVG ou como texto.
+* **Camadas Gerber antigas** (`src/legacy.rs`): uma camada sem instrução de formato (RS-274D, como muitos programas antigos a escrevem) é lida quando se indica a sua lista de aberturas (`--apertures`, um código D e o seu tamanho por linha) juntamente com o seu formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); é reescrita como Gerber estendido e passa pelo leitor normal. Testado com camadas escritas à mão, não com ficheiros de outros programas.
 
 ## 🧩 Papel no EH3D
 
@@ -119,6 +120,7 @@ eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the boar
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
+old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 ```
 
 ```text
@@ -135,6 +137,7 @@ EH3D-ISOCAM/
 │   ├── gcode.rs                                 os percursos como G-code
 │   ├── hpgl.rs                                  os percursos como ficheiro de traçado HP-GL
 │   ├── isolate.rs                               ferramentas, passagens, cobre restante e folgas estreitas
+│   ├── legacy.rs                                camadas Gerber antigas: formato e lista de aberturas
 │   ├── lib.rs                                   a biblioteca: o que cada comando usa
 │   ├── main.rs                                  a linha de comandos
 │   ├── mask.rs                                  as aberturas da máscara de soldadura
@@ -148,6 +151,7 @@ EH3D-ISOCAM/
 │   ├── files.rs                                 testes dos ficheiros de furação e contorno
 │   ├── isocam.rs                                testes da biblioteca e da linha de comandos
 │   ├── layout.rs                                testes de dupla face, painéis, regras e linha de comandos
+│   ├── legacy.rs                                testes das camadas Gerber antigas e da linha de comandos
 │   └── multi.rs                                 testes de ferramentas, cobre restante, sentido, ordem e definições
 ├── examples/
 │   ├── isocam.cfg                               todas as definições com o valor por omissão, para copiar e alterar
@@ -181,7 +185,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Testes
 
-O conjunto tem 91 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 107 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -210,6 +214,7 @@ EH3D-ISOCAM/
 │   ├── gcode.rs                                 os percursos como G-code
 │   ├── hpgl.rs                                  os percursos como ficheiro de traçado HP-GL
 │   ├── isolate.rs                               ferramentas, passagens, cobre restante e folgas estreitas
+│   ├── legacy.rs                                camadas Gerber antigas: formato e lista de aberturas
 │   ├── lib.rs                                   a biblioteca: o que cada comando usa
 │   ├── main.rs                                  a linha de comandos
 │   ├── mask.rs                                  as aberturas da máscara de soldadura
@@ -223,6 +228,7 @@ EH3D-ISOCAM/
 │   ├── files.rs                                 testes dos ficheiros de furação e contorno
 │   ├── isocam.rs                                testes da biblioteca e da linha de comandos
 │   ├── layout.rs                                testes de dupla face, painéis, regras e linha de comandos
+│   ├── legacy.rs                                testes das camadas Gerber antigas e da linha de comandos
 │   └── multi.rs                                 testes de ferramentas, cobre restante, sentido, ordem e definições
 ├── examples/
 │   ├── isocam.cfg                               todas as definições com o valor por omissão, para copiar e alterar

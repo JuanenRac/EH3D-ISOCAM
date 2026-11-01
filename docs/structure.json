@@ -170,6 +170,19 @@
           }
         },
         {
+          "name": "legacy.rs",
+          "desc": {
+            "en": "old-style Gerber layers: format and list of apertures",
+            "es": "capas Gerber antiguas: formato y lista de aperturas",
+            "de": "alte Gerber-Ebenen: Format und Aperturliste",
+            "fr": "couches Gerber anciennes : format et liste d'ouvertures",
+            "it": "livelli Gerber vecchio stile: formato ed elenco delle aperture",
+            "ja": "旧形式のガーバーレイヤー：書式とアパーチャ一覧",
+            "zh": "旧式Gerber层：格式与光圈列表",
+            "pt": "camadas Gerber antigas: formato e lista de aberturas"
+          }
+        },
+        {
           "name": "lib.rs",
           "desc": {
             "en": "the library: what every command uses",
@@ -330,6 +343,19 @@
             "ja": "両面・パネル・ルール・コマンドラインのテスト",
             "zh": "双面、拼板、规则和命令行的测试",
             "pt": "testes de dupla face, painéis, regras e linha de comandos"
+          }
+        },
+        {
+          "name": "legacy.rs",
+          "desc": {
+            "en": "tests of old-style Gerber layers and the command line",
+            "es": "pruebas de las capas Gerber antiguas y la línea de comandos",
+            "de": "Tests alter Gerber-Ebenen und der Kommandozeile",
+            "fr": "tests des couches Gerber anciennes et de la ligne de commande",
+            "it": "test dei livelli Gerber vecchio stile e della riga di comando",
+            "ja": "旧形式のガーバーレイヤーとコマンドラインのテスト",
+            "zh": "旧式Gerber层和命令行的测试",
+            "pt": "testes das camadas Gerber antigas e da linha de comandos"
           }
         },
         {

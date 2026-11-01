@@ -6,6 +6,7 @@ use crate::fiducial::{fit, Affine, Fit, Limits, Model, Pair};
 use crate::forced::Forced;
 use crate::gcode::Job;
 use crate::isolate::{Plan, Rubout, Tool};
+use crate::legacy::{self, Format, Zeros};
 use crate::optimize::Optimize;
 use crate::order::{Direction, LoopStart, Order, Strategy};
 use crate::transform::{Axis, Layout};
@@ -81,6 +82,14 @@ pub struct Settings {
     pub mask_margin_mm: f64,
     /// The width of the text preview, in characters.
     pub preview_cols: usize,
+    /// Old-style Gerber layers (no format statement): digits before and after the point, the zeros left out, the units when the file does not say, and how the list of
+    /// apertures is read (its unit and which number after the D code is the size).
+    pub gerber_int_digits: u8,
+    pub gerber_dec_digits: u8,
+    pub gerber_zeros: Zeros,
+    pub gerber_units: Unit,
+    pub aperture_units: Unit,
+    pub aperture_size_column: usize,
 }
 
 impl Default for Settings {
@@ -138,6 +147,12 @@ impl Default for Settings {
             fiducial_max_residual_mm: 0.2,
             mask_margin_mm: 0.05,
             preview_cols: 100,
+            gerber_int_digits: 2,
+            gerber_dec_digits: 3,
+            gerber_zeros: Zeros::Leading,
+            gerber_units: Unit::Inch,
+            aperture_units: Unit::Mil,
+            aperture_size_column: 1,
         }
     }
 }
@@ -239,6 +254,20 @@ impl Settings {
             "rule_annular_ring_mm" => self.rule_annular_ring_mm = num(key, v)?,
             "rule_holes_on_copper" => self.rule_holes_on_copper = flag(key, v)?,
             "input_units" => self.input_units = Unit::parse(v)?,
+            "gerber_format" => {
+                let (i, d) = Format::parse_digits(v).map_err(|e| format!("{key}: {e}"))?;
+                self.gerber_int_digits = i;
+                self.gerber_dec_digits = d;
+            }
+            "gerber_zeros" => self.gerber_zeros = Zeros::parse(v)?,
+            "gerber_units" => {
+                self.gerber_units = Unit::parse(v)?;
+                if self.gerber_units == Unit::Mil {
+                    return Err("gerber_units mil: a Gerber layer is in mm or inch".into());
+                }
+            }
+            "aperture_units" => self.aperture_units = Unit::parse(v)?,
+            "aperture_size_column" => self.aperture_size_column = count(key, v)?,
             "output_units" => {
                 self.output_units = Unit::parse(v)?;
                 if self.output_units == Unit::Mil {
@@ -307,7 +336,7 @@ impl Settings {
     pub fn to_text(&self) -> String {
         let b = |v: bool| if v { "yes" } else { "no" };
         let mut extra = format!(
-            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\n",
+            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\ngerber_format = {}.{}\ngerber_zeros = {}\ngerber_units = {}\naperture_units = {}\naperture_size_column = {}\n",
             self.output_units.name(),
             self.report_units.name(),
             b(self.forced_isolation),
@@ -321,7 +350,13 @@ impl Settings {
             self.fiducial_max_scale_deviation,
             self.fiducial_max_residual_mm,
             self.mask_margin_mm,
-            self.preview_cols
+            self.preview_cols,
+            self.gerber_int_digits,
+            self.gerber_dec_digits,
+            self.gerber_zeros.name(),
+            self.gerber_units.name(),
+            self.aperture_units.name(),
+            self.aperture_size_column
         );
         for p in &self.fiducials {
             extra.push_str(&format!(
@@ -369,6 +404,27 @@ impl Settings {
             b(self.rule_holes_on_copper),
         );
         main + &extra
+    }
+
+    /// The text of a Gerber layer ready for the reader: a layer with a format statement is returned as it is; an old-style one (no format statement) is rewritten with the
+    /// format and units of the settings and the apertures of the list, which must then be given.
+    pub fn gerber_text(&self, layer: &str, apertures: Option<&str>) -> Result<String, String> {
+        if legacy::has_format_statement(layer) {
+            return Ok(layer.to_string());
+        }
+        let list = apertures.ok_or_else(|| {
+            let hint = legacy::guess_format(layer)
+                .map(|f| format!(" (the longest coordinate has {} digits)", f.int + f.dec))
+                .unwrap_or_default();
+            format!("the layer has no format statement (old-style Gerber){hint}: give its list of apertures with --apertures FILE and, if it is not 2.3 with the leading zeros left out, --gerber-format and --gerber-zeros")
+        })?;
+        let aps = legacy::parse_apertures(list, self.aperture_units, self.aperture_size_column)?;
+        let fmt = Format {
+            int: self.gerber_int_digits,
+            dec: self.gerber_dec_digits,
+            zeros: self.gerber_zeros,
+        };
+        legacy::to_extended(layer, fmt, self.gerber_units, &aps)
     }
 
     pub fn validate(&self) -> Result<(), String> {
