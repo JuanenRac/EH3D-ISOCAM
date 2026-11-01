@@ -32,6 +32,8 @@ pub struct Settings {
     pub feed_mm_min: f64,
     pub plunge_mm_min: f64,
     pub safe_z_mm: f64,
+    /// The height for a tool change by hand.
+    pub tool_change_z_mm: f64,
     pub spindle_rpm: f64,
     pub direction: Direction,
     pub start_x_mm: f64,
@@ -110,6 +112,7 @@ impl Default for Settings {
             feed_mm_min: 300.0,
             plunge_mm_min: 60.0,
             safe_z_mm: 2.0,
+            tool_change_z_mm: 30.0,
             spindle_rpm: 24000.0,
             direction: Direction::Climb,
             start_x_mm: 0.0,
@@ -224,6 +227,7 @@ impl Settings {
             "feed_mm_min" => self.feed_mm_min = num(key, v)?,
             "plunge_mm_min" => self.plunge_mm_min = num(key, v)?,
             "safe_z_mm" => self.safe_z_mm = num(key, v)?,
+            "tool_change_z_mm" => self.tool_change_z_mm = num(key, v)?,
             "spindle_rpm" => self.spindle_rpm = num(key, v)?,
             "direction" => self.direction = Direction::parse(v)?,
             "start_x_mm" => self.start_x_mm = num(key, v)?,
@@ -365,7 +369,7 @@ impl Settings {
             ));
         }
         let main = format!(
-            "# EH3D-ISOCAM settings\nres_mm = {}\nfine_tool_mm = {}\nfine_passes = {}\nfine_stepover_mm = {}\ncoarse_tool_mm = {}\ncoarse_passes = {}\ncoarse_stepover_mm = {}\ntrim_fine = {}\nrubout_tool_mm = {}\nrubout_width_mm = {}\nrubout_overlap = {}\ndepth_mm = {}\nfeed_mm_min = {}\nplunge_mm_min = {}\nsafe_z_mm = {}\nspindle_rpm = {}\ndirection = {}\nstart_x_mm = {}\nstart_y_mm = {}\nloop_start = {}\nordering = {}\noptimize_max_paths = {}\nroute_tool_mm = {}\nalignment_hole_mm = {}\nalignment_margin_mm = {}\nalignment_holes = {}\nalignment_tool = {}\nmirror = {}\nrotate_quarters = {}\npanel_cols = {}\npanel_rows = {}\npanel_gap_mm = {}\nrule_min_width_mm = {}\nrule_min_clearance_mm = {}\nrule_annular_ring_mm = {}\nrule_holes_on_copper = {}\n",
+            "# EH3D-ISOCAM settings\nres_mm = {}\nfine_tool_mm = {}\nfine_passes = {}\nfine_stepover_mm = {}\ncoarse_tool_mm = {}\ncoarse_passes = {}\ncoarse_stepover_mm = {}\ntrim_fine = {}\nrubout_tool_mm = {}\nrubout_width_mm = {}\nrubout_overlap = {}\ndepth_mm = {}\nfeed_mm_min = {}\nplunge_mm_min = {}\nsafe_z_mm = {}\ntool_change_z_mm = {}\nspindle_rpm = {}\ndirection = {}\nstart_x_mm = {}\nstart_y_mm = {}\nloop_start = {}\nordering = {}\noptimize_max_paths = {}\nroute_tool_mm = {}\nalignment_hole_mm = {}\nalignment_margin_mm = {}\nalignment_holes = {}\nalignment_tool = {}\nmirror = {}\nrotate_quarters = {}\npanel_cols = {}\npanel_rows = {}\npanel_gap_mm = {}\nrule_min_width_mm = {}\nrule_min_clearance_mm = {}\nrule_annular_ring_mm = {}\nrule_holes_on_copper = {}\n",
             self.res_mm,
             self.fine_tool_mm,
             self.fine_passes,
@@ -381,6 +385,7 @@ impl Settings {
             self.feed_mm_min,
             self.plunge_mm_min,
             self.safe_z_mm,
+            self.tool_change_z_mm,
             self.spindle_rpm,
             self.direction.name(),
             self.start_x_mm,
@@ -573,6 +578,7 @@ impl Settings {
     pub fn job(&self) -> Job {
         Job {
             safe_z_mm: self.safe_z_mm,
+            tool_change_z_mm: self.tool_change_z_mm,
             depth_mm: self.depth_mm,
             feed_mm_min: self.feed_mm_min,
             plunge_mm_min: self.plunge_mm_min,

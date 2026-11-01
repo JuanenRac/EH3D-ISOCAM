@@ -9,6 +9,8 @@ use crate::units::Unit;
 pub struct Job {
     /// The height at which the tool travels, above the board.
     pub safe_z_mm: f64,
+    /// The height the tool goes up to when it has to be changed by hand: high enough to take it out and put the new one in.
+    pub tool_change_z_mm: f64,
     /// How deep the tool goes into the copper (a positive number; the Z of the cut is its negative).
     pub depth_mm: f64,
     pub feed_mm_min: f64,
@@ -20,6 +22,7 @@ impl Default for Job {
     fn default() -> Self {
         Job {
             safe_z_mm: 2.0,
+            tool_change_z_mm: 30.0,
             depth_mm: 0.06,
             feed_mm_min: 300.0,
             plunge_mm_min: 60.0,
@@ -38,6 +41,12 @@ impl Job {
             }
         };
         range("safe_z_mm", self.safe_z_mm, 0.5, 50.0)?;
+        range(
+            "tool_change_z_mm",
+            self.tool_change_z_mm,
+            self.safe_z_mm,
+            200.0,
+        )?;
         range("depth_mm", self.depth_mm, 0.005, 2.0)?;
         range("feed_mm_min", self.feed_mm_min, 1.0, 10_000.0)?;
         range("plunge_mm_min", self.plunge_mm_min, 1.0, 5_000.0)?;
@@ -123,11 +132,12 @@ pub fn write_in(passes: &[Pass], job: &Job, order: &Order, unit: Unit) -> Result
         if pass.diameter_mm > 0.0 {
             if tool.is_some_and(|t| (t - pass.diameter_mm).abs() > 1e-9) {
                 g.push_str(&format!(
-                    "M5\nG0 Z{}\n(change to a tool of {} {})\nM0\nM3 S{}\n",
-                    nn(c(job.safe_z_mm), unit),
+                    "M5\nG0 Z{}\n(change to a tool of {} {}; set the Z zero again with the new tool before pressing start)\nM0\nM3 S{}\nG0 Z{}\n",
+                    nn(c(job.tool_change_z_mm), unit),
                     nn(c(pass.diameter_mm), unit),
                     if unit == Unit::Inch { "in" } else { "mm" },
-                    n(job.spindle_rpm)
+                    n(job.spindle_rpm),
+                    nn(c(job.safe_z_mm), unit)
                 ));
             }
             tool = Some(pass.diameter_mm);

@@ -224,7 +224,16 @@ fn the_gcode_stops_for_a_tool_change_and_the_plot_file_gives_each_tool_its_pen()
     let passes = plan(&s, &plan_of(vec![one(0.2, 1), one(0.4, 1)], None, false)).unwrap();
     let g = write(&passes, &Job::default()).unwrap();
     assert_eq!(g.matches("M0\n").count(), 1, "{g}");
-    assert!(g.contains("(change to a tool of 0.2 mm)"));
+    assert!(g.contains("(change to a tool of 0.2 mm;"));
+    // the tool goes up to the height for the change before it stops, and back to the safe height after it, with the zero to be set again
+    assert!(
+        g.contains(
+            "G0 Z30
+(change to a tool"
+        ),
+        "{g}"
+    );
+    assert!(g.contains("set the Z zero again"), "{g}");
     let first_change = g.find("M0\n").unwrap();
     assert!(g.find("pass 1 at 0.2 mm").unwrap() < first_change);
     let h = hpgl_with(&passes, &Order::default(), PenBy::Tool).unwrap();
