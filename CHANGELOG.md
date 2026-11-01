@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Each dependency on a sibling repository by path says the version it needs** (`version = ">=0.0.1", path = "../EH3D-..."`), so Cargo stops at once when the sibling next to this one is older than the program expects.
 - **Rectangular pens in the viewer:** a track drawn with a rectangular or obround aperture is now the swept rectangle (the segment and the pen, a polygon), not a round-ended line as wide as the narrow side of the pen.
 - **Problem zones in `check`:** inner corners sharper than `problem_corner_angle_deg` and tracks that run between two pads nearer than `problem_track_gap_factor` times the tool are listed as warnings; both criteria are settings.
 - **Tolerance for small conflicts** (`conflict_tolerance_mm`, 0 by default: as before): gaps narrower than the tool by at most that much are accepted by `check` and `isolate`.

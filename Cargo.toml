@@ -18,11 +18,11 @@ path = "src/main.rs"
 
 [dependencies]
 # the readers and the shapes of the suite (path dependencies on the sibling repositories)
-eh3d-parser-gerber = { path = "../EH3D-CORE-LIBS/crates/eh3d-parser-gerber" }
-eh3d-gerberviewer = { path = "../EH3D-GERBERVIEWER" }
-eh3d-parser-excellon = { path = "../EH3D-CORE-LIBS/crates/eh3d-parser-excellon" }
+eh3d-parser-gerber = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d-parser-gerber" }
+eh3d-gerberviewer = { version = ">=0.0.1", path = "../EH3D-GERBERVIEWER" }
+eh3d-parser-excellon = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d-parser-excellon" }
 # the Bungard file formats: Excellon (mils), plotter files, board outlines (Gerber and DXF)
-eh3d-bungard-formats = { path = "../EH3D-COMMON/crates/formats" }
+eh3d-bungard-formats = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/formats" }
 
 [profile.release]
 opt-level = 3
