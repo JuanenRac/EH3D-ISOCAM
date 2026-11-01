@@ -15,7 +15,7 @@ if ! command -v cargo >/dev/null 2>&1; then
 fi
 if cargo build --release; then
     echo
-    echo "Build OK: target/release/eh3d-isocam"
+    echo "Build OK: ${CARGO_TARGET_DIR:-target}/release/eh3d-isocam"
 else
     echo
     echo "Build FAILED."
