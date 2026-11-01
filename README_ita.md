@@ -18,7 +18,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 60 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Non ha ancora una finestra, non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 88 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Non ha ancora una finestra, non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versione | `0.0.2` |
 | Maturità | Impalcatura |
-| Test | 60 |
+| Test | 88 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -47,8 +47,9 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 |---|---|---|
 | Nucleo | 🟡 | traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, segnala le fessure troppo strette per l'utensile e scrive G-code o HP-GL; provato su un computer con input normali e danneggiati, non con una raccolta di file reali. |
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
+| Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 60 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 88 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🔴 | Previsto: la finestra egui comune alla suite; oggi esiste solo la riga di comando. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -66,6 +67,10 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **Due facce, pannelli e fori di allineamento** (`src/transform.rs`): il livello, i fori e il contorno vengono ribaltati, ruotati a quarti di giro e ripetuti su un pannello insieme; i fori di allineamento sono messi fuori dalla scheda dove la scheda ribaltata li ritrova (un terzo sull'asse la distingue dalla stessa scheda ruotata di mezzo giro).
 * **Regole di progetto** (`src/drc.rs`): rame più stretto della regola, pezzi di rame più vicini della regola o della larghezza dell'utensile, e fori con meno rame intorno della regola, ciascuno con la sua posizione in millimetri.
 * **Un file di impostazioni** (`src/config.rs`): ogni valore regolabile è un'impostazione con un valore predefinito, letta da un file `chiave = valore` (`examples/isocam.cfg`) o data con lo stesso nome come opzione della riga di comando.
+* **Isolamento forzato** (`src/forced.rs`): con `forced_isolation = yes` viene tracciato anche un percorso a metà di ogni spazio in cui l'utensile più fine non entra, purché lo spazio non sia più stretto di `forced_min_gap_mm`; ogni punto è segnalato con le sue coordinate e il suo spazio, e gli spazi più stretti sono elencati e lasciati stare. È disattivato per impostazione predefinita: allora quei punti sono solo segnalati.
+* **Percorsi più leggeri, scala e correzione** (`src/optimize.rs`, `src/fiducial.rs`): le punte sono tolte e i punti su una retta (entro `optimize_tolerance_mm`) diventano un solo movimento; il lavoro può essere scalato, e coppie di punti di riferimento (dove un segno dovrebbe essere e dove è stato misurato) danno una similitudine (due coppie) o un adattamento affine (tre o più, minimi quadrati) applicato a ogni percorso e a ogni foro; viene rifiutato se la scala è lontana da 1 o un segno non si adatta.
+* **Maschera di saldatura** (`src/mask.rs`): le aperture sono scritte come livello Gerber, dal livello maschera del progetto o dai pad del rame, ciascuna ingrandita di `mask_margin_mm`; le piste restano coperte.
+* **Unità e anteprima** (`src/units.rs`, `src/preview.rs`): una lunghezza può portare `mm`, `mil` o `in`, il G-code può essere scritto in pollici, e `preview` disegna le passate sul rame come disegno SVG o come testo.
 
 ## 🧩 Ruolo in EH3D
 
@@ -87,6 +92,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **Nessuna ipotesi:** un valore privo di senso è un errore che dice quale e perché, mai un risultato che sembra solo giusto.
 * **Nessun codice unsafe:** `#![forbid(unsafe_code)]` nella libreria e nel programma.
 * **Ogni valore regolato è un'impostazione:** niente di ciò che una persona può voler cambiare è nascosto nel codice; un valore sbagliato è un errore con la sua riga.
+* **Unità a scelta:** le lunghezze in un file di impostazioni o sulla riga di comando possono essere scritte in millimetri, mil o pollici; il G-code può essere scritto in pollici e lo schermo può mostrare mil.
 
 ## 🔒 Sicurezza e protezione
 
@@ -106,11 +112,13 @@ La libreria è `eh3d_isocam` (`use eh3d_isocam::...`); la riga di comando è `eh
 eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt     paths round the copper (G-code, or HP-GL for a .plt)
 eh3d-isocam check LAYER.gtl                      places where the tool does not fit between pieces of copper
 eh3d-isocam info LAYER.gtl                       passes, paths each way round, travel through the air
+eh3d-isocam preview LAYER.gtl [OUT.svg|OUT.txt]    the passes drawn over the copper, as SVG or text
 eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
 eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
 eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
+eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
-options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15)
+options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 ```
 
 ```text
@@ -122,14 +130,21 @@ EH3D-ISOCAM/
 │   ├── drc.rs                                   regole di progetto: larghezze, distanze e anelli, con le posizioni
 │   ├── drill.rs                                 fori e contorno della scheda, letti e scritti
 │   ├── edt.rs                                   la distanza esatta dal rame
+│   ├── fiducial.rs                              scala e correzione con punti di riferimento
+│   ├── forced.rs                                percorsi negli spazi in cui l'utensile non entra
 │   ├── gcode.rs                                 i percorsi come G-code
 │   ├── hpgl.rs                                  i percorsi come file di tracciamento HP-GL
 │   ├── isolate.rs                               utensili, passate, rame residuo e fessure strette
 │   ├── lib.rs                                   la libreria: ciò che usa ogni comando
 │   ├── main.rs                                  la riga di comando
+│   ├── mask.rs                                  le aperture della maschera di saldatura
+│   ├── optimize.rs                              percorsi più leggeri: punte e punti allineati
 │   ├── order.rs                                 verso, punti di partenza e ordine dei tagli
-│   └── transform.rs                             doppia faccia, pannelli e fori di allineamento
+│   ├── preview.rs                               le passate disegnate in SVG o testo
+│   ├── transform.rs                             doppia faccia, pannelli e fori di allineamento
+│   └── units.rs                                 mm, mil e pollice
 ├── tests/
+│   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── files.rs                                 test dei file di foratura e contorno
 │   ├── isocam.rs                                test della libreria e della riga di comando
 │   ├── layout.rs                                test di doppia faccia, pannelli, regole e riga di comando
@@ -152,7 +167,7 @@ EH3D-ISOCAM/
 
 ## ⚙️ Configurazione
 
-Ogni valore regolabile è un'impostazione con un valore predefinito: diametri, passate e passo laterale dell'utensile fine e di quello grosso, la rimozione del rame residuo, la profondità, l'avanzamento e la velocità, il verso, il punto di partenza, l'inizio di ogni percorso e l'ordine, l'utensile che taglia la scheda, i fori di allineamento, lo specchio, la rotazione e il pannello, e le regole di progetto. `eh3d-isocam config` le stampa tutte come file (`examples/isocam.cfg` è quel file); `--config FILE` ne legge uno, e ogni impostazione può essere data sulla riga di comando come opzione con lo stesso nome (`--fine-tool-mm 0.15`), che prevale sul file. Un valore privo di senso è un errore che indica la riga. I limiti fissi vivono nel codice come costanti con nome e sono coperti da test.
+Ogni valore regolabile è un'impostazione con un valore predefinito: diametri, passate e passo laterale dell'utensile fine e di quello grosso, la rimozione del rame residuo, la profondità, l'avanzamento e la velocità, il verso, il punto di partenza, l'inizio di ogni percorso e l'ordine, l'utensile che taglia la scheda, i fori di allineamento, lo specchio, la rotazione e il pannello, e le regole di progetto. `eh3d-isocam config` le stampa tutte come file (`examples/isocam.cfg` è quel file); `--config FILE` ne legge uno, e ogni impostazione può essere data sulla riga di comando come opzione con lo stesso nome (`--fine-tool-mm 0.15`), che prevale sul file. Un valore privo di senso è un errore che indica la riga. I limiti fissi vivono nel codice come costanti con nome e sono coperti da test. Anche l'isolamento forzato, i percorsi più leggeri, la scala e i punti di riferimento, il margine della maschera di saldatura, le unità e la larghezza dell'anteprima in testo sono impostazioni.
 
 ## 🚀 Avvio rapido
 
@@ -166,7 +181,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Test
 
-La suite ha 60 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 88 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
@@ -190,14 +205,21 @@ EH3D-ISOCAM/
 │   ├── drc.rs                                   regole di progetto: larghezze, distanze e anelli, con le posizioni
 │   ├── drill.rs                                 fori e contorno della scheda, letti e scritti
 │   ├── edt.rs                                   la distanza esatta dal rame
+│   ├── fiducial.rs                              scala e correzione con punti di riferimento
+│   ├── forced.rs                                percorsi negli spazi in cui l'utensile non entra
 │   ├── gcode.rs                                 i percorsi come G-code
 │   ├── hpgl.rs                                  i percorsi come file di tracciamento HP-GL
 │   ├── isolate.rs                               utensili, passate, rame residuo e fessure strette
 │   ├── lib.rs                                   la libreria: ciò che usa ogni comando
 │   ├── main.rs                                  la riga di comando
+│   ├── mask.rs                                  le aperture della maschera di saldatura
+│   ├── optimize.rs                              percorsi più leggeri: punte e punti allineati
 │   ├── order.rs                                 verso, punti di partenza e ordine dei tagli
-│   └── transform.rs                             doppia faccia, pannelli e fori di allineamento
+│   ├── preview.rs                               le passate disegnate in SVG o testo
+│   ├── transform.rs                             doppia faccia, pannelli e fori di allineamento
+│   └── units.rs                                 mm, mil e pollice
 ├── tests/
+│   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── files.rs                                 test dei file di foratura e contorno
 │   ├── isocam.rs                                test della libreria e della riga di comando
 │   ├── layout.rs                                test di doppia faccia, pannelli, regole e riga di comando
@@ -226,7 +248,8 @@ EH3D-ISOCAM/
 
 * Non ha ancora una finestra: esistono solo la libreria e la riga di comando.
 * Non è stato provato né su una macchina né con una raccolta di file reali, e non ha avuto alcuna revisione indipendente.
-* I percorsi sono esatti a mezza cella, non alla curva stessa; non c'è la strategia di Voronoi, non c'è isolamento forzato dove l'utensile non entra (quei punti sono solo segnalati), non c'è scalatura né compensazione della scheda, non ci sono livelli di solder mask né di serigrafia, e con questi percorsi non è stata fresata nessuna scheda.
+* I percorsi sono esatti a mezza cella, non alla curva stessa; non c'è una strategia Voronoi, gli archi non sono adattati (una curva è fatta di molti piccoli movimenti), un percorso forzato lascia che un utensile più largo dello spazio tocchi il rame da entrambi i lati, la correzione con punti di riferimento sposta i percorsi ma mantiene la dimensione dello scostamento dell'utensile, la scala è rispetto all'origine, non c'è un livello di serigrafia e nessuna scheda è stata fresata con questi percorsi.
+* La maschera di saldatura segue i pad come disegnati (cerchi, rettangoli e ovali); le piste restano coperte e un margine negativo non rimpicciolisce una regione.
 * La rimozione del rame residuo avviene con anelli di un utensile più largo a distanza dal rame: i punti più stretti di quell'utensile conservano il loro rame, e non segue il bordo della scheda.
 * I tratti omessi per un utensile più fine sono decisi su una griglia con due celle di margine; si preferisce tagliare un tratto due volte che lasciarlo non tagliato.
 * I file di foratura sono scritti in millesimi di pollice interi (convenzione dei programmi Bungard): un diametro `T1C0.8` senza unità è letto come millimetri da 0,2 in su e come pollici al di sotto; i file con asole o percorsi di fresatura li lasciano fuori con una nota. I file scritti sono stati riletti solo dai lettori di questa suite, non da altri programmi o macchine.
@@ -234,9 +257,9 @@ EH3D-ISOCAM/
 
 **Prossimi passi**
 
-* Aggiungere la finestra con l'aspetto comune ai programmi della suite, nelle otto lingue, con anteprima delle passate e unità in mil, millimetri e pollici.
-* Isolamento forzato dove l'utensile non entra (una passata più stretta per quel tratto, con avviso) e la strategia di Voronoi; ripulire gli archi; scalatura e compensazione della scheda dai fiduciali della telecamera.
-* Livelli di solder mask e serigrafia.
+* Aggiungere la finestra nell'aspetto comune ai programmi della suite, nelle otto lingue, sopra l'anteprima che oggi esiste come testo e SVG.
+* La strategia Voronoi, archi adattati alle curve e una profondità di taglio che segua gli spazi stretti; confrontare la correzione con punti di riferimento con misure di una telecamera.
+* Livelli di serigrafia.
 * Confrontare i percorsi con schede realmente fresate e provarlo con file reali e con gli altri programmi della suite.
 
 ## 🌍 Lingue

@@ -181,7 +181,7 @@ impl Bitmap {
     }
 }
 
-fn capsule_distance(px: f64, py: f64, ax: f64, ay: f64, bx: f64, by: f64) -> f64 {
+pub(crate) fn capsule_distance(px: f64, py: f64, ax: f64, ay: f64, bx: f64, by: f64) -> f64 {
     let (dx, dy) = (bx - ax, by - ay);
     let len2 = dx * dx + dy * dy;
     let t = if len2 == 0.0 {
@@ -193,7 +193,7 @@ fn capsule_distance(px: f64, py: f64, ax: f64, ay: f64, bx: f64, by: f64) -> f64
 }
 
 /// Even-odd test of a point against a polygon.
-fn inside_polygon(px: f64, py: f64, pts: &[(f64, f64)]) -> bool {
+pub(crate) fn inside_polygon(px: f64, py: f64, pts: &[(f64, f64)]) -> bool {
     let mut inside = false;
     let mut j = pts.len() - 1;
     for i in 0..pts.len() {
@@ -206,8 +206,29 @@ fn inside_polygon(px: f64, py: f64, pts: &[(f64, f64)]) -> bool {
     inside
 }
 
+/// Every number of every shape must be finite: a broken layer is refused, not drawn.
+pub fn check_finite(scene: &Scene) -> Result<(), String> {
+    for (i, s) in scene.shapes.iter().enumerate() {
+        let ok = match s {
+            Shape::Disc { x, y, r } => [x, y, r].iter().all(|v| v.is_finite()),
+            Shape::Rect { x, y, w, h } | Shape::Obround { x, y, w, h } => {
+                [x, y, w, h].iter().all(|v| v.is_finite())
+            }
+            Shape::Stroke { x0, y0, x1, y1, w } => {
+                [x0, y0, x1, y1, w].iter().all(|v| v.is_finite())
+            }
+            Shape::Region { pts } => pts.iter().all(|p| p.0.is_finite() && p.1.is_finite()),
+        };
+        if !ok {
+            return Err(format!("shape {}: a coordinate is not a number", i + 1));
+        }
+    }
+    Ok(())
+}
+
 /// The copper of a scene on a grid with a margin around it.
 pub fn from_scene(scene: &Scene, margin_mm: f64, res: f64) -> Result<Bitmap, String> {
+    check_finite(scene)?;
     let mut b = Bitmap::new(&scene.bounds(), margin_mm, res)?;
     b.draw(scene);
     Ok(b)

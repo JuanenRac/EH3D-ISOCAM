@@ -3,6 +3,7 @@
 use crate::contour::Loop;
 use crate::isolate::Pass;
 use crate::order::{arrange, Order};
+use crate::units::Unit;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Job {
@@ -54,6 +55,20 @@ fn n(v: f64) -> String {
     }
 }
 
+/// A length for the file: three decimals in mm, five in inches.
+fn nn(v: f64, unit: Unit) -> String {
+    if unit != Unit::Inch {
+        return n(v);
+    }
+    let s = format!("{v:.5}");
+    let s = s.trim_end_matches('0').trim_end_matches('.');
+    if s == "-0" || s.is_empty() {
+        "0".to_string()
+    } else {
+        s.to_string()
+    }
+}
+
 /// The total length of the closed paths, in mm.
 pub fn length(paths: &[Loop]) -> f64 {
     paths
@@ -79,13 +94,23 @@ pub fn write(passes: &[Pass], job: &Job) -> Result<String, String> {
 /// The passes as G-code, a pass after the other, with the paths in the order, direction and starting points that `order` says. When the width of the tool changes from one pass to
 /// the next the program stops (`M0`) for the tool to be changed by hand.
 pub fn write_with(passes: &[Pass], job: &Job, order: &Order) -> Result<String, String> {
+    write_in(passes, job, order, Unit::Mm)
+}
+
+/// The same, in millimetres (`G21`) or in inches (`G20`: every length and the feeds are converted). G-code has no mils.
+pub fn write_in(passes: &[Pass], job: &Job, order: &Order, unit: Unit) -> Result<String, String> {
     job.validate()?;
+    if unit == Unit::Mil {
+        return Err("G-code is written in mm or inch, not in mils".into());
+    }
+    let c = |v: f64| unit.from_mm(v);
     if !(order.start.0.is_finite() && order.start.1.is_finite()) {
         return Err("the starting point of the tool is not a number".into());
     }
     let mut g = format!(
-        "G21\nG90\nG0 Z{}\nM3 S{}\n",
-        n(job.safe_z_mm),
+        "{}\nG90\nG0 Z{}\nM3 S{}\n",
+        if unit == Unit::Inch { "G20" } else { "G21" },
+        nn(c(job.safe_z_mm), unit),
         n(job.spindle_rpm)
     );
     let mut at = order.start;
@@ -98,29 +123,31 @@ pub fn write_with(passes: &[Pass], job: &Job, order: &Order) -> Result<String, S
         if pass.diameter_mm > 0.0 {
             if tool.is_some_and(|t| (t - pass.diameter_mm).abs() > 1e-9) {
                 g.push_str(&format!(
-                    "M5\nG0 Z{}\n(change to a tool of {} mm)\nM0\nM3 S{}\n",
-                    n(job.safe_z_mm),
-                    n(pass.diameter_mm),
+                    "M5\nG0 Z{}\n(change to a tool of {} {})\nM0\nM3 S{}\n",
+                    nn(c(job.safe_z_mm), unit),
+                    nn(c(pass.diameter_mm), unit),
+                    if unit == Unit::Inch { "in" } else { "mm" },
                     n(job.spindle_rpm)
                 ));
             }
             tool = Some(pass.diameter_mm);
         }
         g.push_str(&format!(
-            "({} {} at {} mm from the copper, {} paths)\n",
+            "({} {} at {} {} from the copper, {} paths)\n",
             if pass.rubout { "ring" } else { "pass" },
             k + 1,
-            n(pass.offset_mm),
+            nn(c(pass.offset_mm), unit),
+            if unit == Unit::Inch { "in" } else { "mm" },
             cuts.len()
         ));
         for cut in &cuts {
             let start = cut.pts[0];
             g.push_str(&format!(
                 "G0 X{} Y{}\nG1 Z{} F{}\n",
-                n(start.0),
-                n(start.1),
-                n(-job.depth_mm),
-                n(job.plunge_mm_min)
+                nn(c(start.0), unit),
+                nn(c(start.1), unit),
+                nn(c(-job.depth_mm), unit),
+                nn(c(job.plunge_mm_min), unit)
             ));
             let count = if cut.closed {
                 cut.pts.len()
@@ -132,15 +159,15 @@ pub fn write_with(passes: &[Pass], job: &Job, order: &Order) -> Result<String, S
                 if j == 1 {
                     g.push_str(&format!(
                         "G1 X{} Y{} F{}\n",
-                        n(p.0),
-                        n(p.1),
-                        n(job.feed_mm_min)
+                        nn(c(p.0), unit),
+                        nn(c(p.1), unit),
+                        nn(c(job.feed_mm_min), unit)
                     ));
                 } else {
-                    g.push_str(&format!("G1 X{} Y{}\n", n(p.0), n(p.1)));
+                    g.push_str(&format!("G1 X{} Y{}\n", nn(c(p.0), unit), nn(c(p.1), unit)));
                 }
             }
-            g.push_str(&format!("G0 Z{}\n", n(job.safe_z_mm)));
+            g.push_str(&format!("G0 Z{}\n", nn(c(job.safe_z_mm), unit)));
         }
         at = end;
     }

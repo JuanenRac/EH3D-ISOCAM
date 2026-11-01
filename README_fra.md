@@ -18,7 +18,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 60 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il n'a pas encore de fenêtre, n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 88 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il n'a pas encore de fenêtre, n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.2` |
 | Maturité | Échafaudage |
-| Tests | 60 |
+| Tests | 88 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -47,8 +47,9 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Cœur | 🟡 | trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, signale les écarts trop étroits pour l'outil et écrit du G-code ou du HP-GL ; testé sur un ordinateur avec des entrées normales et abîmées, pas avec une collection de fichiers réels. |
 | Fichiers et disposition | 🟡 | lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, ajoute des trous d'alignement et vérifie les règles de conception avec l'endroit de chaque constat ; testé sur un ordinateur, pas avec des fichiers écrits par d'autres programmes ni sur une machine. |
+| Isolation forcée, correction, masque | 🟡 | trajets forcés dans les espaces où l'outil ne passe pas, trajets allégés, échelle et correction par points de référence, ouvertures du masque de soudure, unités et aperçu des passes ; testé sur un ordinateur avec des couches générées et des entrées abîmées, jamais avec de vraies cartes ni sur une machine, et la correction n'a pas été comparée à de vraies mesures d'une caméra. |
 | Ligne de commande | 🟡 | `eh3d-isocam` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 60 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
+| Tests | 🟡 | 88 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🔴 | Prévu : la fenêtre egui commune à la suite ; aujourd'hui il n'y a que la ligne de commande. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -66,6 +67,10 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 * **Deux faces, panneaux et trous d'alignement** (`src/transform.rs`) : la couche, les perçages et le contour sont retournés, tournés par quarts de tour et répétés sur un panneau ensemble ; les trous d'alignement sont placés hors de la carte là où la carte retournée les retrouve (un troisième sur l'axe la distingue de la même carte tournée d'un demi-tour).
 * **Règles de conception** (`src/drc.rs`) : cuivre plus étroit que la règle, pièces de cuivre plus proches que la règle ou que la largeur de l'outil, et perçages avec moins de cuivre autour que la règle, chacun avec sa position en millimètres.
 * **Un fichier de réglages** (`src/config.rs`) : chaque valeur réglable est un réglage avec une valeur par défaut, lu dans un fichier `clé = valeur` (`examples/isocam.cfg`) ou donné sous le même nom comme option de la ligne de commande.
+* **Isolation forcée** (`src/forced.rs`) : avec `forced_isolation = yes`, un trajet est aussi tracé au milieu de chaque espace où l'outil le plus fin ne passe pas, tant que l'espace n'est pas plus étroit que `forced_min_gap_mm` ; chaque endroit est signalé avec ses coordonnées et son espace, et les espaces plus étroits sont listés et laissés tels quels. Elle est désactivée par défaut : ces endroits sont alors seulement signalés.
+* **Trajets allégés, échelle et correction** (`src/optimize.rs`, `src/fiducial.rs`) : les pointes sont retirées et les points alignés (dans `optimize_tolerance_mm`) deviennent un seul mouvement ; le travail peut être mis à l'échelle, et des paires de points de référence (où une marque devrait être et où elle a été mesurée) donnent une similitude (deux paires) ou un ajustement affine (trois ou plus, moindres carrés) appliqué à chaque trajet et à chaque trou ; il est refusé quand l'échelle s'écarte beaucoup de 1 ou qu'une marque ne colle pas.
+* **Masque de soudure** (`src/mask.rs`) : les ouvertures sont écrites comme une couche Gerber, à partir de la couche de masque du dessin ou des pastilles du cuivre, chacune agrandie de `mask_margin_mm` ; les pistes restent couvertes.
+* **Unités et aperçu** (`src/units.rs`, `src/preview.rs`) : une longueur peut porter `mm`, `mil` ou `in`, le G-code peut être écrit en pouces, et `preview` dessine les passes sur le cuivre en dessin SVG ou en texte.
 
 ## 🧩 Rôle dans EH3D
 
@@ -87,6 +92,7 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
 * **Sans deviner :** une valeur absurde est une erreur qui dit laquelle et pourquoi, jamais un résultat qui n'en a que l'air.
 * **Pas de code unsafe :** `#![forbid(unsafe_code)]` dans la bibliothèque et le programme.
 * **Chaque valeur réglée est un réglage :** rien de ce qu'une personne voudrait changer n'est caché dans le code ; une mauvaise valeur est une erreur avec sa ligne.
+* **Unités au choix :** les longueurs d'un fichier de réglages ou de la ligne de commande peuvent être écrites en millimètres, en mils ou en pouces ; le G-code peut être écrit en pouces et l'écran peut afficher des mils.
 
 ## 🔒 Sécurité et protection
 
@@ -106,11 +112,13 @@ La bibliothèque est `eh3d_isocam` (`use eh3d_isocam::...`) ; la ligne de comman
 eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt     paths round the copper (G-code, or HP-GL for a .plt)
 eh3d-isocam check LAYER.gtl                      places where the tool does not fit between pieces of copper
 eh3d-isocam info LAYER.gtl                       passes, paths each way round, travel through the air
+eh3d-isocam preview LAYER.gtl [OUT.svg|OUT.txt]    the passes drawn over the copper, as SVG or text
 eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
 eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
 eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
+eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
-options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15)
+options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 ```
 
 ```text
@@ -122,14 +130,21 @@ EH3D-ISOCAM/
 │   ├── drc.rs                                   règles de conception : largeurs, écarts et anneaux, avec les endroits
 │   ├── drill.rs                                 perçages et contour de la carte, lus et écrits
 │   ├── edt.rs                                   la distance exacte au cuivre
+│   ├── fiducial.rs                              échelle et correction par points de référence
+│   ├── forced.rs                                trajets dans les espaces où l'outil ne passe pas
 │   ├── gcode.rs                                 les trajets en G-code
 │   ├── hpgl.rs                                  les trajets en fichier de tracé HP-GL
 │   ├── isolate.rs                               outils, passes, cuivre restant et écarts étroits
 │   ├── lib.rs                                   la bibliothèque : ce que chaque commande utilise
 │   ├── main.rs                                  la ligne de commande
+│   ├── mask.rs                                  les ouvertures du masque de soudure
+│   ├── optimize.rs                              trajets allégés : pointes et points alignés
 │   ├── order.rs                                 sens, points de départ et ordre des coupes
-│   └── transform.rs                             double face, panneaux et trous d'alignement
+│   ├── preview.rs                               les passes dessinées en SVG ou en texte
+│   ├── transform.rs                             double face, panneaux et trous d'alignement
+│   └── units.rs                                 mm, mil et pouce
 ├── tests/
+│   ├── advanced.rs                              isolation forcée, correction, masque, unités, aperçu
 │   ├── files.rs                                 tests des fichiers de perçage et de contour
 │   ├── isocam.rs                                tests de la bibliothèque et de la ligne de commande
 │   ├── layout.rs                                tests du double face, des panneaux, des règles et de la ligne de commande
@@ -152,7 +167,7 @@ EH3D-ISOCAM/
 
 ## ⚙️ Configuration
 
-Chaque valeur réglable est un réglage avec une valeur par défaut : diamètres, passes et décalage de l'outil fin et du gros outil, le retrait du cuivre restant, la profondeur, l'avance et la vitesse, le sens, le point de départ, le début de chaque trajet et l'ordre, l'outil qui découpe la carte, les trous d'alignement, le miroir, la rotation et le panneau, et les règles de conception. `eh3d-isocam config` les affiche tous sous forme de fichier (`examples/isocam.cfg` est ce fichier) ; `--config FICHIER` en lit un, et tout réglage peut être donné sur la ligne de commande comme option du même nom (`--fine-tool-mm 0.15`), qui l'emporte sur le fichier. Une valeur absurde est une erreur qui indique la ligne. Les limites fixes vivent dans le code comme constantes nommées et sont couvertes par des tests.
+Chaque valeur réglable est un réglage avec une valeur par défaut : diamètres, passes et décalage de l'outil fin et du gros outil, le retrait du cuivre restant, la profondeur, l'avance et la vitesse, le sens, le point de départ, le début de chaque trajet et l'ordre, l'outil qui découpe la carte, les trous d'alignement, le miroir, la rotation et le panneau, et les règles de conception. `eh3d-isocam config` les affiche tous sous forme de fichier (`examples/isocam.cfg` est ce fichier) ; `--config FICHIER` en lit un, et tout réglage peut être donné sur la ligne de commande comme option du même nom (`--fine-tool-mm 0.15`), qui l'emporte sur le fichier. Une valeur absurde est une erreur qui indique la ligne. Les limites fixes vivent dans le code comme constantes nommées et sont couvertes par des tests. L'isolation forcée, les trajets allégés, l'échelle et les points de référence, la marge du masque de soudure, les unités et la largeur de l'aperçu en texte sont aussi des réglages.
 
 ## 🚀 Démarrage rapide
 
@@ -166,7 +181,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Tests
 
-La suite compte 60 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 88 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -190,14 +205,21 @@ EH3D-ISOCAM/
 │   ├── drc.rs                                   règles de conception : largeurs, écarts et anneaux, avec les endroits
 │   ├── drill.rs                                 perçages et contour de la carte, lus et écrits
 │   ├── edt.rs                                   la distance exacte au cuivre
+│   ├── fiducial.rs                              échelle et correction par points de référence
+│   ├── forced.rs                                trajets dans les espaces où l'outil ne passe pas
 │   ├── gcode.rs                                 les trajets en G-code
 │   ├── hpgl.rs                                  les trajets en fichier de tracé HP-GL
 │   ├── isolate.rs                               outils, passes, cuivre restant et écarts étroits
 │   ├── lib.rs                                   la bibliothèque : ce que chaque commande utilise
 │   ├── main.rs                                  la ligne de commande
+│   ├── mask.rs                                  les ouvertures du masque de soudure
+│   ├── optimize.rs                              trajets allégés : pointes et points alignés
 │   ├── order.rs                                 sens, points de départ et ordre des coupes
-│   └── transform.rs                             double face, panneaux et trous d'alignement
+│   ├── preview.rs                               les passes dessinées en SVG ou en texte
+│   ├── transform.rs                             double face, panneaux et trous d'alignement
+│   └── units.rs                                 mm, mil et pouce
 ├── tests/
+│   ├── advanced.rs                              isolation forcée, correction, masque, unités, aperçu
 │   ├── files.rs                                 tests des fichiers de perçage et de contour
 │   ├── isocam.rs                                tests de la bibliothèque et de la ligne de commande
 │   ├── layout.rs                                tests du double face, des panneaux, des règles et de la ligne de commande
@@ -226,7 +248,8 @@ EH3D-ISOCAM/
 
 * Il n'a pas encore de fenêtre : seules existent la bibliothèque et la ligne de commande.
 * Il n'a été essayé ni sur une machine ni avec une collection de fichiers réels, et n'a eu aucune revue indépendante.
-* Les trajets sont exacts à une demi-cellule près, pas à la courbe elle-même ; pas de stratégie de Voronoï, pas d'isolation forcée là où l'outil ne passe pas (ces endroits sont seulement signalés), pas de mise à l'échelle ni de compensation de la carte, pas de couches de vernis épargne ni de sérigraphie, et aucune carte n'a été fraisée avec ces trajets.
+* Les trajets sont exacts à une demi-cellule près, pas à la courbe elle-même ; il n'y a pas de stratégie Voronoï, les arcs ne sont pas ajustés (une courbe est faite de nombreux petits mouvements), un trajet forcé laisse un outil plus large que l'espace toucher le cuivre des deux côtés, la correction par points de référence déplace les trajets mais garde la taille du décalage de l'outil, l'échelle se fait par rapport à l'origine, il n'y a pas de couche de sérigraphie, et aucune carte n'a été fraisée avec ces trajets.
+* Le masque de soudure suit les pastilles telles qu'elles sont dessinées (cercles, rectangles et obronds) ; les pistes restent couvertes et une marge négative ne rétrécit pas une région.
 * Le retrait du cuivre restant se fait par anneaux d'un outil plus large à distance du cuivre : les endroits plus étroits que cet outil gardent leur cuivre, et il ne suit pas le bord de la carte.
 * Les tronçons omis pour un outil plus fin sont décidés sur une grille avec deux cellules de marge ; on préfère couper un tronçon deux fois que le laisser non coupé.
 * Les fichiers de perçage sont écrits en millièmes de pouce entiers (convention des programmes Bungard) : un diamètre `T1C0.8` sans unité est lu en millimètres à partir de 0,2 et en pouces en dessous ; les fichiers avec des rainures ou des trajets de détourage les laissent de côté avec une note. Les fichiers écrits n'ont été relus que par les lecteurs de cette suite, pas par d'autres programmes ni machines.
@@ -234,9 +257,9 @@ EH3D-ISOCAM/
 
 **Ensuite**
 
-* Ajouter la fenêtre dans l'apparence commune aux programmes de la suite, dans les huit langues, avec un aperçu des passes et des unités en mils, millimètres et pouces.
-* Isolation forcée là où l'outil ne passe pas (une passe plus étroite pour ce tronçon, avec avertissement) et la stratégie de Voronoï ; nettoyer les arcs ; mise à l'échelle et compensation de la carte à partir des repères de la caméra.
-* Couches de vernis épargne et de sérigraphie.
+* Ajouter la fenêtre dans l'aspect commun aux programmes de la suite, dans les huit langues, au-dessus de l'aperçu qui existe aujourd'hui en texte et en SVG.
+* La stratégie Voronoï, des arcs ajustés aux courbes et une profondeur de coupe qui suit les espaces étroits ; comparer la correction par points de référence à des mesures d'une caméra.
+* Couches de sérigraphie.
 * Comparer les trajets avec des cartes réellement fraisées et l'essayer avec des fichiers réels et avec les autres programmes de la suite.
 
 ## 🌍 Langues

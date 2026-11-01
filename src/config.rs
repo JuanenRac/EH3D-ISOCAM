@@ -2,10 +2,14 @@
 //! keys as options (`--fine-tool-mm 0.15` is `fine_tool_mm = 0.15`), so nothing tuned is hidden in the code.
 
 use crate::drc::Rules;
+use crate::fiducial::{fit, Affine, Fit, Limits, Model, Pair};
+use crate::forced::Forced;
 use crate::gcode::Job;
 use crate::isolate::{Plan, Rubout, Tool};
+use crate::optimize::Optimize;
 use crate::order::{Direction, LoopStart, Order, Strategy};
 use crate::transform::{Axis, Layout};
+use crate::units::{parse_length, Unit};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Settings {
@@ -51,6 +55,32 @@ pub struct Settings {
     pub rule_min_clearance_mm: f64,
     pub rule_annular_ring_mm: f64,
     pub rule_holes_on_copper: bool,
+    /// The unit of a length with no unit written (a file and the command line); a length may carry `mm`, `mil` or `in`.
+    pub input_units: Unit,
+    /// The unit of the G-code: mm or inch.
+    pub output_units: Unit,
+    /// The unit of the lengths the command line prints.
+    pub report_units: Unit,
+    /// Lay a path along the gaps the finest tool does not fit in (off: they are only reported).
+    pub forced_isolation: bool,
+    /// The narrowest gap that gets a forced path.
+    pub forced_min_gap_mm: f64,
+    /// Points that lie on a line within this are one move; 0 leaves the paths as they are.
+    pub optimize_tolerance_mm: f64,
+    /// Spikes whose shorter side is at most this are taken out; 0 leaves them.
+    pub spike_max_mm: f64,
+    pub spike_angle_deg: f64,
+    pub scale_x: f64,
+    pub scale_y: f64,
+    /// Reference points: where a mark should be and where it was measured.
+    pub fiducials: Vec<Pair>,
+    pub fiducial_model: Model,
+    pub fiducial_max_scale_deviation: f64,
+    pub fiducial_max_residual_mm: f64,
+    /// How far the solder mask opens beyond a pad.
+    pub mask_margin_mm: f64,
+    /// The width of the text preview, in characters.
+    pub preview_cols: usize,
 }
 
 impl Default for Settings {
@@ -92,9 +122,28 @@ impl Default for Settings {
             rule_min_clearance_mm: 0.2,
             rule_annular_ring_mm: 0.15,
             rule_holes_on_copper: false,
+            input_units: Unit::Mm,
+            output_units: Unit::Mm,
+            report_units: Unit::Mm,
+            forced_isolation: false,
+            forced_min_gap_mm: 0.1,
+            optimize_tolerance_mm: 0.0,
+            spike_max_mm: 0.0,
+            spike_angle_deg: 170.0,
+            scale_x: 1.0,
+            scale_y: 1.0,
+            fiducials: Vec::new(),
+            fiducial_model: Model::Auto,
+            fiducial_max_scale_deviation: 0.05,
+            fiducial_max_residual_mm: 0.2,
+            mask_margin_mm: 0.05,
+            preview_cols: 100,
         }
     }
 }
+
+/// The most reference points.
+pub const MAX_FIDUCIALS: usize = 50;
 
 fn num(key: &str, v: &str) -> Result<f64, String> {
     v.trim()
@@ -133,6 +182,16 @@ impl Settings {
             "safe" => "safe_z_mm",
             "rpm" => "spindle_rpm",
             other => other,
+        };
+        // a length may carry its unit; it is kept in mm from here on
+        let converted;
+        let v = if key.ends_with("_mm") {
+            converted = parse_length(v, self.input_units)
+                .map_err(|e| format!("{key}: {e}"))?
+                .to_string();
+            converted.as_str()
+        } else {
+            v
         };
         match key {
             "res_mm" => self.res_mm = num(key, v)?,
@@ -179,6 +238,37 @@ impl Settings {
             "rule_min_clearance_mm" => self.rule_min_clearance_mm = num(key, v)?,
             "rule_annular_ring_mm" => self.rule_annular_ring_mm = num(key, v)?,
             "rule_holes_on_copper" => self.rule_holes_on_copper = flag(key, v)?,
+            "input_units" => self.input_units = Unit::parse(v)?,
+            "output_units" => {
+                self.output_units = Unit::parse(v)?;
+                if self.output_units == Unit::Mil {
+                    return Err("output_units mil: G-code is written in mm or inch".into());
+                }
+            }
+            "report_units" => self.report_units = Unit::parse(v)?,
+            "forced_isolation" => self.forced_isolation = flag(key, v)?,
+            "forced_min_gap_mm" => self.forced_min_gap_mm = num(key, v)?,
+            "optimize_tolerance_mm" => self.optimize_tolerance_mm = num(key, v)?,
+            "spike_max_mm" => self.spike_max_mm = num(key, v)?,
+            "spike_angle_deg" => self.spike_angle_deg = num(key, v)?,
+            "scale_x" => self.scale_x = num(key, v)?,
+            "scale_y" => self.scale_y = num(key, v)?,
+            "scale" => {
+                self.scale_x = num(key, v)?;
+                self.scale_y = self.scale_x;
+            }
+            "fiducial" => {
+                if self.fiducials.len() >= MAX_FIDUCIALS {
+                    return Err(format!("at most {MAX_FIDUCIALS} reference points"));
+                }
+                self.fiducials
+                    .push(crate::fiducial::parse_pair(v, self.input_units)?)
+            }
+            "fiducial_model" => self.fiducial_model = Model::parse(v)?,
+            "fiducial_max_scale_deviation" => self.fiducial_max_scale_deviation = num(key, v)?,
+            "fiducial_max_residual_mm" => self.fiducial_max_residual_mm = num(key, v)?,
+            "mask_margin_mm" => self.mask_margin_mm = num(key, v)?,
+            "preview_cols" => self.preview_cols = count(key, v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -187,6 +277,15 @@ impl Settings {
     /// Reads a configuration file; an error says the line.
     pub fn parse(text: &str) -> Result<Settings, String> {
         let mut s = Settings::default();
+        // the unit of the bare numbers counts wherever it is written in the file
+        for (n, raw) in text.lines().enumerate() {
+            let line = raw.split('#').next().unwrap_or("").trim();
+            if let Some((k, v)) = line.split_once('=') {
+                if k.trim() == "input_units" {
+                    s.set(k, v).map_err(|e| format!("line {}: {e}", n + 1))?;
+                }
+            }
+        }
         for (n, raw) in text.lines().enumerate() {
             let line = raw.split('#').next().unwrap_or("").trim();
             if line.is_empty() {
@@ -195,6 +294,9 @@ impl Settings {
             let (k, v) = line
                 .split_once('=')
                 .ok_or_else(|| format!("line {}: '{line}' is not key = value", n + 1))?;
+            if k.trim() == "input_units" {
+                continue;
+            }
             s.set(k, v).map_err(|e| format!("line {}: {e}", n + 1))?;
         }
         s.validate()?;
@@ -204,7 +306,30 @@ impl Settings {
     /// The settings as the text of a configuration file (what `parse` reads back).
     pub fn to_text(&self) -> String {
         let b = |v: bool| if v { "yes" } else { "no" };
-        format!(
+        let mut extra = format!(
+            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\n",
+            self.output_units.name(),
+            self.report_units.name(),
+            b(self.forced_isolation),
+            self.forced_min_gap_mm,
+            self.optimize_tolerance_mm,
+            self.spike_max_mm,
+            self.spike_angle_deg,
+            self.scale_x,
+            self.scale_y,
+            self.fiducial_model.name(),
+            self.fiducial_max_scale_deviation,
+            self.fiducial_max_residual_mm,
+            self.mask_margin_mm,
+            self.preview_cols
+        );
+        for p in &self.fiducials {
+            extra.push_str(&format!(
+                "fiducial = {}, {}, {}, {}\n",
+                p.design.0, p.design.1, p.measured.0, p.measured.1
+            ));
+        }
+        let main = format!(
             "# EH3D-ISOCAM settings\nres_mm = {}\nfine_tool_mm = {}\nfine_passes = {}\nfine_stepover_mm = {}\ncoarse_tool_mm = {}\ncoarse_passes = {}\ncoarse_stepover_mm = {}\ntrim_fine = {}\nrubout_tool_mm = {}\nrubout_width_mm = {}\nrubout_overlap = {}\ndepth_mm = {}\nfeed_mm_min = {}\nplunge_mm_min = {}\nsafe_z_mm = {}\nspindle_rpm = {}\ndirection = {}\nstart_x_mm = {}\nstart_y_mm = {}\nloop_start = {}\nordering = {}\noptimize_max_paths = {}\nroute_tool_mm = {}\nalignment_hole_mm = {}\nalignment_margin_mm = {}\nalignment_holes = {}\nalignment_tool = {}\nmirror = {}\nrotate_quarters = {}\npanel_cols = {}\npanel_rows = {}\npanel_gap_mm = {}\nrule_min_width_mm = {}\nrule_min_clearance_mm = {}\nrule_annular_ring_mm = {}\nrule_holes_on_copper = {}\n",
             self.res_mm,
             self.fine_tool_mm,
@@ -242,7 +367,8 @@ impl Settings {
             self.rule_min_clearance_mm,
             self.rule_annular_ring_mm,
             b(self.rule_holes_on_copper),
-        )
+        );
+        main + &extra
     }
 
     pub fn validate(&self) -> Result<(), String> {
@@ -280,6 +406,36 @@ impl Settings {
         if self.panel_cols * self.panel_rows > 100 {
             return Err("a panel has at most 100 boards".into());
         }
+        range("mask_margin_mm", self.mask_margin_mm, -1.0, 1.0)?;
+        range("scale_x", self.scale_x, 0.5, 2.0)?;
+        range("scale_y", self.scale_y, 0.5, 2.0)?;
+        range(
+            "fiducial_max_scale_deviation",
+            self.fiducial_max_scale_deviation,
+            0.0,
+            0.5,
+        )?;
+        range(
+            "fiducial_max_residual_mm",
+            self.fiducial_max_residual_mm,
+            0.001,
+            10.0,
+        )?;
+        if self.output_units == Unit::Mil {
+            return Err("output_units is mil: G-code is written in mm or inch".into());
+        }
+        if !(10..=crate::preview::MAX_COLS).contains(&self.preview_cols) {
+            return Err(format!(
+                "preview_cols is {}: it must be from 10 to {}",
+                self.preview_cols,
+                crate::preview::MAX_COLS
+            ));
+        }
+        self.optimize().validate()?;
+        if let Some(f) = self.forced() {
+            f.validate(&self.plan()?)?;
+        }
+        self.transform()?;
         if !(1..=5000).contains(&self.optimize_max_paths) {
             return Err(format!(
                 "optimize_max_paths is {}: it must be from 1 to 5000",
@@ -287,6 +443,35 @@ impl Settings {
             ));
         }
         Ok(())
+    }
+
+    pub fn optimize(&self) -> Optimize {
+        Optimize {
+            tolerance_mm: self.optimize_tolerance_mm,
+            spike_max_mm: self.spike_max_mm,
+            spike_angle_deg: self.spike_angle_deg,
+        }
+    }
+
+    /// The forced isolation, when it is switched on.
+    pub fn forced(&self) -> Option<Forced> {
+        self.forced_isolation.then_some(Forced {
+            min_gap_mm: self.forced_min_gap_mm,
+        })
+    }
+
+    /// The scale and the correction from the reference points, as one transformation (the scale first), and the fit when there are reference points.
+    pub fn transform(&self) -> Result<(Affine, Option<Fit>), String> {
+        let scale = Affine::scale(self.scale_x, self.scale_y);
+        if self.fiducials.is_empty() {
+            return Ok((scale, None));
+        }
+        let limits = Limits {
+            max_scale_deviation: self.fiducial_max_scale_deviation,
+            max_residual_mm: self.fiducial_max_residual_mm,
+        };
+        let f = fit(&self.fiducials, self.fiducial_model, &limits)?;
+        Ok((scale.then(&f.affine), Some(f)))
     }
 
     /// The tools and the passes of the isolation.

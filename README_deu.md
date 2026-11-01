@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 60 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat noch kein Fenster, wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 88 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat noch kein Fenster, wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.2` |
 | Reifegrad | Gerüst |
-| Tests | 60 |
+| Tests | 88 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -47,8 +47,9 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Kern | 🟡 | zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, meldet die für das Werkzeug zu engen Lücken und schreibt G-Code oder HP-GL; auf einem Computer mit normalen und beschädigten Eingaben getestet, nicht mit einer Sammlung echter Dateien. |
 | Dateien und Anordnung | 🟡 | liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, setzt Passlöcher und prüft die Entwurfsregeln mit dem Ort jedes Befunds; auf einem Computer getestet, nicht mit Dateien anderer Programme und nicht auf einer Maschine. |
+| Erzwungene Isolation, Korrektur, Maske | 🟡 | erzwungene Pfade durch Lücken, in die das Werkzeug nicht passt, leichtere Bahnen, Skalierung und Korrektur mit Referenzpunkten, die Öffnungen der Lötstoppmaske, Einheiten und die Vorschau der Durchgänge; auf einem Computer mit erzeugten Lagen und beschädigten Eingaben getestet, nie mit echten Platinen und nie auf einer Maschine, und die Korrektur wurde nicht mit echten Kameramessungen verglichen. |
 | Kommandozeile | 🟡 | `eh3d-isocam` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 60 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
+| Tests | 🟡 | 88 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🔴 | Geplant: das egui-Fenster, das die Suite gemeinsam nutzt; heute gibt es nur die Kommandozeile. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -66,6 +67,10 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 * **Beide Seiten, Nutzen und Passlöcher** (`src/transform.rs`): Lage, Bohrungen und Kontur werden zusammen gewendet, um Vierteldrehungen gedreht und auf einem Nutzen wiederholt; Passlöcher liegen außerhalb der Platine dort, wo die gewendete Platine sie wiederfindet (ein drittes auf der Achse unterscheidet sie von derselben, um eine halbe Drehung gedrehten Platine).
 * **Entwurfsregeln** (`src/drc.rs`): Kupfer schmaler als die Regel, Kupferstücke näher als die Regel oder als das Werkzeug breit ist, und Bohrungen mit weniger Kupfer ringsum als die Regel, jeweils mit ihrem Ort in Millimetern.
 * **Eine Einstellungsdatei** (`src/config.rs`): jeder einstellbare Wert ist eine Einstellung mit Standardwert, gelesen aus einer `Schlüssel = Wert`-Datei (`examples/isocam.cfg`) oder unter demselben Namen als Option der Kommandozeile angegeben.
+* **Erzwungene Isolation** (`src/forced.rs`): mit `forced_isolation = yes` wird zusätzlich ein Pfad durch die Mitte jeder Lücke gelegt, in die das feinste Werkzeug nicht passt, solange die Lücke nicht schmaler als `forced_min_gap_mm` ist; jede Stelle wird mit Koordinaten und Lückenbreite gemeldet, schmalere Lücken werden aufgelistet und bleiben unberührt. Standardmäßig ist sie aus: Dann werden diese Stellen nur gemeldet.
+* **Leichtere Bahnen, Skalierung und Korrektur** (`src/optimize.rs`, `src/fiducial.rs`): Spitzen werden entfernt und Punkte auf einer Geraden (innerhalb von `optimize_tolerance_mm`) werden zu einer Bewegung; die Arbeit lässt sich skalieren, und Paare von Referenzpunkten (wo eine Marke sein sollte und wo sie gemessen wurde) ergeben eine Ähnlichkeit (zwei Paare) oder eine affine Anpassung (drei oder mehr, kleinste Quadrate), die auf jede Bahn und jede Bohrung angewendet wird; abgelehnt wird sie, wenn der Maßstab weit von 1 abweicht oder eine Marke nicht passt.
+* **Lötstoppmaske** (`src/mask.rs`): die Öffnungen werden als Gerber-Lage geschrieben, aus der Maskenlage des Entwurfs oder aus den Pads des Kupfers, jede um `mask_margin_mm` vergrößert; Leiterbahnen bleiben bedeckt.
+* **Einheiten und Vorschau** (`src/units.rs`, `src/preview.rs`): eine Länge kann `mm`, `mil` oder `in` tragen, der G-Code kann in Zoll geschrieben werden, und `preview` zeichnet die Durchgänge über das Kupfer als SVG-Zeichnung oder als Text.
 
 ## 🧩 Rolle in EH3D
 
@@ -87,6 +92,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Kein Raten:** Ein unsinniger Wert ist ein Fehler, der sagt welcher und warum, nie ein Ergebnis, das nur richtig aussieht.
 * **Kein unsafe-Code:** `#![forbid(unsafe_code)]` in Bibliothek und Programm.
 * **Jeder abgestimmte Wert ist eine Einstellung:** nichts, was jemand ändern möchte, steckt fest im Code; ein schlechter Wert ist ein Fehler mit Zeilenangabe.
+* **Einheiten nach Wahl:** Längen in einer Einstellungsdatei oder auf der Kommandozeile können in Millimetern, Mil oder Zoll geschrieben werden; der G-Code kann in Zoll geschrieben werden und der Bildschirm kann Mil anzeigen.
 
 ## 🔒 Sicherheit und Schutz
 
@@ -106,11 +112,13 @@ Die Bibliothek ist `eh3d_isocam` (`use eh3d_isocam::...`); die Kommandozeile ist
 eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt     paths round the copper (G-code, or HP-GL for a .plt)
 eh3d-isocam check LAYER.gtl                      places where the tool does not fit between pieces of copper
 eh3d-isocam info LAYER.gtl                       passes, paths each way round, travel through the air
+eh3d-isocam preview LAYER.gtl [OUT.svg|OUT.txt]    the passes drawn over the copper, as SVG or text
 eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
 eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
 eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
+eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
-options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15)
+options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 ```
 
 ```text
@@ -122,14 +130,21 @@ EH3D-ISOCAM/
 │   ├── drc.rs                                   Entwurfsregeln: Breiten, Abstände und Ringe, mit Orten
 │   ├── drill.rs                                 Bohrungen und Platinenkontur lesen und schreiben
 │   ├── edt.rs                                   der genaue Abstand zum Kupfer
+│   ├── fiducial.rs                              Skalierung und Korrektur mit Referenzpunkten
+│   ├── forced.rs                                Pfade durch Lücken, in die das Werkzeug nicht passt
 │   ├── gcode.rs                                 die Bahnen als G-Code
 │   ├── hpgl.rs                                  die Bahnen als HP-GL-Plotdatei
 │   ├── isolate.rs                               Werkzeuge, Durchgänge, Restkupfer und enge Lücken
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
+│   ├── mask.rs                                  die Öffnungen der Lötstoppmaske
+│   ├── optimize.rs                              leichtere Bahnen: Spitzen und gerade Punkte
 │   ├── order.rs                                 Richtung, Startpunkte und Reihenfolge der Schnitte
-│   └── transform.rs                             beide Seiten, Nutzen und Passlöcher
+│   ├── preview.rs                               die Durchgänge als SVG oder Text
+│   ├── transform.rs                             beide Seiten, Nutzen und Passlöcher
+│   └── units.rs                                 mm, mil und Zoll
 ├── tests/
+│   ├── advanced.rs                              erzwungene Isolation, Korrektur, Maske, Einheiten, Vorschau
 │   ├── files.rs                                 Tests der Bohr- und Konturdateien
 │   ├── isocam.rs                                Tests von Bibliothek und Kommandozeile
 │   ├── layout.rs                                Tests zu beiden Seiten, Nutzen, Regeln und der Kommandozeile
@@ -152,7 +167,7 @@ EH3D-ISOCAM/
 
 ## ⚙️ Konfiguration
 
-Jeder einstellbare Wert ist eine Einstellung mit Standardwert: Durchmesser, Durchgänge und Zustellung des feinen und des groben Werkzeugs, das Abräumen des Restkupfers, Tiefe, Vorschub und Drehzahl, die Richtung, der Startpunkt, der Beginn jeder Bahn und die Reihenfolge, das Werkzeug, das die Platine ausschneidet, die Passlöcher, Spiegelung, Drehung und Nutzen sowie die Entwurfsregeln. `eh3d-isocam config` gibt sie alle als Datei aus (`examples/isocam.cfg` ist diese Datei); `--config DATEI` liest eine, und jede Einstellung kann in der Kommandozeile als Option mit demselben Namen angegeben werden (`--fine-tool-mm 0.15`), die der Datei vorgeht. Ein unsinniger Wert ist ein Fehler, der die Zeile nennt. Die festen Grenzen stehen als benannte Konstanten im Code und sind durch Tests abgedeckt.
+Jeder einstellbare Wert ist eine Einstellung mit Standardwert: Durchmesser, Durchgänge und Zustellung des feinen und des groben Werkzeugs, das Abräumen des Restkupfers, Tiefe, Vorschub und Drehzahl, die Richtung, der Startpunkt, der Beginn jeder Bahn und die Reihenfolge, das Werkzeug, das die Platine ausschneidet, die Passlöcher, Spiegelung, Drehung und Nutzen sowie die Entwurfsregeln. `eh3d-isocam config` gibt sie alle als Datei aus (`examples/isocam.cfg` ist diese Datei); `--config DATEI` liest eine, und jede Einstellung kann in der Kommandozeile als Option mit demselben Namen angegeben werden (`--fine-tool-mm 0.15`), die der Datei vorgeht. Ein unsinniger Wert ist ein Fehler, der die Zeile nennt. Die festen Grenzen stehen als benannte Konstanten im Code und sind durch Tests abgedeckt. Auch die erzwungene Isolation, die leichteren Bahnen, die Skalierung und die Referenzpunkte, der Rand der Lötstoppmaske, die Einheiten und die Breite der Textvorschau sind Einstellungen.
 
 ## 🚀 Schnellstart
 
@@ -166,7 +181,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Tests
 
-Die Suite hat 60 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 88 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -190,14 +205,21 @@ EH3D-ISOCAM/
 │   ├── drc.rs                                   Entwurfsregeln: Breiten, Abstände und Ringe, mit Orten
 │   ├── drill.rs                                 Bohrungen und Platinenkontur lesen und schreiben
 │   ├── edt.rs                                   der genaue Abstand zum Kupfer
+│   ├── fiducial.rs                              Skalierung und Korrektur mit Referenzpunkten
+│   ├── forced.rs                                Pfade durch Lücken, in die das Werkzeug nicht passt
 │   ├── gcode.rs                                 die Bahnen als G-Code
 │   ├── hpgl.rs                                  die Bahnen als HP-GL-Plotdatei
 │   ├── isolate.rs                               Werkzeuge, Durchgänge, Restkupfer und enge Lücken
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
+│   ├── mask.rs                                  die Öffnungen der Lötstoppmaske
+│   ├── optimize.rs                              leichtere Bahnen: Spitzen und gerade Punkte
 │   ├── order.rs                                 Richtung, Startpunkte und Reihenfolge der Schnitte
-│   └── transform.rs                             beide Seiten, Nutzen und Passlöcher
+│   ├── preview.rs                               die Durchgänge als SVG oder Text
+│   ├── transform.rs                             beide Seiten, Nutzen und Passlöcher
+│   └── units.rs                                 mm, mil und Zoll
 ├── tests/
+│   ├── advanced.rs                              erzwungene Isolation, Korrektur, Maske, Einheiten, Vorschau
 │   ├── files.rs                                 Tests der Bohr- und Konturdateien
 │   ├── isocam.rs                                Tests von Bibliothek und Kommandozeile
 │   ├── layout.rs                                Tests zu beiden Seiten, Nutzen, Regeln und der Kommandozeile
@@ -226,7 +248,8 @@ EH3D-ISOCAM/
 
 * Es hat noch kein Fenster: es gibt nur die Bibliothek und die Kommandozeile.
 * Es wurde weder auf einer Maschine noch mit einer Sammlung echter Dateien erprobt und hatte keine unabhängige Prüfung.
-* Die Bahnen sind auf eine halbe Zelle genau, nicht auf die Kurve selbst; es gibt keine Voronoi-Strategie, keine erzwungene Isolation dort, wo das Werkzeug nicht passt (diese Stellen werden nur gemeldet), keine Skalierung oder Kompensation der Platine, keine Lötstopp- oder Bestückungsdruck-Lagen, und mit diesen Bahnen wurde noch keine Platine gefräst.
+* Die Bahnen sind auf eine halbe Zelle genau, nicht auf die Kurve selbst; es gibt keine Voronoi-Strategie, Bögen werden nicht angepasst (eine Kurve sind viele kurze Bewegungen), ein erzwungener Pfad lässt ein Werkzeug, das breiter als die Lücke ist, das Kupfer auf beiden Seiten berühren, die Korrektur mit Referenzpunkten verschiebt die Bahnen, behält aber die Größe des Werkzeugabstands, die Skalierung geht vom Ursprung aus, es gibt keine Bestückungsdruck-Lage, und mit diesen Bahnen wurde keine Platine gefräst.
+* Die Lötstoppmaske folgt den Pads wie gezeichnet (Kreise, Rechtecke und Langlöcher); Leiterbahnen bleiben bedeckt, und ein negativer Rand verkleinert keine Fläche.
 * Das Abräumen des Restkupfers sind Ringe eines breiteren Werkzeugs im Abstand vom Kupfer: Stellen, die schmaler als dieses Werkzeug sind, behalten ihr Kupfer, und es folgt nicht dem Rand der Platine.
 * Die für ein schmaleres Werkzeug ausgelassenen Stücke werden auf einem Raster mit zwei Zellen Spielraum entschieden; lieber wird ein Stück doppelt geschnitten als ungeschnitten gelassen.
 * Bohrdateien werden in ganzen Mil geschrieben (Konvention der Bungard-Programme): ein Durchmesser `T1C0.8` ohne Einheit wird ab 0,2 als Millimeter und darunter als Zoll gelesen; Dateien mit Langlöchern oder gefrästen Bahnen lassen diese mit einem Hinweis weg. Die geschriebenen Dateien wurden nur von den Lesern dieser Suite zurückgelesen, nicht von anderen Programmen oder Maschinen.
@@ -234,9 +257,9 @@ EH3D-ISOCAM/
 
 **Als Nächstes**
 
-* Das Fenster im gemeinsamen Aussehen der Programme der Suite hinzufügen, in den acht Sprachen, mit Vorschau der Durchgänge und Einheiten in Mil, Millimeter und Zoll.
-* Erzwungene Isolation dort, wo das Werkzeug nicht passt (ein schmalerer Durchgang für dieses Stück, mit Warnung) und die Voronoi-Strategie; Bögen aufräumen; Skalierung und Kompensation der Platine anhand der Passmarken der Kamera.
-* Lötstopp- und Bestückungsdruck-Lagen.
+* Das Fenster im gemeinsamen Aussehen der Programme der Suite ergänzen, in den acht Sprachen, auf der Vorschau, die es heute als Text und SVG gibt.
+* Die Voronoi-Strategie, an die Kurven angepasste Bögen und eine Schnitttiefe, die den engen Lücken folgt; die Korrektur mit Referenzpunkten mit Kameramessungen vergleichen.
+* Bestückungsdruck-Lagen.
 * Die Bahnen mit wirklich gefrästen Platinen vergleichen und mit echten Dateien und den anderen Programmen der Suite erproben.
 
 ## 🌍 Sprachen

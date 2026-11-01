@@ -105,6 +105,32 @@
           }
         },
         {
+          "name": "fiducial.rs",
+          "desc": {
+            "en": "scale and correction from reference points",
+            "es": "escala y corrección con puntos de referencia",
+            "de": "Skalierung und Korrektur mit Referenzpunkten",
+            "fr": "échelle et correction par points de référence",
+            "it": "scala e correzione con punti di riferimento",
+            "ja": "基準点によるスケールと補正",
+            "zh": "用参考点做缩放与补偿",
+            "pt": "escala e correção com pontos de referência"
+          }
+        },
+        {
+          "name": "forced.rs",
+          "desc": {
+            "en": "paths along the gaps the tool does not fit in",
+            "es": "caminos por los huecos donde no cabe la herramienta",
+            "de": "Pfade durch Lücken, in die das Werkzeug nicht passt",
+            "fr": "trajets dans les espaces où l'outil ne passe pas",
+            "it": "percorsi negli spazi in cui l'utensile non entra",
+            "ja": "工具が入らない隙間に沿う経路",
+            "zh": "沿刀具放不进去的间隙的路径",
+            "pt": "percursos nos espaços onde a ferramenta não cabe"
+          }
+        },
+        {
           "name": "gcode.rs",
           "desc": {
             "en": "the paths as G-code",
@@ -170,6 +196,32 @@
           }
         },
         {
+          "name": "mask.rs",
+          "desc": {
+            "en": "the openings of the solder mask",
+            "es": "las aberturas de la máscara de soldadura",
+            "de": "die Öffnungen der Lötstoppmaske",
+            "fr": "les ouvertures du masque de soudure",
+            "it": "le aperture della maschera di saldatura",
+            "ja": "ソルダーマスクの開口部",
+            "zh": "阻焊层的开窗",
+            "pt": "as aberturas da máscara de soldadura"
+          }
+        },
+        {
+          "name": "optimize.rs",
+          "desc": {
+            "en": "lighter paths: spikes and straight points",
+            "es": "trayectorias más ligeras: picos y puntos rectos",
+            "de": "leichtere Bahnen: Spitzen und gerade Punkte",
+            "fr": "trajets allégés : pointes et points alignés",
+            "it": "percorsi più leggeri: punte e punti allineati",
+            "ja": "軽い経路：スパイクと直線上の点",
+            "zh": "更轻的路径：尖刺与共线点",
+            "pt": "percursos mais leves: picos e pontos em linha"
+          }
+        },
+        {
           "name": "order.rs",
           "desc": {
             "en": "direction, starting points and order of the cuts",
@@ -180,6 +232,19 @@
             "ja": "切削の向き・開始点・順序",
             "zh": "切削方向、起点和顺序",
             "pt": "sentido, pontos de início e ordem dos cortes"
+          }
+        },
+        {
+          "name": "preview.rs",
+          "desc": {
+            "en": "the passes drawn as SVG or text",
+            "es": "las pasadas dibujadas en SVG o texto",
+            "de": "die Durchgänge als SVG oder Text",
+            "fr": "les passes dessinées en SVG ou en texte",
+            "it": "le passate disegnate in SVG o testo",
+            "ja": "パスを SVG またはテキストで描画",
+            "zh": "以 SVG 或文本绘制各遍路径",
+            "pt": "as passagens desenhadas em SVG ou texto"
           }
         },
         {
@@ -194,6 +259,19 @@
             "zh": "双面、拼板和对位孔",
             "pt": "dupla face, painéis e furos de alinhamento"
           }
+        },
+        {
+          "name": "units.rs",
+          "desc": {
+            "en": "mm, mil and inch",
+            "es": "mm, mil y pulgada",
+            "de": "mm, mil und Zoll",
+            "fr": "mm, mil et pouce",
+            "it": "mm, mil e pollice",
+            "ja": "mm・ミル・インチ",
+            "zh": "毫米、密耳和英寸",
+            "pt": "mm, mil e polegada"
+          }
         }
       ]
     },
@@ -202,6 +280,19 @@
       "span": 3,
       "accent": "d",
       "rows": [
+        {
+          "name": "advanced.rs",
+          "desc": {
+            "en": "forced isolation, correction, mask, units, preview",
+            "es": "aislamiento forzado, corrección, máscara, unidades, vista previa",
+            "de": "erzwungene Isolation, Korrektur, Maske, Einheiten, Vorschau",
+            "fr": "isolation forcée, correction, masque, unités, aperçu",
+            "it": "isolamento forzato, correzione, maschera, unità, anteprima",
+            "ja": "強制アイソレーション・補正・マスク・単位・プレビュー",
+            "zh": "强制隔离、补偿、阻焊、单位、预览",
+            "pt": "isolamento forçado, correção, máscara, unidades, pré-visualização"
+          }
+        },
         {
           "name": "files.rs",
           "desc": {

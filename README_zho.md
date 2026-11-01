@@ -18,7 +18,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有60个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它还没有窗口，没有在机器上试过，也没有用一批真实文件检验过。
+**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有88个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它还没有窗口，没有在机器上试过，也没有用一批真实文件检验过。
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | 版本 | `0.0.2` |
 | 成熟度 | 脚手架 |
-| 测试 | 60 |
+| 测试 | 88 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -47,8 +47,9 @@
 |---|---|---|
 | 核心 | 🟡 | 围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，报告刀具放不进去的过窄间隙，并写出G代码或HP-GL；已在电脑上用正常和损坏的输入测试，未用一批真实文件测试。 |
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
+| 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 60 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
+| 测试 | 🟡 | 88 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🔴 | 计划中：套件通用的 egui 窗口；目前只有命令行。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -66,6 +67,10 @@
 * **双面、拼板与对位孔**（`src/transform.rs`）：图层、钻孔和板框一起翻面、按四分之一圈旋转并在拼板上重复；对位孔放在板外，翻面后的板能在原位找到它们（轴线上的第三个孔可区分同一块板旋转半圈的情况）。
 * **设计规则**（`src/drc.rs`）：窄于规则的铜箔、间距小于规则或刀具宽度的铜块，以及周围铜箔少于规则的孔，均给出以毫米为单位的位置。
 * **一个设置文件**（`src/config.rs`）：每个可调的值都是有默认值的设置，可从`键 = 值`文件（`examples/isocam.cfg`）读取，或用同名的命令行选项给出。
+* **强制隔离**（`src/forced.rs`）：设置 `forced_isolation = yes` 后，在最细刀具放不进去的间隙中间也会铺一条路径，只要间隙不窄于 `forced_min_gap_mm`；每处都会连同坐标和间隙宽度一起报告，更窄的间隙只列出而不处理。默认关闭：此时这些位置只会被报告。
+* **更轻的路径、缩放与补偿**（`src/optimize.rs`、`src/fiducial.rs`）：去掉尖刺，并把落在直线上的点（在 `optimize_tolerance_mm` 之内）合并为一次移动；整个作业可以缩放，成对的参考点（标记应在的位置和实测位置）给出相似变换（两对）或仿射拟合（三对及以上，最小二乘），并应用到每条路径和每个孔；缩放远离 1 或某个标记对不上时会被拒绝。
+* **阻焊层**（`src/mask.rs`）：开窗写成 Gerber 层，来自设计的阻焊层或铜箔的焊盘，每个按 `mask_margin_mm` 外扩；走线保持被覆盖。
+* **单位与预览**（`src/units.rs`、`src/preview.rs`）：长度可以带 `mm`、`mil` 或 `in`，G 代码可以按英寸写出，`preview` 把各遍加工路径画在铜箔上，输出为 SVG 图或文本。
 
 ## 🧩 在 EH3D 中的角色
 
@@ -87,6 +92,7 @@ EH3D-ISOCAM 是 EH3D Fabrication Suite 的一个程序。目前它以库和命�
 * **不猜测：** 没有意义的值是一个说明哪个值、为什么的错误，绝不是只是看起来正确的结果。
 * **没有 unsafe 代码：** 库和程序中都有 `#![forbid(unsafe_code)]`。
 * **每个调好的值都是设置：** 人可能想改的东西都不会藏在代码里；错误的值会报错并给出行号。
+* **可选单位：** 设置文件或命令行里的长度可以用毫米、密耳或英寸书写；G 代码可以按英寸写出，屏幕也可以显示密耳。
 
 ## 🔒 安全与防护
 
@@ -106,11 +112,13 @@ EH3D-ISOCAM 是 EH3D Fabrication Suite 的一个程序。目前它以库和命�
 eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt     paths round the copper (G-code, or HP-GL for a .plt)
 eh3d-isocam check LAYER.gtl                      places where the tool does not fit between pieces of copper
 eh3d-isocam info LAYER.gtl                       passes, paths each way round, travel through the air
+eh3d-isocam preview LAYER.gtl [OUT.svg|OUT.txt]    the passes drawn over the copper, as SVG or text
 eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
 eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
 eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
+eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
-options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15)
+options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 ```
 
 ```text
@@ -122,14 +130,21 @@ EH3D-ISOCAM/
 │   ├── drc.rs                                   设计规则：线宽、间距和焊环，并给出位置
 │   ├── drill.rs                                 钻孔和板框的读取与写入
 │   ├── edt.rs                                   到铜箔的精确距离
+│   ├── fiducial.rs                              用参考点做缩放与补偿
+│   ├── forced.rs                                沿刀具放不进去的间隙的路径
 │   ├── gcode.rs                                 把路径写成G代码
 │   ├── hpgl.rs                                  把路径写成HP-GL绘图文件
 │   ├── isolate.rs                               刀具、走刀、残余铜箔和过窄的间隙
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
+│   ├── mask.rs                                  阻焊层的开窗
+│   ├── optimize.rs                              更轻的路径：尖刺与共线点
 │   ├── order.rs                                 切削方向、起点和顺序
-│   └── transform.rs                             双面、拼板和对位孔
+│   ├── preview.rs                               以 SVG 或文本绘制各遍路径
+│   ├── transform.rs                             双面、拼板和对位孔
+│   └── units.rs                                 毫米、密耳和英寸
 ├── tests/
+│   ├── advanced.rs                              强制隔离、补偿、阻焊、单位、预览
 │   ├── files.rs                                 钻孔与板框文件的测试
 │   ├── isocam.rs                                库和命令行的测试
 │   ├── layout.rs                                双面、拼板、规则和命令行的测试
@@ -152,7 +167,7 @@ EH3D-ISOCAM/
 
 ## ⚙️ 配置
 
-每个可调的值都是有默认值的设置：细刀和粗刀的直径、走刀次数和步距，残余铜箔的清除，深度、进给和转速，方向，出发点，每条路径的起点和顺序，切割板边的刀具，对位孔，镜像、旋转和拼板，以及设计规则。`eh3d-isocam config`把它们全部作为文件输出（`examples/isocam.cfg`就是这个文件）；`--config 文件`读取一个文件，任何设置都可以在命令行用同名选项给出（`--fine-tool-mm 0.15`），并优先于文件。无意义的值会报错并指出行号。固定的上限在代码中是有名字的常量，并有测试覆盖。
+每个可调的值都是有默认值的设置：细刀和粗刀的直径、走刀次数和步距，残余铜箔的清除，深度、进给和转速，方向，出发点，每条路径的起点和顺序，切割板边的刀具，对位孔，镜像、旋转和拼板，以及设计规则。`eh3d-isocam config`把它们全部作为文件输出（`examples/isocam.cfg`就是这个文件）；`--config 文件`读取一个文件，任何设置都可以在命令行用同名选项给出（`--fine-tool-mm 0.15`），并优先于文件。无意义的值会报错并指出行号。固定的上限在代码中是有名字的常量，并有测试覆盖。强制隔离、更轻的路径、缩放与参考点、阻焊的外扩量、单位以及文本预览的宽度也都是设置项。
 
 ## 🚀 快速开始
 
@@ -166,7 +181,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 测试
 
-测试套件有 60 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 88 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -190,14 +205,21 @@ EH3D-ISOCAM/
 │   ├── drc.rs                                   设计规则：线宽、间距和焊环，并给出位置
 │   ├── drill.rs                                 钻孔和板框的读取与写入
 │   ├── edt.rs                                   到铜箔的精确距离
+│   ├── fiducial.rs                              用参考点做缩放与补偿
+│   ├── forced.rs                                沿刀具放不进去的间隙的路径
 │   ├── gcode.rs                                 把路径写成G代码
 │   ├── hpgl.rs                                  把路径写成HP-GL绘图文件
 │   ├── isolate.rs                               刀具、走刀、残余铜箔和过窄的间隙
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
+│   ├── mask.rs                                  阻焊层的开窗
+│   ├── optimize.rs                              更轻的路径：尖刺与共线点
 │   ├── order.rs                                 切削方向、起点和顺序
-│   └── transform.rs                             双面、拼板和对位孔
+│   ├── preview.rs                               以 SVG 或文本绘制各遍路径
+│   ├── transform.rs                             双面、拼板和对位孔
+│   └── units.rs                                 毫米、密耳和英寸
 ├── tests/
+│   ├── advanced.rs                              强制隔离、补偿、阻焊、单位、预览
 │   ├── files.rs                                 钻孔与板框文件的测试
 │   ├── isocam.rs                                库和命令行的测试
 │   ├── layout.rs                                双面、拼板、规则和命令行的测试
@@ -226,7 +248,8 @@ EH3D-ISOCAM/
 
 * 还没有窗口：只有库和命令行。
 * 没有在机器上试过，也没有用一批真实文件试过，且没有经过独立审查。
-* 路径精确到半个单元，而不是曲线本身；没有Voronoi策略，刀具放不进去的地方没有强制隔离（只报告这些位置），没有板的缩放和补偿，没有阻焊层和丝印层，也没有用这些路径铣过任何一块板。
+* 路径精确到半个单元，而不是曲线本身；没有沃罗诺伊策略，不拟合圆弧（曲线由许多短移动组成），强制路径会让比间隙更宽的刀具在两侧碰到铜箔，用参考点做的补偿会移动路径但保持刀具偏移量的大小，缩放以原点为中心，没有丝印层，也没有用这些路径铣过任何电路板。
+* 阻焊按绘制的焊盘（圆形、矩形和长圆形）生成；走线保持被覆盖，负的外扩量不会缩小区域。
 * 残余铜箔的清除是一把较宽刀具在离铜箔一定距离处的环：比该刀具更窄的地方会保留铜箔，而且不沿板边。
 * 为较细刀具省去的段由带两个单元余量的网格决定；宁可把一段切两次，也不留下不切的部分。
 * 钻孔文件以整数密耳写出（Bungard程序的惯例）：没有单位的直径`T1C0.8`，从0.2起按毫米读取，低于0.2按英寸读取；含有长孔或铣削路径的文件会略去它们并给出说明。写出的文件只由本套件的读取器读回过，没有用其他程序或机器检验。
@@ -234,9 +257,9 @@ EH3D-ISOCAM/
 
 **下一步**
 
-* 添加套件程序共有外观的窗口，支持八种语言，带走刀预览以及密耳、毫米和英寸单位。
-* 刀具放不进去的地方的强制隔离（该段用更细的走刀并给出警告）和Voronoi策略；整理圆弧；根据相机的基准点对板进行缩放和补偿。
-* 阻焊层和丝印层。
+* 在目前以文本和 SVG 提供的预览之上，加入套件通用外观的窗口，支持八种语言。
+* 沃罗诺伊策略、对曲线拟合圆弧，以及随窄间隙变化的切削深度；把用参考点做的补偿与相机的测量值比较。
+* 丝印层。
 * 把路径与真正铣过的板比较，并用真实文件和套件的其他程序试用。
 
 ## 🌍 语言
