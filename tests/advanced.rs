@@ -806,12 +806,14 @@ fn the_new_settings_are_read_written_back_and_checked() {
     assert_eq!((s.output_units, s.report_units), (Unit::Inch, Unit::Mil));
     let again = Settings::parse(&s.to_text()).unwrap();
     assert_eq!(again, s);
-    let (t, fit) = s.transform().unwrap();
+    let (t, fit) = s.transform((10.0, 20.0)).unwrap();
     assert!(fit.is_some() && !t.is_identity());
     assert!(s.forced().is_some() && !s.optimize().is_off());
     let d = Settings::default();
     assert!(
-        d.forced().is_none() && d.optimize().is_off() && d.transform().unwrap().0.is_identity()
+        d.forced().is_none()
+            && !d.optimize().is_off()
+            && d.transform((5.0, 7.0)).unwrap().0.is_identity()
     );
 }
 
@@ -869,4 +871,58 @@ fn bad_new_settings_say_the_line_and_the_reason() {
     }
     let many = "fiducial = 0,0,0,0\n".repeat(51);
     assert!(Settings::parse(&many).unwrap_err().contains("at most 50"));
+}
+
+// ---- scale and reference points are about the centre of the board ----------------------------------------------------------------------------------------
+
+#[test]
+fn a_scale_of_one_changes_nothing_and_the_centre_stays_where_it_is() {
+    let centre = (37.5, -12.25);
+    let same = Settings::default().transform(centre).unwrap().0;
+    assert!(same.is_identity());
+    for p in [(0.0, 0.0), (100.0, 80.0), (-5.5, 3.25)] {
+        assert_eq!(same.apply(p), p);
+    }
+    let mut s = Settings::default();
+    s.set("scale_x", "1.02").unwrap();
+    s.set("scale_y", "0.98").unwrap();
+    let t = s.transform(centre).unwrap().0;
+    near(t.apply(centre), centre);
+    // a point 10 mm right of the centre is 10.2 mm right of it afterwards, one 10 mm above is 9.8 mm above
+    near(t.apply((47.5, -12.25)), (37.5 + 10.2, -12.25));
+    near(t.apply((37.5, -2.25)), (37.5, -12.25 + 9.8));
+}
+
+#[test]
+fn the_reference_points_are_relative_to_the_centre_and_a_bad_centre_is_refused() {
+    let mut s = Settings::default();
+    s.set("fiducial", "-50, -40, -49.9, -39.95").unwrap();
+    s.set("fiducial", "50, -40, 50.1, -39.95").unwrap();
+    let centre = (100.0, 60.0);
+    let (t, fit) = s.transform(centre).unwrap();
+    assert!(fit.is_some());
+    // the mark 50 mm left of and 40 mm under the centre was measured 0.1 mm right of and 0.05 mm above where it should be
+    near(t.apply((50.0, 20.0)), (50.1, 20.05));
+    for bad in [(f64::NAN, 0.0), (0.0, f64::INFINITY)] {
+        assert!(s.transform(bad).unwrap_err().contains("centre"));
+    }
+}
+
+#[test]
+fn the_default_optimisation_is_gentle() {
+    let o = Settings::default().optimize();
+    assert!((o.tolerance_mm - 0.01).abs() < 1e-12 && (o.spike_max_mm - 0.02).abs() < 1e-12);
+    // a path of a circle stays within the tolerance of itself and keeps its shape
+    let circle: Vec<(f64, f64)> = (0..200)
+        .map(|i| {
+            let a = i as f64 / 200.0 * std::f64::consts::TAU;
+            (5.0 * a.cos(), 5.0 * a.sin())
+        })
+        .collect();
+    let (v, spikes) = optimize_path(&circle, true, &o).unwrap();
+    assert_eq!(spikes, 0);
+    assert!(v.len() >= 30 && v.len() <= 200);
+    for p in &v {
+        assert!((p.0.hypot(p.1) - 5.0).abs() < 1e-9);
+    }
 }

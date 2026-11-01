@@ -65,14 +65,14 @@ pub struct Settings {
     pub forced_isolation: bool,
     /// The narrowest gap that gets a forced path.
     pub forced_min_gap_mm: f64,
-    /// Points that lie on a line within this are one move; 0 leaves the paths as they are.
+    /// Points that lie on a line within this are one move; 0 leaves the paths as they are (0.01 by default).
     pub optimize_tolerance_mm: f64,
-    /// Spikes whose shorter side is at most this are taken out; 0 leaves them.
+    /// Spikes whose shorter side is at most this are taken out; 0 leaves them (0.02 by default).
     pub spike_max_mm: f64,
     pub spike_angle_deg: f64,
     pub scale_x: f64,
     pub scale_y: f64,
-    /// Reference points: where a mark should be and where it was measured.
+    /// Reference points, relative to the centre of the board: where a mark should be and where it was measured.
     pub fiducials: Vec<Pair>,
     pub fiducial_model: Model,
     pub fiducial_max_scale_deviation: f64,
@@ -127,8 +127,8 @@ impl Default for Settings {
             report_units: Unit::Mm,
             forced_isolation: false,
             forced_min_gap_mm: 0.1,
-            optimize_tolerance_mm: 0.0,
-            spike_max_mm: 0.0,
+            optimize_tolerance_mm: 0.01,
+            spike_max_mm: 0.02,
             spike_angle_deg: 170.0,
             scale_x: 1.0,
             scale_y: 1.0,
@@ -435,7 +435,7 @@ impl Settings {
         if let Some(f) = self.forced() {
             f.validate(&self.plan()?)?;
         }
-        self.transform()?;
+        self.transform((0.0, 0.0))?;
         if !(1..=5000).contains(&self.optimize_max_paths) {
             return Err(format!(
                 "optimize_max_paths is {}: it must be from 1 to 5000",
@@ -460,18 +460,32 @@ impl Settings {
         })
     }
 
-    /// The scale and the correction from the reference points, as one transformation (the scale first), and the fit when there are reference points.
-    pub fn transform(&self) -> Result<(Affine, Option<Fit>), String> {
-        let scale = Affine::scale(self.scale_x, self.scale_y);
+    /// The scale and the correction from the reference points, as one transformation, and the fit when there are reference points. Both are about the centre of the board:
+    /// the scale leaves the centre where it is and the reference points are given relative to it. The transformation is in the coordinates of the work.
+    pub fn transform(&self, centre: (f64, f64)) -> Result<(Affine, Option<Fit>), String> {
+        if !(centre.0.is_finite() && centre.1.is_finite()) {
+            return Err("the centre of the board is not a number".into());
+        }
+        let to_centre = Affine {
+            e: -centre.0,
+            f: -centre.1,
+            ..Affine::identity()
+        };
+        let back = Affine {
+            e: centre.0,
+            f: centre.1,
+            ..Affine::identity()
+        };
+        let scale = to_centre.then(&Affine::scale(self.scale_x, self.scale_y));
         if self.fiducials.is_empty() {
-            return Ok((scale, None));
+            return Ok((scale.then(&back), None));
         }
         let limits = Limits {
             max_scale_deviation: self.fiducial_max_scale_deviation,
             max_residual_mm: self.fiducial_max_residual_mm,
         };
         let f = fit(&self.fiducials, self.fiducial_model, &limits)?;
-        Ok((scale.then(&f.affine), Some(f)))
+        Ok((scale.then(&f.affine).then(&back), Some(f)))
     }
 
     /// The tools and the passes of the isolation.

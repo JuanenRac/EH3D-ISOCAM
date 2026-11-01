@@ -41,7 +41,7 @@ inch). --output-units inch writes G20 and inches, --report-units changes what th
 with the layer, --align adds the holes that hold the board when it is turned over, and --force writes although the tool does not fit between pieces of copper.
 isolate refuses to write when the tool does not fit between pieces of copper (run check to see where) unless --force is given; with --forced-isolation yes it lays a path along
 every such gap that is not narrower than --forced-min-gap-mm and refuses only for the narrower ones. --optimize-tolerance-mm and --spike-max-mm make the paths lighter;
---scale-x/--scale-y and --fiducial \"DESIGN_X,DESIGN_Y,MEASURED_X,MEASURED_Y\" (two or more times) scale and correct the work for a stretched or turned board.";
+--scale-x/--scale-y (about the centre of the board) and --fiducial \"DESIGN_X,DESIGN_Y,MEASURED_X,MEASURED_Y\" (two or more times) scale and correct the work for a stretched or turned board.";
 
 #[derive(Clone)]
 struct Cli {
@@ -190,7 +190,12 @@ fn describe(passes: &[Pass], cli: &Cli) {
 
 /// The passes of a layer: the paths of the tools, the forced paths when they are switched on, the lighter paths. With `moved` the scale and the correction from the reference
 /// points are applied as well. Returns the passes and the number of gaps where the tool does not fit and nothing was laid.
-fn build_passes(cli: &Cli, board: &Board, moved: bool) -> Result<(Vec<Pass>, usize), String> {
+fn build_passes(
+    cli: &Cli,
+    board: &Board,
+    centre: (f64, f64),
+    moved: bool,
+) -> Result<(Vec<Pass>, usize), String> {
     let s = &cli.settings;
     let pl = s.plan()?;
     let close = close_pieces(&board.scene, pl.finest_mm(), pl.res_mm)?;
@@ -239,7 +244,7 @@ fn build_passes(cli: &Cli, board: &Board, moved: bool) -> Result<(Vec<Pass>, usi
         );
     }
     if moved {
-        let (t, fit) = s.transform()?;
+        let (t, fit) = s.transform(centre)?;
         if let Some(f) = &fit {
             eprintln!(
                 "note: the reference points give a scale of {:.5} x {:.5} and a turn of {:.4} degrees; the farthest mark is {} from where the fit puts it",
@@ -254,6 +259,15 @@ fn build_passes(cli: &Cli, board: &Board, moved: bool) -> Result<(Vec<Pass>, usi
         }
     }
     Ok((passes, unfixed))
+}
+
+/// The centre of the box of the whole board (or panel); the origin when it is empty.
+fn centre_of(b: &eh3d_gerberviewer::scene::Bounds) -> (f64, f64) {
+    if b.is_empty() {
+        (0.0, 0.0)
+    } else {
+        ((b.min_x + b.max_x) / 2.0, (b.min_y + b.max_y) / 2.0)
+    }
 }
 
 fn run(mut args: Vec<String>) -> Result<(), String> {
@@ -271,7 +285,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         }
         "check" | "isolate" | "info" | "preview" => {
             let layer = arg(&cli, 0, &format!("{cmd} needs a Gerber layer"))?;
-            let (board, _) = load_board(&cli, Some(layer))?;
+            let (board, whole) = load_board(&cli, Some(layer))?;
             let pl = s.plan()?;
             pl.validate()?;
             if cmd == "check" {
@@ -295,7 +309,8 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     ))
                 };
             }
-            let (passes, unfixed) = build_passes(&cli, &board, cmd == "isolate")?;
+            let (passes, unfixed) =
+                build_passes(&cli, &board, centre_of(&whole), cmd == "isolate")?;
             if cmd == "isolate" && unfixed > 0 && !cli.force {
                 return Err(format!("the tool does not fit between pieces of copper in {unfixed} places (run check to see them, or --force{})", if s.forced_isolation { "" } else { "; forced_isolation = yes lays a path along the wider ones" }));
             }
@@ -425,7 +440,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     tool,
                 )?);
             }
-            let (t, _) = s.transform()?;
+            let (t, _) = s.transform(centre_of(&whole))?;
             if !t.is_identity() {
                 apply_to_holes(&mut holes, &t)?;
             }
@@ -439,7 +454,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let mut cli2 = cli.clone();
             cli2.outline = Some(file.to_string());
             cli2.drills = None;
-            let (board, _) = load_board(&cli2, None)?;
+            let (board, whole) = load_board(&cli2, None)?;
             let outline = eh3d_isocam::drill::Outline {
                 closed: board.outline,
                 open: Vec::new(),
@@ -450,7 +465,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 s.res_mm.min(s.route_tool_mm / 2.0),
             )?;
             let mut passes = vec![pass];
-            let (t, _) = s.transform()?;
+            let (t, _) = s.transform(centre_of(&whole))?;
             if !t.is_identity() {
                 apply_to_passes(&mut passes, &t)?;
             }
