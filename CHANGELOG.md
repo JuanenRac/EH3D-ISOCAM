@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.4] - Plots as the original program wrote them, tolerance for pads, filling by contours and DXF output
+
 - **Plots as the original program wrote them** (`hpgl_isocam_style`, on by default; off keeps the compact form): every point of a path is its own `PA`, lines are ended with CR LF after about 75 columns, `IN`, `VS` and `SP` stand on lines of their own, and the plot ends with `PU;` and `PA0,0;SP;`.
 - **Tolerance only for pads** (`conflict_tolerance_scope = pads`; `all` by default, as before): a gap narrower than the tool by up to the tolerance is accepted only when a pad is beside it, every other gap is judged against the whole tool, and the thin-copper warning looks at pads alone.
 - **Filling by contours** (`rubout-area OUT [LAYER.gtl] --contour FILE`, or `--area`; `rubout_fill_margin_mm`): the closed paths of a file are filled even-odd (an inner path is a hole) with back-and-forth lines of `rubout_lines_tool_mm`; with a layer the lines are cut to the copper, the whole tool lying on copper plus the margin.

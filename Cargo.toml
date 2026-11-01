@@ -1,6 +1,6 @@
 [package]
 name = "eh3d-isocam"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 rust-version = "1.88"
 description = "Isolation milling of copper from a Gerber layer: exact offsets of the copper, several passes, checks for gaps the tool cannot cut, and G-code"
