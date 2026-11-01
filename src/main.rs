@@ -17,6 +17,7 @@ use eh3d_isocam::mask;
 use eh3d_isocam::optimize::optimize_passes;
 use eh3d_isocam::order::{arrange, directions, travel_mm, Cut, Strategy};
 use eh3d_isocam::preview;
+use eh3d_isocam::problems::problem_zones;
 use eh3d_isocam::transform::{alignment_holes, lay_out, Axis, Board};
 use eh3d_isocam::units::Unit;
 use std::env;
@@ -217,7 +218,7 @@ fn build_passes(
 ) -> Result<(Vec<Pass>, usize), String> {
     let s = &cli.settings;
     let pl = s.plan()?;
-    let close = close_pieces(&board.scene, pl.finest_mm(), pl.res_mm)?;
+    let close = close_pieces(&board.scene, s.conflict_gap_mm(pl.finest_mm()), pl.res_mm)?;
     let mut passes = plan(&board.scene, &pl)?;
     let mut unfixed = close.len();
     if let Some(f) = s.forced() {
@@ -308,7 +309,11 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let pl = s.plan()?;
             pl.validate()?;
             if cmd == "check" {
-                let close = close_pieces(&board.scene, pl.finest_mm(), pl.res_mm)?;
+                let close =
+                    close_pieces(&board.scene, s.conflict_gap_mm(pl.finest_mm()), pl.res_mm)?;
+                for z in problem_zones(&board.scene, &s.problem_rules(), pl.res_mm)? {
+                    println!("warning: {}", z.describe());
+                }
                 for c in &close {
                     println!(
                         "{} pieces of copper are closer than {} near ({:.3}, {:.3})",

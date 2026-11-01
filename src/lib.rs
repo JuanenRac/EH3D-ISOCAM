@@ -20,5 +20,6 @@ pub mod mask;
 pub mod optimize;
 pub mod order;
 pub mod preview;
+pub mod problems;
 pub mod transform;
 pub mod units;

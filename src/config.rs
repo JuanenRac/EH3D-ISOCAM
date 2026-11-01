@@ -9,6 +9,7 @@ use crate::isolate::{Plan, Rubout, Tool};
 use crate::legacy::{self, Format, Zeros};
 use crate::optimize::Optimize;
 use crate::order::{Direction, LoopStart, Order, Strategy};
+use crate::problems::ProblemRules;
 use crate::transform::{Axis, Layout};
 use crate::units::{parse_length, Unit};
 
@@ -92,6 +93,12 @@ pub struct Settings {
     pub gerber_units: Unit,
     pub aperture_units: Unit,
     pub aperture_size_column: usize,
+    /// How much narrower than the tool a gap between two pieces of copper may be and still be accepted (the tool is taken to scrape the copper a little there); 0 accepts none.
+    pub conflict_tolerance_mm: f64,
+    /// Inner corners sharper than this angle are reported as problem zones; 0 does not look for them.
+    pub problem_corner_angle_deg: f64,
+    /// A track with a pad on each side nearer than this multiple of the tool is reported as a problem zone; 0 does not look for them.
+    pub problem_track_gap_factor: f64,
 }
 
 impl Default for Settings {
@@ -156,6 +163,9 @@ impl Default for Settings {
             gerber_units: Unit::Inch,
             aperture_units: Unit::Mil,
             aperture_size_column: 1,
+            conflict_tolerance_mm: 0.0,
+            problem_corner_angle_deg: 60.0,
+            problem_track_gap_factor: 1.5,
         }
     }
 }
@@ -302,6 +312,9 @@ impl Settings {
             "fiducial_max_residual_mm" => self.fiducial_max_residual_mm = num(key, v)?,
             "mask_margin_mm" => self.mask_margin_mm = num(key, v)?,
             "preview_cols" => self.preview_cols = count(key, v)?,
+            "conflict_tolerance_mm" => self.conflict_tolerance_mm = num(key, v)?,
+            "problem_corner_angle_deg" => self.problem_corner_angle_deg = num(key, v)?,
+            "problem_track_gap_factor" => self.problem_track_gap_factor = num(key, v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -340,7 +353,7 @@ impl Settings {
     pub fn to_text(&self) -> String {
         let b = |v: bool| if v { "yes" } else { "no" };
         let mut extra = format!(
-            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\ngerber_format = {}.{}\ngerber_zeros = {}\ngerber_units = {}\naperture_units = {}\naperture_size_column = {}\n",
+            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\ngerber_format = {}.{}\ngerber_zeros = {}\ngerber_units = {}\naperture_units = {}\naperture_size_column = {}\nconflict_tolerance_mm = {}\nproblem_corner_angle_deg = {}\nproblem_track_gap_factor = {}\n",
             self.output_units.name(),
             self.report_units.name(),
             b(self.forced_isolation),
@@ -360,7 +373,10 @@ impl Settings {
             self.gerber_zeros.name(),
             self.gerber_units.name(),
             self.aperture_units.name(),
-            self.aperture_size_column
+            self.aperture_size_column,
+            self.conflict_tolerance_mm,
+            self.problem_corner_angle_deg,
+            self.problem_track_gap_factor
         );
         for p in &self.fiducials {
             extra.push_str(&format!(
@@ -436,6 +452,7 @@ impl Settings {
         self.plan()?.validate()?;
         self.job().validate()?;
         self.rules().validate()?;
+        self.problem_rules().validate()?;
         let range = |name: &str, v: f64, lo: f64, hi: f64| {
             if v.is_finite() && v >= lo && v <= hi {
                 Ok(())
@@ -444,6 +461,18 @@ impl Settings {
             }
         };
         range("route_tool_mm", self.route_tool_mm, 0.1, 10.0)?;
+        range(
+            "conflict_tolerance_mm",
+            self.conflict_tolerance_mm,
+            0.0,
+            0.5,
+        )?;
+        if self.conflict_tolerance_mm > self.fine_tool_mm - 0.02 {
+            return Err(format!(
+                "conflict_tolerance_mm is {}: it must leave a tool of at least 0.02 mm (the finest tool is {} mm)",
+                self.conflict_tolerance_mm, self.fine_tool_mm
+            ));
+        }
         range("alignment_hole_mm", self.alignment_hole_mm, 0.3, 10.0)?;
         range("alignment_margin_mm", self.alignment_margin_mm, 0.5, 100.0)?;
         range("panel_gap_mm", self.panel_gap_mm, 0.0, 100.0)?;
@@ -604,6 +633,19 @@ impl Settings {
             rows: self.panel_rows,
             gap_mm: self.panel_gap_mm,
         }
+    }
+
+    pub fn problem_rules(&self) -> ProblemRules {
+        ProblemRules {
+            tool_mm: self.fine_tool_mm,
+            corner_angle_deg: self.problem_corner_angle_deg,
+            track_gap_factor: self.problem_track_gap_factor,
+        }
+    }
+
+    /// The width below which a gap between two pieces of copper counts as one the tool does not fit in: the tool less the tolerance.
+    pub fn conflict_gap_mm(&self, finest_mm: f64) -> f64 {
+        (finest_mm - self.conflict_tolerance_mm).max(0.02)
     }
 
     pub fn rules(&self) -> Rules {

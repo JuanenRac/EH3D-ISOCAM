@@ -261,6 +261,19 @@
           }
         },
         {
+          "name": "problems.rs",
+          "desc": {
+            "en": "problem zones: sharp inner corners and tracks between pads",
+            "es": "zonas problema: esquinas internas agudas y pistas entre pads",
+            "de": "Problemzonen: spitze Innenecken und Leiterbahnen zwischen Pads",
+            "fr": "zones à problème : coins intérieurs aigus et pistes entre pastilles",
+            "it": "zone problematiche: angoli interni acuti e piste tra pad",
+            "ja": "問題箇所：鋭い内角とパッド間のトラック",
+            "zh": "问题区域：尖锐的内角和焊盘之间的走线",
+            "pt": "zonas problemáticas: cantos internos agudos e pistas entre pads"
+          }
+        },
+        {
           "name": "transform.rs",
           "desc": {
             "en": "both sides, panels and alignment holes",
@@ -369,6 +382,19 @@
             "ja": "工具・残り銅・向き・順序・設定のテスト",
             "zh": "刀具、残余铜箔、方向、顺序和设置的测试",
             "pt": "testes de ferramentas, cobre restante, sentido, ordem e definições"
+          }
+        },
+        {
+          "name": "problems.rs",
+          "desc": {
+            "en": "tests of problem zones, the tolerance and the alignment holes",
+            "es": "pruebas de zonas problema, la tolerancia y los agujeros de alineación",
+            "de": "Tests der Problemzonen, der Toleranz und der Passlöcher",
+            "fr": "tests des zones à problème, de la tolérance et des trous d'alignement",
+            "it": "test delle zone problematiche, della tolleranza e dei fori di allineamento",
+            "ja": "問題箇所・許容差・位置合わせ穴のテスト",
+            "zh": "问题区域、容差和对位孔的测试",
+            "pt": "testes das zonas problemáticas, da tolerância e dos furos de alinhamento"
           }
         }
       ]

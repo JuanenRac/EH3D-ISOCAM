@@ -101,6 +101,7 @@
       ],
       "code": [
         "src/drc.rs::pub fn check",
+        "src/problems.rs::pub fn problem_zones",
         "src/config.rs::pub struct Settings"
       ]
     },

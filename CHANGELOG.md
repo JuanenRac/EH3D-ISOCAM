@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Rectangular pens in the viewer:** a track drawn with a rectangular or obround aperture is now the swept rectangle (the segment and the pen, a polygon), not a round-ended line as wide as the narrow side of the pen.
+- **Problem zones in `check`:** inner corners sharper than `problem_corner_angle_deg` and tracks that run between two pads nearer than `problem_track_gap_factor` times the tool are listed as warnings; both criteria are settings.
+- **Tolerance for small conflicts** (`conflict_tolerance_mm`, 0 by default: as before): gaps narrower than the tool by at most that much are accepted by `check` and `isolate`.
+- **The distance of the alignment holes** is documented as the setting `alignment_margin_mm` (5 mm by default; 10 mm is what some other programs use).
 - **Copper that is not drawn stops `isolate`:** a layer with macro apertures, clear polarity or step and repeat, which the reader cannot draw, is refused with the reasons (the cutter would go over pads that are not there); `--force` writes anyway.
 
 ## [0.0.3] - Forced isolation, optimization, scale and fiducials, solder mask, units and a preview

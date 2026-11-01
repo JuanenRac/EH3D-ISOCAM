@@ -18,7 +18,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 107 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Todavía no tiene ventana, no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 115 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Todavía no tiene ventana, no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versión | `0.0.3` |
 | Madurez | Andamiaje |
-| Pruebas | 107 |
+| Pruebas | 115 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -49,7 +49,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Ficheros y disposición | 🟡 | lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, añade agujeros de alineación y comprueba las reglas de diseño con la posición de cada hallazgo; probado en un ordenador, no con ficheros escritos por otros programas ni en una máquina. |
 | Aislamiento forzado, corrección, máscara | 🟡 | caminos forzados por los huecos donde no cabe la herramienta, trayectorias más ligeras, escala y corrección con puntos de referencia, las aberturas de la máscara de soldadura, unidades y vista previa de las pasadas; probado en un ordenador con capas generadas y entradas dañadas, nunca con placas reales ni en una máquina, y la corrección no se ha comparado con mediciones reales de una cámara. |
 | Línea de comandos | 🟡 | `eh3d-isocam` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 107 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
+| Pruebas | 🟡 | 115 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🔴 | Previsto: la ventana egui común a la suite; hoy solo existe la línea de comandos. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -68,6 +68,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 * **Reglas de diseño** (`src/drc.rs`): cobre más estrecho que la regla, piezas de cobre más cerca que la regla o que el ancho de la herramienta, y taladros con menos cobre alrededor que la regla, cada uno con su posición en milímetros.
 * **Un fichero de ajustes** (`src/config.rs`): cada valor que se puede afinar es un ajuste con un valor por defecto, que se lee de un fichero `clave = valor` (`examples/isocam.cfg`) o se da con el mismo nombre como opción de la línea de comandos.
 * **Aislamiento forzado** (`src/forced.rs`): con `forced_isolation = yes` se traza además un camino por el medio de cada hueco en el que no cabe la herramienta más fina, siempre que el hueco no sea más estrecho que `forced_min_gap_mm`; cada sitio se avisa con sus coordenadas y su hueco, y los huecos más estrechos se listan y se dejan como están. Viene desactivado: entonces esos sitios solo se avisan.
+* **Zonas problema, tolerancia y distancia de alineación** (`src/problems.rs`, `src/config.rs`): `check` también lista, como avisos que no detienen nada, las esquinas internas más agudas que `problem_corner_angle_deg` (una herramienta redonda deja cobre en la punta de una muesca; 60 grados por defecto, 0 lo desactiva) y las pistas que pasan entre dos pads más cerca de ellas que `problem_track_gap_factor` veces la herramienta (1,5 por defecto, 0 lo desactiva); ambos criterios son ajustes, no están fijos en el código. `conflict_tolerance_mm` (0 por defecto: no se acepta ningún hueco) acepta los huecos más estrechos que la herramienta como mucho en esa cantidad, en `check` y en `isolate`. La distancia de los agujeros de alineación a la placa es `alignment_margin_mm` (5 mm por defecto; otros programas de este tipo los ponen a 10 mm, que es `alignment_margin_mm = 10`).
 * **Trayectorias más ligeras, escala y corrección** (`src/optimize.rs`, `src/fiducial.rs`): se quitan los picos y los puntos sobre una recta (dentro de `optimize_tolerance_mm`) pasan a ser un solo movimiento, activado por defecto (0,01 mm y 0,02 mm; con 0 se desactiva); el trabajo se puede escalar respecto al centro de la placa, y pares de puntos de referencia relativos a ese centro (dónde debería estar una marca y dónde se midió) dan una semejanza (dos pares) o un ajuste afín (tres o más, mínimos cuadrados) que se aplica a cada trayectoria y a cada taladro; se rechaza si la escala se aleja mucho de 1 o una marca no encaja.
 * **Máscara de soldadura** (`src/mask.rs`): las aberturas se escriben como una capa Gerber, a partir de la capa de máscara del diseño o de los pads del cobre, cada una ensanchada en `mask_margin_mm`; las pistas quedan cubiertas.
 * **Unidades y vista previa** (`src/units.rs`, `src/preview.rs`): una longitud puede llevar `mm`, `mil` o `in`, el G-code puede escribirse en pulgadas, y `preview` dibuja las pasadas sobre el cobre como dibujo SVG o como texto.
@@ -144,6 +145,7 @@ EH3D-ISOCAM/
 │   ├── optimize.rs                              trayectorias más ligeras: picos y puntos rectos
 │   ├── order.rs                                 sentido, puntos de inicio y orden de los cortes
 │   ├── preview.rs                               las pasadas dibujadas en SVG o texto
+│   ├── problems.rs                              zonas problema: esquinas internas agudas y pistas entre pads
 │   ├── transform.rs                             doble cara, paneles y agujeros de alineación
 │   └── units.rs                                 mm, mil y pulgada
 ├── tests/
@@ -152,7 +154,8 @@ EH3D-ISOCAM/
 │   ├── isocam.rs                                pruebas de la biblioteca y la línea de comandos
 │   ├── layout.rs                                pruebas de doble cara, paneles, reglas y la línea de comandos
 │   ├── legacy.rs                                pruebas de las capas Gerber antiguas y la línea de comandos
-│   └── multi.rs                                 pruebas de herramientas, cobre sobrante, sentido, orden y ajustes
+│   ├── multi.rs                                 pruebas de herramientas, cobre sobrante, sentido, orden y ajustes
+│   └── problems.rs                              pruebas de zonas problema, la tolerancia y los agujeros de alineación
 ├── examples/
 │   ├── isocam.cfg                               todos los ajustes con su valor por defecto, para copiar y cambiar
 │   └── sample.gtl                               una muestra para probar el programa
@@ -185,7 +188,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Pruebas
 
-El conjunto tiene 107 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 115 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 
@@ -221,6 +224,7 @@ EH3D-ISOCAM/
 │   ├── optimize.rs                              trayectorias más ligeras: picos y puntos rectos
 │   ├── order.rs                                 sentido, puntos de inicio y orden de los cortes
 │   ├── preview.rs                               las pasadas dibujadas en SVG o texto
+│   ├── problems.rs                              zonas problema: esquinas internas agudas y pistas entre pads
 │   ├── transform.rs                             doble cara, paneles y agujeros de alineación
 │   └── units.rs                                 mm, mil y pulgada
 ├── tests/
@@ -229,7 +233,8 @@ EH3D-ISOCAM/
 │   ├── isocam.rs                                pruebas de la biblioteca y la línea de comandos
 │   ├── layout.rs                                pruebas de doble cara, paneles, reglas y la línea de comandos
 │   ├── legacy.rs                                pruebas de las capas Gerber antiguas y la línea de comandos
-│   └── multi.rs                                 pruebas de herramientas, cobre sobrante, sentido, orden y ajustes
+│   ├── multi.rs                                 pruebas de herramientas, cobre sobrante, sentido, orden y ajustes
+│   └── problems.rs                              pruebas de zonas problema, la tolerancia y los agujeros de alineación
 ├── examples/
 │   ├── isocam.cfg                               todos los ajustes con su valor por defecto, para copiar y cambiar
 │   └── sample.gtl                               una muestra para probar el programa
