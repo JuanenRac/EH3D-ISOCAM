@@ -330,6 +330,13 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             }
             let (passes, unfixed) =
                 build_passes(&cli, &board, centre_of(&whole), cmd == "isolate")?;
+            // copper that the reader cannot draw (macro apertures, clear polarity, step and repeat) is not isolated: the cutter would go over it
+            if cmd == "isolate" && !board.scene.notes.is_empty() && !cli.force {
+                return Err(format!(
+                    "the layer has copper that is not drawn, so the paths would be wrong ({}); --force writes anyway",
+                    board.scene.notes.join("; ")
+                ));
+            }
             if cmd == "isolate" && unfixed > 0 && !cli.force {
                 return Err(format!("the tool does not fit between pieces of copper in {unfixed} places (run check to see them, or --force{})", if s.forced_isolation { "" } else { "; forced_isolation = yes lays a path along the wider ones" }));
             }

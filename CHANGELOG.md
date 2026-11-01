@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Copper that is not drawn stops `isolate`:** a layer with macro apertures, clear polarity or step and repeat, which the reader cannot draw, is refused with the reasons (the cutter would go over pads that are not there); `--force` writes anyway.
+
 ## [0.0.3] - Forced isolation, optimization, scale and fiducials, solder mask, units and a preview
 
 - **Forced isolation** (off by default, `forced_isolation = yes`): a path is also laid along the middle of every gap that the finest tool does not fit in, as long as the gap is not narrower than `forced_min_gap_mm`; every place is reported with its coordinates and its gap, the narrower gaps are listed and left alone, and `isolate` still refuses to write for those unless `--force` is given. With the setting off, the places are only reported, as before. The tool is wider than such a gap, so it touches the copper on both sides there; that is only warned about, with the place.
