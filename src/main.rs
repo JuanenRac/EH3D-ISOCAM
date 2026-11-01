@@ -56,7 +56,7 @@ isolate --net X,Y isolates only the net that holds the point (up to half a milli
 tab_width_mm and tab_min_length_mm. With a conflict tolerance, check and isolate warn about the tracks and pads that are thin for it (tolerance_warning_margin_mm). The alignment
 holes are 2, 3 or 6, outside the board or in a special pattern (alignment_pattern, alignment_special_a_mm and alignment_special_b_mm).
 conflict_tolerance_scope = pads keeps the tolerance for the gaps beside a pad. A layer that is really a drill file, a plot or a drawing (and the other way round) is refused by name; kind says
-what a file is. hpgl_pen_map and hpgl_pen_speed_cm_s (0 = the machine's own) set the pens of a plot of holes and the speed of a plot.";
+what a file is. hpgl_pen_map and hpgl_pen_speed_cm_s (0 = the machine's own) set the pens of a plot of holes and the speed of a plot. hpgl_isocam_style (on) writes a plot with a PA for each point and lines of about 75 columns, as the original program did.";
 
 #[derive(Clone)]
 struct Cli {
@@ -251,7 +251,12 @@ fn close_scoped(
 
 /// A plot file with the pen speed of the settings (none when it is 0).
 fn plot(cli: &Cli, text: Result<String, String>) -> Result<String, String> {
-    set_pen_speed(&text?, cli.settings.hpgl_pen_speed_cm_s)
+    let text = set_pen_speed(&text?, cli.settings.hpgl_pen_speed_cm_s)?;
+    Ok(if cli.settings.hpgl_isocam_style {
+        eh3d_isocam::hpgl::isocam_style(&text)
+    } else {
+        text
+    })
 }
 
 fn is_dxf(path: &str) -> bool {

@@ -128,6 +128,8 @@ pub struct Settings {
     pub hpgl_pen_map: Vec<(u8, u8)>,
     /// The pen speed of a plot file in cm/s; 0 leaves it to the machine.
     pub hpgl_pen_speed_cm_s: f64,
+    /// Write a plot file the way the original program did (a `PA` for each point, lines of about 75 columns); off writes the compact form.
+    pub hpgl_isocam_style: bool,
 }
 
 impl Default for Settings {
@@ -210,6 +212,7 @@ impl Default for Settings {
             rubout_fill_margin_mm: 0.0,
             hpgl_pen_map: Vec::new(),
             hpgl_pen_speed_cm_s: 0.0,
+            hpgl_isocam_style: true,
         }
     }
 }
@@ -380,6 +383,7 @@ impl Settings {
                     crate::hpgl::parse_pen_map(v).map_err(|e| format!("{key}: {e}"))?
             }
             "hpgl_pen_speed_cm_s" => self.hpgl_pen_speed_cm_s = num(key, v)?,
+            "hpgl_isocam_style" => self.hpgl_isocam_style = flag(key, v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -458,11 +462,13 @@ impl Settings {
 rubout_fill_margin_mm = {}
 hpgl_pen_map = {}
 hpgl_pen_speed_cm_s = {}
+hpgl_isocam_style = {}
 ",
             self.conflict_tolerance_scope.name(),
             self.rubout_fill_margin_mm,
             crate::hpgl::pen_map_text(&self.hpgl_pen_map),
-            self.hpgl_pen_speed_cm_s
+            self.hpgl_pen_speed_cm_s,
+            self.hpgl_isocam_style
         ));
         for p in &self.fiducials {
             extra.push_str(&format!(

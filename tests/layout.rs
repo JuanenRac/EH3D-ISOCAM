@@ -537,7 +537,10 @@ fn isolate_info_and_drc_run_on_the_sample_layer() {
         assert!(text.len() > 100);
         if ext == "plt" {
             assert!(
-                text.starts_with("IN;\n") && text.contains("SP1;") && text.contains("SP2;"),
+                text.starts_with("IN;\r\nSP")
+                    && text.contains("SP1;")
+                    && text.contains("SP2;")
+                    && text.ends_with("PU;\r\nPA0,0;SP;\r\n"),
                 "{text}"
             );
         } else {

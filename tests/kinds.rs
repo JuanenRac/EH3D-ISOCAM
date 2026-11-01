@@ -503,3 +503,24 @@ fn the_command_line_writes_dxf_plots_of_holes_and_clipped_fills() {
         "the fill cut to the copper is shorter than the whole box"
     );
 }
+
+#[test]
+fn the_plot_is_written_as_the_original_program_did() {
+    let compact = "IN;\nSP8;\nPU10,20;\nPD30,20,30,40,10,40;\nPU0,0;SP0;\n";
+    let styled = eh3d_isocam::hpgl::isocam_style(compact);
+    assert_eq!(
+        styled,
+        "IN;\r\nSP8;\r\nPU10,20;PD;PA30,20;PA30,40;PA10,40;PU;\r\nPA0,0;SP;\r\n"
+    );
+    // a long path is ended with CR LF after about 75 columns and never inside a command
+    let long: String = (0..40)
+        .map(|k| format!("{},{},", 1000 + k, 2000 + k))
+        .collect();
+    let long = format!(
+        "IN;\nSP1;\nPU1,1;\nPD{};\nPU0,0;SP0;\n",
+        long.trim_end_matches(',')
+    );
+    let text = eh3d_isocam::hpgl::isocam_style(&long);
+    assert!(text.lines().all(|l| l.len() <= 90 && l.ends_with(';')));
+    assert!(text.lines().count() > 4);
+}

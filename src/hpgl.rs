@@ -120,6 +120,59 @@ pub fn set_pen_speed(plot: &str, cm_s: f64) -> Result<String, String> {
     Ok(plot.replacen("IN;\n", &format!("IN;\nVS{v};\n"), 1))
 }
 
+/// Column after which a line of a plot file is ended at the next command (the plots the original program wrote run 72 to 84 columns).
+const WRAP_AT: usize = 75;
+
+/// A plot file written the way the original program wrote it: every point of a path as its own `PA`, the lines ended with CR LF after about 75 columns, the set-up
+/// commands (`IN`, `VS`, `SP`) on lines of their own, and the pen put away with `PU;` and `PA0,0;SP;` at the end. The plot read the same by any program.
+pub fn isocam_style(plot: &str) -> String {
+    let flat = plot.replace("\r\n", "").replace('\n', "");
+    let (body, closed) = match flat.strip_suffix("PU0,0;SP0;") {
+        Some(b) => (b, true),
+        None => (flat.as_str(), false),
+    };
+    let mut out = String::new();
+    let mut line = String::new();
+    let end_line = |out: &mut String, line: &mut String| {
+        if !line.is_empty() {
+            out.push_str(line);
+            out.push_str("\r\n");
+            line.clear();
+        }
+    };
+    for t in body.split(';').filter(|t| !t.is_empty()) {
+        let push = |out: &mut String, line: &mut String, c: String| {
+            line.push_str(&c);
+            line.push(';');
+            if line.len() >= WRAP_AT {
+                end_line(out, line);
+            }
+        };
+        if t == "IN" || t.starts_with("VS") || t.starts_with("SP") {
+            end_line(&mut out, &mut line);
+            line.push_str(t);
+            line.push(';');
+            end_line(&mut out, &mut line);
+        } else if let Some(args) = t.strip_prefix("PD").filter(|a| !a.is_empty()) {
+            push(&mut out, &mut line, "PD".to_string());
+            let n: Vec<&str> = args.split(',').collect();
+            for pair in n.as_chunks::<2>().0 {
+                push(&mut out, &mut line, format!("PA{},{}", pair[0], pair[1]));
+            }
+        } else {
+            push(&mut out, &mut line, t.to_string());
+        }
+    }
+    if closed {
+        line.push_str("PU;");
+        end_line(&mut out, &mut line);
+        out.push_str("PA0,0;SP;\r\n");
+    } else {
+        end_line(&mut out, &mut line);
+    }
+    out
+}
+
 /// Reads a map of drill tools to pens: `tool:pen` pairs separated by commas (`1:2, 3:1`). Empty is no map.
 pub fn parse_pen_map(v: &str) -> Result<Vec<(u8, u8)>, String> {
     let mut out: Vec<(u8, u8)> = Vec::new();
