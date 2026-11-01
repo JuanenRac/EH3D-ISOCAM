@@ -4,7 +4,7 @@ use crate::bitmap::{from_scene, Bitmap};
 use crate::contour::{loops, orient_climb, simplify, simplify_open, Grid, Loop};
 use crate::edt::distance_mm;
 use crate::order::Cut;
-use eh3d_gerberviewer::scene::Scene;
+use eh3d_gerberviewer::scene::{Scene, Shape};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Params {
@@ -294,10 +294,56 @@ fn trim_path(
 
 /// The passes of every tool of the plan, the widest tool first, and then the rings that remove the leftover copper.
 pub fn plan(scene: &Scene, p: &Plan) -> Result<Vec<Pass>, String> {
+    plan_with_pads(scene, p, None)
+}
+
+/// The smaller side of a pad (a disc, a rectangle or an obround), or `None` for tracks and regions.
+fn pad_size_mm(s: &Shape) -> Option<f64> {
+    match s {
+        Shape::Disc { r, .. } => Some(2.0 * r),
+        Shape::Rect { w, h, .. } | Shape::Obround { w, h, .. } => Some(w.min(*h)),
+        _ => None,
+    }
+}
+
+/// Like `plan`, but with `around_pads_min_mm` set every tool except the narrowest one cuts only the rings round pads whose smaller side is at least that wide; the narrowest tool
+/// does the rest (tracks and small pads), and with `trim` it leaves out what the wider tools have cut.
+pub fn plan_with_pads(
+    scene: &Scene,
+    p: &Plan,
+    around_pads_min_mm: Option<f64>,
+) -> Result<Vec<Pass>, String> {
     p.validate()?;
+    if let Some(m) = around_pads_min_mm {
+        if !(m.is_finite() && m > 0.0 && m <= 50.0) {
+            return Err(format!(
+                "around_pads_min_mm is {m}: it must be from 0 (exclusive) to 50"
+            ));
+        }
+    }
     let res = p.res_mm;
     let bm = from_scene(scene, p.reach_mm() + 4.0 * res, res)?;
     let dist = distance_mm(&bm.on, bm.w, bm.h, bm.res);
+    // the distance to the big pads alone, on the same grid
+    let pad_dist: Option<Vec<f32>> = around_pads_min_mm.map(|m| {
+        let mut pads = bm.clone();
+        pads.on.iter_mut().for_each(|c| *c = false);
+        let only = Scene {
+            shapes: scene
+                .shapes
+                .iter()
+                .filter(|s| pad_size_mm(s).is_some_and(|d| d >= m))
+                .cloned()
+                .collect(),
+            notes: Vec::new(),
+        };
+        pads.draw(&only);
+        if pads.count() == 0 {
+            vec![f32::INFINITY; pads.w * pads.h]
+        } else {
+            distance_mm(&pads.on, pads.w, pads.h, pads.res)
+        }
+    });
     let grid = Grid {
         dist: &dist,
         w: bm.w,
@@ -339,7 +385,23 @@ pub fn plan(scene: &Scene, p: &Plan) -> Result<Vec<Pass>, String> {
                 ..Pass::default()
             };
             for l in traced(offset) {
-                if p.trim && rank > 0 {
+                if let (Some(pd), true) = (&pad_dist, rank + 1 < order.len()) {
+                    // a wider tool: only where the path runs round a big pad; the rest is left to the finest tool
+                    let reach = offset + 2.0 * res;
+                    let not_pad = |q: (f64, f64)| {
+                        bm.index_at(q.0, q.1)
+                            .is_none_or(|ix| f64::from(pd[ix]) > reach)
+                    };
+                    let (whole, runs) = trim_path(&l, &not_pad, res);
+                    if let Some(w) = whole {
+                        mark(&bm, &mut path_cells, &w, true);
+                        pass.paths.push(w);
+                    }
+                    for r in runs {
+                        mark(&bm, &mut path_cells, &r, false);
+                        pass.open.push(r);
+                    }
+                } else if p.trim && rank > 0 {
                     let covered = |q: (f64, f64)| bm.index_at(q.0, q.1).is_some_and(|ix| cut[ix]);
                     let (whole, runs) = trim_path(&l, &covered, res);
                     if let Some(w) = whole {

@@ -631,3 +631,63 @@ fn the_example_settings_file_holds_every_default() {
         .unwrap();
     assert_eq!(Settings::parse(&text).unwrap(), Settings::default());
 }
+
+// ---- tool round pads only ---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn the_wide_tool_cuts_only_round_the_big_pads_when_asked() {
+    use eh3d_isocam::isolate::plan_with_pads;
+    let s = scene(vec![
+        disc(0.0, 0.0, 1.0),
+        Shape::Stroke {
+            x0: 6.0,
+            y0: 0.0,
+            x1: 9.0,
+            y1: 0.0,
+            w: 0.2,
+        },
+    ]);
+    let p = plan_of(vec![one(0.2, 1), one(0.4, 1)], None, true);
+    let all = plan(&s, &p).unwrap();
+    let near = |pass: &Pass| {
+        pass.paths
+            .iter()
+            .chain(pass.open.iter())
+            .flatten()
+            .all(|q| q.0.hypot(q.1) < 3.0)
+    };
+    // without the setting the wide tool also goes round the track
+    assert!(all
+        .iter()
+        .filter(|x| x.diameter_mm == 0.4)
+        .any(|x| !near(x)));
+    let around = plan_with_pads(&s, &p, Some(0.8)).unwrap();
+    let wide: Vec<&Pass> = around.iter().filter(|x| x.diameter_mm == 0.4).collect();
+    assert!(!wide.is_empty() && wide.iter().all(|x| near(x)));
+    // the fine tool still goes round the track
+    let fine: Vec<&Pass> = around.iter().filter(|x| x.diameter_mm == 0.2).collect();
+    assert!(fine.iter().any(|x| !near(x)));
+}
+
+#[test]
+fn small_pads_are_left_to_the_fine_tool_and_a_bad_minimum_is_refused() {
+    use eh3d_isocam::isolate::plan_with_pads;
+    let s = scene(vec![disc(0.0, 0.0, 0.3)]);
+    let p = plan_of(vec![one(0.2, 1), one(0.4, 1)], None, true);
+    let a = plan_with_pads(&s, &p, Some(1.0)).unwrap();
+    assert!(a
+        .iter()
+        .filter(|x| x.diameter_mm == 0.4)
+        .all(|x| x.paths.is_empty() && x.open.is_empty()));
+    assert!(plan_with_pads(&s, &p, Some(0.0)).is_err());
+    assert!(plan_with_pads(&s, &p, Some(f64::NAN)).is_err());
+}
+
+#[test]
+fn the_setting_around_pads_min_is_read_and_printed() {
+    let mut st = Settings::default();
+    assert_eq!(st.around_pads(), None);
+    st.set("around_pads_min_mm", "1.5").unwrap();
+    assert_eq!(st.around_pads(), Some(1.5));
+    assert!(st.to_text().contains("around_pads_min_mm = 1.5"));
+}

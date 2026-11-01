@@ -29,6 +29,8 @@ pub struct Settings {
     pub rubout_tool_mm: f64,
     pub rubout_width_mm: f64,
     pub rubout_overlap: f64,
+    /// 0 (off): every tool cuts everywhere. Above 0: the wider tools cut only the rings round pads whose smaller side is at least this wide, and the narrowest tool does the rest.
+    pub around_pads_min_mm: f64,
     pub depth_mm: f64,
     pub feed_mm_min: f64,
     pub plunge_mm_min: f64,
@@ -115,6 +117,7 @@ impl Default for Settings {
             rubout_tool_mm: 0.0,
             rubout_width_mm: 1.0,
             rubout_overlap: 0.2,
+            around_pads_min_mm: 0.0,
             depth_mm: 0.06,
             feed_mm_min: 300.0,
             plunge_mm_min: 60.0,
@@ -233,6 +236,7 @@ impl Settings {
             "rubout_tool_mm" => self.rubout_tool_mm = num(key, v)?,
             "rubout_width_mm" => self.rubout_width_mm = num(key, v)?,
             "rubout_overlap" => self.rubout_overlap = num(key, v)?,
+            "around_pads_min_mm" => self.around_pads_min_mm = num(key, v)?,
             "depth_mm" => self.depth_mm = num(key, v)?,
             "feed_mm_min" => self.feed_mm_min = num(key, v)?,
             "plunge_mm_min" => self.plunge_mm_min = num(key, v)?,
@@ -385,7 +389,7 @@ impl Settings {
             ));
         }
         let main = format!(
-            "# EH3D-ISOCAM settings\nres_mm = {}\nfine_tool_mm = {}\nfine_passes = {}\nfine_stepover_mm = {}\ncoarse_tool_mm = {}\ncoarse_passes = {}\ncoarse_stepover_mm = {}\ntrim_fine = {}\nrubout_tool_mm = {}\nrubout_width_mm = {}\nrubout_overlap = {}\ndepth_mm = {}\nfeed_mm_min = {}\nplunge_mm_min = {}\nsafe_z_mm = {}\ntool_change_z_mm = {}\nspindle_rpm = {}\ndirection = {}\nstart_x_mm = {}\nstart_y_mm = {}\nloop_start = {}\nordering = {}\noptimize_max_paths = {}\nroute_tool_mm = {}\nalignment_hole_mm = {}\nalignment_margin_mm = {}\nalignment_holes = {}\nalignment_tool = {}\nmirror = {}\nrotate_quarters = {}\npanel_cols = {}\npanel_rows = {}\npanel_gap_mm = {}\nrule_min_width_mm = {}\nrule_min_clearance_mm = {}\nrule_annular_ring_mm = {}\nrule_holes_on_copper = {}\n",
+            "# EH3D-ISOCAM settings\nres_mm = {}\nfine_tool_mm = {}\nfine_passes = {}\nfine_stepover_mm = {}\ncoarse_tool_mm = {}\ncoarse_passes = {}\ncoarse_stepover_mm = {}\ntrim_fine = {}\nrubout_tool_mm = {}\nrubout_width_mm = {}\nrubout_overlap = {}\naround_pads_min_mm = {}\ndepth_mm = {}\nfeed_mm_min = {}\nplunge_mm_min = {}\nsafe_z_mm = {}\ntool_change_z_mm = {}\nspindle_rpm = {}\ndirection = {}\nstart_x_mm = {}\nstart_y_mm = {}\nloop_start = {}\nordering = {}\noptimize_max_paths = {}\nroute_tool_mm = {}\nalignment_hole_mm = {}\nalignment_margin_mm = {}\nalignment_holes = {}\nalignment_tool = {}\nmirror = {}\nrotate_quarters = {}\npanel_cols = {}\npanel_rows = {}\npanel_gap_mm = {}\nrule_min_width_mm = {}\nrule_min_clearance_mm = {}\nrule_annular_ring_mm = {}\nrule_holes_on_copper = {}\n",
             self.res_mm,
             self.fine_tool_mm,
             self.fine_passes,
@@ -397,6 +401,7 @@ impl Settings {
             self.rubout_tool_mm,
             self.rubout_width_mm,
             self.rubout_overlap,
+            self.around_pads_min_mm,
             self.depth_mm,
             self.feed_mm_min,
             self.plunge_mm_min,
@@ -579,6 +584,11 @@ impl Settings {
     }
 
     /// The tools and the passes of the isolation.
+    /// The smallest pad (its smaller side) the wider tools cut round, or `None` when every tool cuts everywhere.
+    pub fn around_pads(&self) -> Option<f64> {
+        (self.around_pads_min_mm > 0.0).then_some(self.around_pads_min_mm)
+    }
+
     pub fn plan(&self) -> Result<Plan, String> {
         let mut tools = vec![Tool {
             diameter_mm: self.fine_tool_mm,

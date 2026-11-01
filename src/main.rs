@@ -12,7 +12,7 @@ use eh3d_isocam::fiducial::{apply_to_holes, apply_to_passes};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::gcode::write_in;
 use eh3d_isocam::hpgl::{write_with as hpgl_with, PenBy};
-use eh3d_isocam::isolate::{close_pieces, plan, Pass};
+use eh3d_isocam::isolate::{close_pieces, plan_with_pads, Pass};
 use eh3d_isocam::mask;
 use eh3d_isocam::optimize::optimize_passes;
 use eh3d_isocam::order::{arrange, directions, travel_mm, Cut, Strategy};
@@ -219,7 +219,7 @@ fn build_passes(
     let s = &cli.settings;
     let pl = s.plan()?;
     let close = close_pieces(&board.scene, s.conflict_gap_mm(pl.finest_mm()), pl.res_mm)?;
-    let mut passes = plan(&board.scene, &pl)?;
+    let mut passes = plan_with_pads(&board.scene, &pl, s.around_pads())?;
     let mut unfixed = close.len();
     if let Some(f) = s.forced() {
         let r = forced_passes(&board.scene, &pl, &f)?;
