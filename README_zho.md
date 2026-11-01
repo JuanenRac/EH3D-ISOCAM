@@ -18,7 +18,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有115个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它还没有窗口，没有在机器上试过，也没有用一批真实文件检验过。
+**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有134个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它还没有窗口，没有在机器上试过，也没有用一批真实文件检验过。
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | 版本 | `0.0.3` |
 | 成熟度 | 脚手架 |
-| 测试 | 115 |
+| 测试 | 134 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -49,7 +49,7 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 115 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
+| 测试 | 🟡 | 134 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🔴 | 计划中：套件通用的 egui 窗口；目前只有命令行。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -69,6 +69,7 @@
 * **一个设置文件**（`src/config.rs`）：每个可调的值都是有默认值的设置，可从`键 = 值`文件（`examples/isocam.cfg`）读取，或用同名的命令行选项给出。
 * **强制隔离**（`src/forced.rs`）：设置 `forced_isolation = yes` 后，在最细刀具放不进去的间隙中间也会铺一条路径，只要间隙不窄于 `forced_min_gap_mm`；每处都会连同坐标和间隙宽度一起报告，更窄的间隙只列出而不处理。默认关闭：此时这些位置只会被报告。
 * **问题区域、容差和对位孔距离**（`src/problems.rs`、`src/config.rs`）：`check` 还会把不会中止任何操作的警告列出来：比 `problem_corner_angle_deg` 更尖的内角（圆形刀具会在缺口尖端留下铜；默认 60 度，0 表示关闭），以及穿过两个焊盘之间、且焊盘与走线的距离小于 `problem_track_gap_factor` 倍刀具直径的走线（默认 1.5，0 表示关闭）；这两个判据都是设置，没有写死在代码里。`conflict_tolerance_mm`（默认 0：不接受任何间隙）接受比刀具最多窄这么多的间隙，对 `check` 和 `isolate` 都有效。对位孔与板子的距离是 `alignment_margin_mm`（默认 5 mm；同类的其他程序把它们放在 10 mm 处，即 `alignment_margin_mm = 10`）。
+* **连接桥、网络、孔图案与区域清除** （`src/drill.rs`、`src/isolate.rs`、`src/transform.rs`、`src/problems.rs`、`src/legacy.rs`）：`route` 可以保留把板固定在板材上的连接桥（每条闭合路径的数量为 `tab_count`，默认0；保留的材料宽度为 `tab_width_mm`；桥之间的最小长度为 `tab_min_length_mm`）：切削在每座桥中心之前停下，距离为半个桥宽加半个刀具直径。`isolate --net X,Y` 只用刀具 `net_tool_mm` 隔离包含该点的网络。`rubout-area OUT --area X0,Y0,X1,Y1` 写出刀具 `rubout_lines_tool_mm` 的平行线（方向为 `rubout_lines_direction`）来清除一块区域。对位孔可以是2、3或6个，位于板外，或用 `alignment_pattern = special` 排成围绕板中心的图案（一对孔相距 `alignment_special_a_mm`，另外四个相距 `alignment_special_b_mm`）。设置冲突容差后，`check` 和 `isolate` 会对比两倍容差加 `tolerance_warning_margin_mm` 更细的走线和矩形焊盘发出警告。旧式Gerber层的格式推测现在使用文件声明的单位和板的大小，孔径列表也可以在一个单元格里给出两边（`60x40`）。
 * **更轻的路径、缩放与补偿**（`src/optimize.rs`、`src/fiducial.rs`）：去掉尖刺，并把落在直线上的点（在 `optimize_tolerance_mm` 之内）合并为一次移动（两者默认开启：0.01 mm 和 0.02 mm，设为 0 即关闭）；整个作业可以以电路板中心为基准缩放，成对的参考点（相对于该中心，标记应在的位置和实测位置）给出相似变换（两对）或仿射拟合（三对及以上，最小二乘），并应用到每条路径和每个孔；缩放远离 1 或某个标记对不上时会被拒绝。
 * **阻焊层**（`src/mask.rs`）：开窗写成 Gerber 层，来自设计的阻焊层或铜箔的焊盘，每个按 `mask_margin_mm` 外扩；走线保持被覆盖。
 * **单位与预览**（`src/units.rs`、`src/preview.rs`）：长度可以带 `mm`、`mil` 或 `in`，G 代码可以按英寸写出，`preview` 把各遍加工路径画在铜箔上，输出为 SVG 图或文本。
@@ -118,6 +119,7 @@ eh3d-isocam preview LAYER.gtl [OUT.svg|OUT.txt]    the passes drawn over the cop
 eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
 eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
 eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
+eh3d-isocam rubout-area OUT.nc|OUT.plt --area X0,Y0,X1,Y1  parallel lines of a tool that clear an area
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
@@ -188,7 +190,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 测试
 
-测试套件有 115 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 134 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 

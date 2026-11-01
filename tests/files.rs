@@ -2,8 +2,8 @@
 
 use eh3d_bungard_formats::{hpgl as plotter, ncd};
 use eh3d_isocam::drill::{
-    join_runs, read_drills, read_outline, route_outline, write_drills, write_route_excellon, Hole,
-    Outline,
+    add_tabs, join_runs, read_drills, read_outline, route_outline, write_drills,
+    write_route_excellon, Hole, Outline, Tabs,
 };
 use eh3d_isocam::hpgl::{write_with, PenBy};
 use eh3d_isocam::order::{arrange, is_clockwise, Cut, Order};
@@ -290,4 +290,126 @@ fn the_route_as_hpgl_is_read_back_by_the_reader_of_the_plot_files() {
     // the same path as an Excellon routing file
     let (cuts, _) = arrange(&pass.cuts(), &order, order.start);
     assert!(write_route_excellon(&cuts, 1.0, 1).unwrap().contains("M15"));
+}
+
+fn path_length(p: &[(f64, f64)], closed: bool) -> f64 {
+    let mut s: f64 = p
+        .windows(2)
+        .map(|w| (w[1].0 - w[0].0).hypot(w[1].1 - w[0].1))
+        .sum();
+    if closed {
+        s += (p[0].0 - p[p.len() - 1].0).hypot(p[0].1 - p[p.len() - 1].1);
+    }
+    s
+}
+
+#[test]
+fn bridges_open_the_cut_round_the_board_into_runs_with_gaps() {
+    let o = Outline {
+        closed: vec![rect(0.0, 0.0, 40.0, 20.0)],
+        open: vec![],
+    };
+    let mut pass = route_outline(&o, 1.0, 0.05).unwrap();
+    let whole = path_length(&pass.paths[0], true);
+    let tabs = Tabs {
+        count: 4,
+        width_mm: 2.0,
+        min_length_mm: 4.0,
+    };
+    let r = add_tabs(&mut pass, 1.0, &tabs).unwrap();
+    assert_eq!((r.bridges, r.paths_cut, r.paths_left_closed), (4, 1, 0));
+    assert!(pass.paths.is_empty());
+    assert_eq!(pass.open.len(), 4);
+    // every bridge takes its width and one tool out of the path
+    let left: f64 = pass.open.iter().map(|p| path_length(p, false)).sum();
+    assert!((whole - left - 4.0 * 3.0).abs() < 1e-6, "{whole} {left}");
+    // the runs are cuts like any other: they reach the routing file
+    let text = write_route_excellon(&pass.cuts(), 1.0, 1).unwrap();
+    assert_eq!(text.matches("M15").count(), 4);
+}
+
+#[test]
+fn a_path_gets_fewer_bridges_when_the_pieces_would_be_too_short() {
+    let o = Outline {
+        closed: vec![rect(0.0, 0.0, 40.0, 20.0)],
+        open: vec![],
+    };
+    let base = route_outline(&o, 1.0, 0.05).unwrap();
+    let total = path_length(&base.paths[0], true);
+    // a piece of at least 50 mm: two bridges at most on about 124 mm
+    let mut pass = base.clone();
+    let tabs = Tabs {
+        count: 6,
+        width_mm: 1.0,
+        min_length_mm: 50.0,
+    };
+    let r = add_tabs(&mut pass, 1.0, &tabs).unwrap();
+    assert_eq!(r.bridges, (total / 50.0).floor() as usize);
+    // longer than the path itself: nothing is opened and it is said
+    let mut pass = base.clone();
+    let tabs = Tabs {
+        count: 3,
+        width_mm: 1.0,
+        min_length_mm: 500.0,
+    };
+    let r = add_tabs(&mut pass, 1.0, &tabs).unwrap();
+    assert_eq!((r.bridges, r.paths_left_closed), (0, 1));
+    assert_eq!(pass.paths.len(), 1);
+    // a bridge wider than the span between two bridges takes the bridges back
+    let mut pass = base.clone();
+    let tabs = Tabs {
+        count: 4,
+        width_mm: 40.0,
+        min_length_mm: 4.0,
+    };
+    let r = add_tabs(&mut pass, 1.0, &tabs).unwrap();
+    assert!(r.bridges < 4 && r.bridges >= 1, "{r:?}");
+}
+
+#[test]
+fn bridges_have_limits() {
+    let o = Outline {
+        closed: vec![rect(0.0, 0.0, 40.0, 20.0)],
+        open: vec![],
+    };
+    let base = route_outline(&o, 1.0, 0.05).unwrap();
+    let ok = Tabs {
+        count: 2,
+        width_mm: 1.0,
+        min_length_mm: 4.0,
+    };
+    // none asked for: nothing changes
+    let mut pass = base.clone();
+    let none = Tabs { count: 0, ..ok };
+    assert_eq!(add_tabs(&mut pass, 1.0, &none).unwrap().bridges, 0);
+    assert_eq!(pass, base);
+    for (tool, tabs) in [
+        (0.0, ok),
+        (
+            1.0,
+            Tabs {
+                width_mm: 0.05,
+                ..ok
+            },
+        ),
+        (
+            1.0,
+            Tabs {
+                width_mm: f64::NAN,
+                ..ok
+            },
+        ),
+        (
+            1.0,
+            Tabs {
+                min_length_mm: 1.9,
+                ..ok
+            },
+        ),
+    ] {
+        assert!(
+            add_tabs(&mut base.clone(), tool, &tabs).is_err(),
+            "{tool} {tabs:?}"
+        );
+    }
 }

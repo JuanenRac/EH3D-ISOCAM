@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Bridges on the cut of the board** (`tab_count`, `tab_width_mm`, `tab_min_length_mm`; 0 bridges by default): `route` opens each closed path into runs with a gap at every bridge, so the board stays held in the sheet; the cut stops half a bridge and half a tool short of the middle of the bridge, a path too short for a bridge is left closed and said so, and a bridge of less than 0.1 mm or pieces of less than two tools are refused.
+- **One net by itself** (`isolate --net X,Y`, `net_tool_mm`): only the copper joined to the point (up to half a millimetre from it) is isolated, with its own tool.
+- **Clearing an area with parallel lines** (`rubout-area OUT --area X0,Y0,X1,Y1`, `rubout_lines_tool_mm`, `rubout_lines_direction`, and `rubout_overlap`): back-and-forth lines whose tool reaches the edge of the area.
+- **Six alignment holes and a special pattern** (`alignment_holes` 2, 3 or 6; `alignment_pattern` normal or special; `alignment_special_a_mm` 40 and `alignment_special_b_mm` 60 by default): six is the pair and the four corners outside the board; special puts the pair about the middle of the board, and six adds four more level with them.
+- **A warning for a tolerance that is high against thin copper** (`tolerance_warning_margin_mm`, 0.05 by default): with a conflict tolerance, `check` and `isolate` list the tracks and rectangular pads thinner than twice the tolerance plus the margin.
+- **Better guess of the format of an old-style Gerber layer:** it uses the units the file states and how big the board is (a short coordinate in inch is 2.3, not 1.3), and a list of apertures may give both sides in one cell (`60x40`).
 - **Each dependency on a sibling repository by path says the version it needs** (`version = ">=0.0.1", path = "../EH3D-..."`), so Cargo stops at once when the sibling next to this one is older than the program expects.
 - **Rectangular pens in the viewer:** a track drawn with a rectangular or obround aperture is now the swept rectangle (the segment and the pen, a polygon), not a round-ended line as wide as the narrow side of the pen.
 - **Problem zones in `check`:** inner corners sharper than `problem_corner_angle_deg` and tracks that run between two pads nearer than `problem_track_gap_factor` times the tool are listed as warnings; both criteria are settings.

@@ -357,3 +357,110 @@ pub fn route_outline(o: &Outline, tool_mm: f64, res_mm: f64) -> Result<Pass, Str
         ..Pass::default()
     })
 }
+
+/// Bridges that hold the board in the sheet while the tool cuts round it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Tabs {
+    /// How many bridges on each closed path.
+    pub count: usize,
+    /// How wide the bridge of material that is left is, measured between the edges of the cut on either side of it.
+    pub width_mm: f64,
+    /// The shortest piece of path that may go between two bridges, counted along the whole path: a path gets at most its length divided by this many bridges.
+    pub min_length_mm: f64,
+}
+
+/// What `add_tabs` did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct TabReport {
+    /// The closed paths that were opened into runs.
+    pub paths_cut: usize,
+    pub bridges: usize,
+    /// The closed paths too short for a bridge, which are left closed.
+    pub paths_left_closed: usize,
+}
+
+/// The point at the distance `d` along a closed path (`cum[i]` is the length up to point `i`, `total` the whole length).
+fn point_along(pts: &[(f64, f64)], cum: &[f64], total: f64, d: f64) -> (f64, f64) {
+    let d = d.rem_euclid(total);
+    let n = pts.len();
+    let i = cum
+        .partition_point(|c| *c <= d)
+        .saturating_sub(1)
+        .min(n - 1);
+    let (a, b) = (pts[i], pts[(i + 1) % n]);
+    let seg = (if i + 1 < n { cum[i + 1] } else { total }) - cum[i];
+    let k = if seg > 0.0 { (d - cum[i]) / seg } else { 0.0 };
+    (a.0 + (b.0 - a.0) * k, a.1 + (b.1 - a.1) * k)
+}
+
+/// Opens the closed paths of a pass into runs with a gap at each bridge. The gap is as long as the width of the bridge plus one tool (the tool stops half a width and half a tool
+/// short of the middle of the bridge, so the material that is left is as wide as asked); the bridges are spread evenly along the path, the first half a span from its start.
+/// A path that is too short for a bridge stays closed and is counted.
+pub fn add_tabs(pass: &mut Pass, tool_mm: f64, t: &Tabs) -> Result<TabReport, String> {
+    if !(tool_mm.is_finite() && tool_mm > 0.0) {
+        return Err("the tool of the bridges must be wider than 0".into());
+    }
+    if !(t.width_mm.is_finite() && t.width_mm >= 0.1) {
+        return Err(format!(
+            "the bridge is {} mm wide: it must be at least 0.1",
+            t.width_mm
+        ));
+    }
+    if !(t.min_length_mm.is_finite() && t.min_length_mm >= 2.0 * tool_mm) {
+        return Err(format!(
+            "the shortest piece between bridges is {} mm: it must be at least two tools ({} mm)",
+            t.min_length_mm,
+            2.0 * tool_mm
+        ));
+    }
+    let mut report = TabReport::default();
+    if t.count == 0 {
+        return Ok(report);
+    }
+    let half = (t.width_mm + tool_mm) / 2.0;
+    let mut kept: Vec<Loop> = Vec::new();
+    let mut runs: Vec<Loop> = Vec::new();
+    for path in std::mem::take(&mut pass.paths) {
+        let n = path.len();
+        let mut cum = Vec::with_capacity(n);
+        let mut total = 0.0;
+        for i in 0..n {
+            cum.push(total);
+            let (a, b) = (path[i], path[(i + 1) % n]);
+            total += (b.0 - a.0).hypot(b.1 - a.1);
+        }
+        let mut bridges = t.count.min((total / t.min_length_mm).floor() as usize);
+        // the span between two bridges has to be longer than the gap of a bridge
+        while bridges > 0 && total / bridges as f64 <= 2.0 * half + 0.01 {
+            bridges -= 1;
+        }
+        if n < 3 || bridges == 0 {
+            report.paths_left_closed += 1;
+            kept.push(path);
+            continue;
+        }
+        let span = total / bridges as f64;
+        for k in 0..bridges {
+            let (from, to) = (
+                (k as f64 + 0.5) * span + half,
+                (k as f64 + 1.5) * span - half,
+            );
+            let mut run = vec![point_along(&path, &cum, total, from)];
+            for lap in 0..3 {
+                for i in 0..n {
+                    let d = lap as f64 * total + cum[i];
+                    if d > from + 1e-9 && d < to - 1e-9 {
+                        run.push(path[i]);
+                    }
+                }
+            }
+            run.push(point_along(&path, &cum, total, to));
+            runs.push(run);
+        }
+        report.paths_cut += 1;
+        report.bridges += bridges;
+    }
+    pass.paths = kept;
+    pass.open.extend(runs);
+    Ok(report)
+}

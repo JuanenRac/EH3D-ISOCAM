@@ -271,6 +271,32 @@ pub fn panel_holes(holes: &[Hole], offsets: &[(f64, f64)]) -> Vec<Hole> {
         .collect()
 }
 
+/// Where the holes that hold the board go: outside the board (`Normal`), or in a fixed pattern about the middle of it (`Special`), for a clamp whose pins are a set distance apart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HolePattern {
+    Normal,
+    Special,
+}
+
+impl HolePattern {
+    pub fn parse(v: &str) -> Result<HolePattern, String> {
+        match v.trim().to_ascii_lowercase().as_str() {
+            "normal" | "n" => Ok(HolePattern::Normal),
+            "special" | "s" => Ok(HolePattern::Special),
+            other => Err(format!(
+                "alignment_pattern '{other}': it must be normal or special"
+            )),
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            HolePattern::Normal => "normal",
+            HolePattern::Special => "special",
+        }
+    }
+}
+
 /// The holes that hold the board while it is turned over: two on either side of the board, as far from the line as each other (so the turned board finds them where they were),
 /// and, when `count` is 3, one more on the line, which tells the board from the same board turned half a turn.
 pub fn alignment_holes(
@@ -281,6 +307,33 @@ pub fn alignment_holes(
     axis: Axis,
     tool: u8,
 ) -> Result<Vec<Hole>, String> {
+    alignment_pattern(
+        b,
+        diameter_mm,
+        margin_mm,
+        count,
+        axis,
+        tool,
+        HolePattern::Normal,
+        (40.0, 60.0),
+    )
+}
+
+/// The holes of a pattern: 2, 3 or 6 of the normal kind, 2 or 6 of the special kind.
+/// Normal: the pair is `margin_mm` outside the board, on the middle line; the third hole is on the line across; the six are the pair and the four corners, all `margin_mm` outside.
+/// Special: the pair is `special.0` apart about the middle of the board; the six add four holes `special.1` apart across it, level with the two of the pair. Every pattern is the
+/// same turned over, so the board finds the holes where they were.
+#[allow(clippy::too_many_arguments)]
+pub fn alignment_pattern(
+    b: &Bounds,
+    diameter_mm: f64,
+    margin_mm: f64,
+    count: usize,
+    axis: Axis,
+    tool: u8,
+    pattern: HolePattern,
+    special: (f64, f64),
+) -> Result<Vec<Hole>, String> {
     if b.is_empty() {
         return Err("there is no board to put holes round".into());
     }
@@ -289,8 +342,8 @@ pub fn alignment_holes(
             "the diameter and the margin of the alignment holes must be more than 0".into(),
         );
     }
-    if !(2..=3).contains(&count) {
-        return Err(format!("{count} alignment holes: there must be 2 or 3"));
+    if !matches!(count, 2 | 3 | 6) {
+        return Err(format!("{count} alignment holes: there must be 2, 3 or 6"));
     }
     let (cx, cy) = ((b.min_x + b.max_x) / 2.0, (b.min_y + b.max_y) / 2.0);
     let at = |x: f64, y: f64| Hole {
@@ -299,6 +352,35 @@ pub fn alignment_holes(
         y_mm: y,
         diameter_mm,
     };
+    if pattern == HolePattern::Special {
+        if count == 3 {
+            return Err("a special pattern has 2 or 6 holes".into());
+        }
+        let (a, c) = special;
+        if !(a.is_finite() && a > 0.0 && c.is_finite() && c > 0.0) {
+            return Err("the distances of the special pattern must be more than 0".into());
+        }
+        let pair = match axis {
+            Axis::Vertical => [(cx - a / 2.0, cy), (cx + a / 2.0, cy)],
+            Axis::Horizontal => [(cx, cy - a / 2.0), (cx, cy + a / 2.0)],
+        };
+        let mut holes: Vec<Hole> = pair.iter().map(|p| at(p.0, p.1)).collect();
+        if count == 6 {
+            for p in pair {
+                match axis {
+                    Axis::Vertical => {
+                        holes.push(at(p.0, p.1 - c / 2.0));
+                        holes.push(at(p.0, p.1 + c / 2.0));
+                    }
+                    Axis::Horizontal => {
+                        holes.push(at(p.0 - c / 2.0, p.1));
+                        holes.push(at(p.0 + c / 2.0, p.1));
+                    }
+                }
+            }
+        }
+        return Ok(holes);
+    }
     let mut holes = match axis {
         Axis::Vertical => vec![at(b.min_x - margin_mm, cy), at(b.max_x + margin_mm, cy)],
         Axis::Horizontal => vec![at(cx, b.min_y - margin_mm), at(cx, b.max_y + margin_mm)],
@@ -308,6 +390,13 @@ pub fn alignment_holes(
             Axis::Vertical => at(cx, b.min_y - margin_mm),
             Axis::Horizontal => at(b.min_x - margin_mm, cy),
         });
+    }
+    if count == 6 {
+        for x in [b.min_x - margin_mm, b.max_x + margin_mm] {
+            for y in [b.min_y - margin_mm, b.max_y + margin_mm] {
+                holes.push(at(x, y));
+            }
+        }
     }
     Ok(holes)
 }

@@ -6,20 +6,21 @@ use eh3d_gerberviewer::scene::from_gerber;
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::drc;
 use eh3d_isocam::drill::{
-    read_drills, read_outline, route_outline, write_drills, write_route_excellon, Hole,
+    add_tabs, read_drills, read_outline, route_outline, write_drills, write_route_excellon, Hole,
+    Tabs,
 };
 use eh3d_isocam::fiducial::{apply_to_holes, apply_to_passes};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::gcode::write_in;
 use eh3d_isocam::hpgl::{write_with as hpgl_with, PenBy};
-use eh3d_isocam::isolate::{close_pieces, plan_with_pads, Pass};
+use eh3d_isocam::isolate::{close_pieces, net_scene, plan_with_pads, rubout_lines, Pass};
 use eh3d_isocam::mask;
 use eh3d_isocam::optimize::optimize_passes;
 use eh3d_isocam::order::{arrange, directions, travel_mm, Cut, Strategy};
 use eh3d_isocam::preview;
-use eh3d_isocam::problems::problem_zones;
-use eh3d_isocam::transform::{alignment_holes, lay_out, Axis, Board};
-use eh3d_isocam::units::Unit;
+use eh3d_isocam::problems::{problem_zones, thin_for_tolerance};
+use eh3d_isocam::transform::{alignment_pattern, lay_out, Axis, Board};
+use eh3d_isocam::units::{parse_length, Unit};
 use std::env;
 use std::fs;
 use std::process::ExitCode;
@@ -34,6 +35,7 @@ const HELP: &str = "eh3d-isocam: isolation milling of copper from a Gerber layer
   eh3d-isocam drills IN.ncd OUT.ncd [--align]    read a drill file and write it back (turned over, repeated on a panel, with alignment holes)
   eh3d-isocam route OUTLINE OUT.plt|OUT.ncd      the path of the tool round the board (OUTLINE is a Gerber outline layer, a .dxf or a .plt)
   eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F.gts]  the openings of the solder mask, from the mask layer or from the pads of the copper
+  eh3d-isocam rubout-area OUT.nc|OUT.plt --area X0,Y0,X1,Y1  parallel lines of a tool that clear an area (the tool and the direction are settings)
   eh3d-isocam config                             every setting with its default, as a configuration file
 
 Every option is a setting of the configuration file: --config FILE reads one, and --fine-tool-mm 0.15 is fine_tool_mm = 0.15 (the old --tool, --passes, --stepover, --res,
@@ -44,7 +46,10 @@ An old-style Gerber layer (no format statement) needs --apertures FILE, the list
 (--gerber-format 2.3, --gerber-zeros leading|trailing, --gerber-units inch|mm, --aperture-units mil|mm|inch, --aperture-size-column 1).
 isolate refuses to write when the tool does not fit between pieces of copper (run check to see where) unless --force is given; with --forced-isolation yes it lays a path along
 every such gap that is not narrower than --forced-min-gap-mm and refuses only for the narrower ones. --optimize-tolerance-mm and --spike-max-mm make the paths lighter;
---scale-x/--scale-y (about the centre of the board) and --fiducial \"DESIGN_X,DESIGN_Y,MEASURED_X,MEASURED_Y\" (two or more times) scale and correct the work for a stretched or turned board.";
+--scale-x/--scale-y (about the centre of the board) and --fiducial \"DESIGN_X,DESIGN_Y,MEASURED_X,MEASURED_Y\" (two or more times) scale and correct the work for a stretched or turned board.
+isolate --net X,Y isolates only the net that holds the point (up to half a millimetre from its copper) with the tool of net_tool_mm. route puts bridges on the cut with tab_count,
+tab_width_mm and tab_min_length_mm. With a conflict tolerance, check and isolate warn about the tracks and pads that are thin for it (tolerance_warning_margin_mm). The alignment
+holes are 2, 3 or 6, outside the board or in a special pattern (alignment_pattern, alignment_special_a_mm and alignment_special_b_mm).";
 
 #[derive(Clone)]
 struct Cli {
@@ -56,6 +61,24 @@ struct Cli {
     drills: Option<String>,
     mask_layer: Option<String>,
     apertures: Option<String>,
+    /// A point of the net to isolate by itself (`--net X,Y`).
+    net: Option<(f64, f64)>,
+    /// The area to clear with lines (`--area X0,Y0,X1,Y1`).
+    area: Option<(f64, f64, f64, f64)>,
+}
+
+/// Numbers separated by commas, each one a length that may carry its unit.
+fn lengths(v: &str, unit: Unit, n: usize, what: &str) -> Result<Vec<f64>, String> {
+    let parts: Vec<&str> = v.split(',').collect();
+    if parts.len() != n {
+        return Err(format!(
+            "{what} needs {n} numbers separated by commas, like 1,2"
+        ));
+    }
+    parts
+        .iter()
+        .map(|p| parse_length(p, unit).map_err(|e| format!("{what}: {e}")))
+        .collect()
 }
 
 fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
@@ -68,6 +91,8 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
         drills: None,
         mask_layer: None,
         apertures: None,
+        net: None,
+        area: None,
     };
     // the configuration file first, so that the options on the command line win over it
     if let Some(i) = args.iter().position(|a| a == "--config") {
@@ -99,6 +124,17 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
                     "--drills" => cli.drills = Some(v),
                     "--apertures" => cli.apertures = Some(v),
                     _ => cli.mask_layer = Some(v),
+                }
+            }
+            "--net" | "--area" => {
+                let v = it.next().ok_or_else(|| format!("{a} needs a value"))?;
+                let unit = cli.settings.input_units;
+                if a == "--net" {
+                    let n = lengths(&v, unit, 2, "--net")?;
+                    cli.net = Some((n[0], n[1]));
+                } else {
+                    let n = lengths(&v, unit, 4, "--area")?;
+                    cli.area = Some((n[0], n[1], n[2], n[3]));
                 }
             }
             o if o.starts_with("--") => {
@@ -188,6 +224,37 @@ fn is_plot(path: &str) -> bool {
     path.to_ascii_lowercase().ends_with(".plt")
 }
 
+/// The warning about copper that is thin for the tolerance, when there is a tolerance (the first few, then how many more).
+fn warn_thin(
+    cli: &Cli,
+    scene: &eh3d_gerberviewer::scene::Scene,
+    out: &mut dyn FnMut(String),
+) -> Result<(), String> {
+    let s = &cli.settings;
+    let thin = thin_for_tolerance(
+        scene,
+        s.conflict_tolerance_mm,
+        s.tolerance_warning_margin_mm,
+    )?;
+    for c in thin.iter().take(5) {
+        out(format!(
+            "the tolerance is high against a track or pad {} wide near ({:.3}, {:.3}): below {} (twice the tolerance plus {}) it may be eaten away",
+            len(cli, c.size_mm),
+            c.x,
+            c.y,
+            len(cli, 2.0 * s.conflict_tolerance_mm + s.tolerance_warning_margin_mm),
+            len(cli, s.tolerance_warning_margin_mm)
+        ));
+    }
+    if thin.len() > 5 {
+        out(format!(
+            "{} more tracks or pads are as thin",
+            thin.len() - 5
+        ));
+    }
+    Ok(())
+}
+
 fn describe(passes: &[Pass], cli: &Cli) {
     let order = cli.settings.order();
     for (k, p) in passes.iter().enumerate() {
@@ -218,6 +285,7 @@ fn build_passes(
 ) -> Result<(Vec<Pass>, usize), String> {
     let s = &cli.settings;
     let pl = s.plan()?;
+    warn_thin(cli, &board.scene, &mut |m| eprintln!("warning: {m}"))?;
     let close = close_pieces(&board.scene, s.conflict_gap_mm(pl.finest_mm()), pl.res_mm)?;
     let mut passes = plan_with_pads(&board.scene, &pl, s.around_pads())?;
     let mut unfixed = close.len();
@@ -296,7 +364,19 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         return Ok(());
     }
     let cmd = args.remove(0);
-    let cli = parse_cli(args)?;
+    let mut cli = parse_cli(args)?;
+    // one net by itself: the tool of the net is the only tool, whatever the plan said
+    if cli.net.is_some() && matches!(cmd.as_str(), "isolate" | "info" | "preview") {
+        let s = &mut cli.settings;
+        s.fine_tool_mm = s.net_tool_mm;
+        s.fine_passes = 1;
+        s.coarse_tool_mm = 0.0;
+        s.rubout_tool_mm = 0.0;
+        s.around_pads_min_mm = 0.0;
+        s.res_mm = s.res_mm.min(s.net_tool_mm / 2.0);
+        s.conflict_tolerance_mm = s.conflict_tolerance_mm.min(s.net_tool_mm / 2.0);
+        s.validate()?;
+    }
     let s = &cli.settings;
     match cmd.as_str() {
         "config" => {
@@ -305,7 +385,17 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         }
         "check" | "isolate" | "info" | "preview" => {
             let layer = arg(&cli, 0, &format!("{cmd} needs a Gerber layer"))?;
-            let (board, whole) = load_board(&cli, Some(layer))?;
+            let (mut board, whole) = load_board(&cli, Some(layer))?;
+            if let (Some(at), true) = (cli.net, cmd != "check") {
+                board.scene = net_scene(&board.scene, at, s.res_mm)?;
+                eprintln!(
+                    "note: the net at ({}, {}) has {} shapes; it is isolated with a tool of {}",
+                    at.0,
+                    at.1,
+                    board.scene.shapes.len(),
+                    len(&cli, s.net_tool_mm)
+                );
+            }
             let pl = s.plan()?;
             pl.validate()?;
             if cmd == "check" {
@@ -314,6 +404,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 for z in problem_zones(&board.scene, &s.problem_rules(), pl.res_mm)? {
                     println!("warning: {}", z.describe());
                 }
+                warn_thin(&cli, &board.scene, &mut |m| println!("warning: {m}"))?;
                 for c in &close {
                     println!(
                         "{} pieces of copper are closer than {} near ({:.3}, {:.3})",
@@ -406,6 +497,36 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             );
             Ok(())
         }
+        "rubout-area" => {
+            let out = arg(&cli, 0, "rubout-area needs an output file")?;
+            let area = cli
+                .area
+                .ok_or("rubout-area needs --area X0,Y0,X1,Y1 (the corners of the area)")?;
+            let pass = rubout_lines(
+                area,
+                s.rubout_lines_tool_mm,
+                s.rubout_overlap,
+                s.rubout_lines_direction,
+            )?;
+            let order = s.order();
+            let text = if is_plot(out) {
+                hpgl_with(std::slice::from_ref(&pass), &order, PenBy::Pass)?
+            } else {
+                write_in(
+                    std::slice::from_ref(&pass),
+                    &s.job(),
+                    &order,
+                    s.output_units,
+                )?
+            };
+            write_text(out, text)?;
+            println!(
+                "{} lines of {} written to {out}",
+                pass.open.len(),
+                len(&cli, s.rubout_lines_tool_mm)
+            );
+            Ok(())
+        }
         "mask" => {
             let layer = arg(&cli, 0, "mask needs a copper layer")?;
             let out = arg(&cli, 1, "mask needs an output file")?;
@@ -462,13 +583,15 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 } else {
                     s.alignment_tool
                 };
-                holes.extend(alignment_holes(
+                holes.extend(alignment_pattern(
                     &whole,
                     s.alignment_hole_mm,
                     s.alignment_margin_mm,
                     s.alignment_holes,
                     s.mirror.unwrap_or(Axis::Vertical),
                     tool,
+                    s.alignment_pattern,
+                    (s.alignment_special_a_mm, s.alignment_special_b_mm),
                 )?);
             }
             let (t, _) = s.transform(centre_of(&whole))?;
@@ -490,11 +613,35 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 closed: board.outline,
                 open: Vec::new(),
             };
-            let pass = route_outline(
+            let mut pass = route_outline(
                 &outline,
                 s.route_tool_mm,
                 s.res_mm.min(s.route_tool_mm / 2.0),
             )?;
+            if s.tab_count > 0 {
+                let r = add_tabs(
+                    &mut pass,
+                    s.route_tool_mm,
+                    &Tabs {
+                        count: s.tab_count,
+                        width_mm: s.tab_width_mm,
+                        min_length_mm: s.tab_min_length_mm,
+                    },
+                )?;
+                eprintln!(
+                    "note: {} bridges of {} on {} paths",
+                    r.bridges,
+                    len(&cli, s.tab_width_mm),
+                    r.paths_cut
+                );
+                if r.paths_left_closed > 0 {
+                    eprintln!(
+                        "warning: {} paths are too short for a bridge ({} between bridges) and are cut right round: the piece will not be held",
+                        r.paths_left_closed,
+                        len(&cli, s.tab_min_length_mm)
+                    );
+                }
+            }
             let mut passes = vec![pass];
             let (t, _) = s.transform(centre_of(&whole))?;
             if !t.is_identity() {
@@ -511,7 +658,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             write_text(out, text)?;
             println!(
                 "{} paths, {} of cut written to {out}",
-                pass.paths.len(),
+                pass.cuts().len(),
                 len(&cli, pass.cuts().iter().map(Cut::length_mm).sum::<f64>())
             );
             Ok(())

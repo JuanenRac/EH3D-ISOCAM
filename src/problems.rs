@@ -277,3 +277,59 @@ pub fn problem_zones(
     });
     Ok(out)
 }
+
+/// A track or a rectangular pad that is thin for the tolerance in use.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ThinCopper {
+    pub x: f64,
+    pub y: f64,
+    /// The width of the track, or the smaller side of the pad.
+    pub size_mm: f64,
+}
+
+/// The tracks and the rectangular or obround pads narrower than twice the tolerance plus `margin_mm`: with a tolerance of that size two gaps that are accepted on either side
+/// of one of them leave almost nothing of it, so the person is told which they are. Nothing is reported without a tolerance. Sorted from the thinnest.
+pub fn thin_for_tolerance(
+    scene: &Scene,
+    tolerance_mm: f64,
+    margin_mm: f64,
+) -> Result<Vec<ThinCopper>, String> {
+    if !(tolerance_mm.is_finite() && tolerance_mm >= 0.0) {
+        return Err(format!(
+            "the tolerance is {tolerance_mm} mm: it must be 0 or more"
+        ));
+    }
+    if !(margin_mm.is_finite() && margin_mm >= 0.0) {
+        return Err(format!(
+            "the margin is {margin_mm} mm: it must be 0 or more"
+        ));
+    }
+    if tolerance_mm == 0.0 {
+        return Ok(Vec::new());
+    }
+    let limit = 2.0 * tolerance_mm + margin_mm;
+    let mut out: Vec<ThinCopper> = scene
+        .shapes
+        .iter()
+        .filter_map(|s| match s {
+            Shape::Stroke { x0, y0, x1, y1, w } => Some(ThinCopper {
+                x: (x0 + x1) / 2.0,
+                y: (y0 + y1) / 2.0,
+                size_mm: *w,
+            }),
+            Shape::Rect { x, y, w, h } | Shape::Obround { x, y, w, h } => Some(ThinCopper {
+                x: *x,
+                y: *y,
+                size_mm: w.min(*h),
+            }),
+            _ => None,
+        })
+        .filter(|c| c.size_mm < limit)
+        .collect();
+    out.sort_by(|a, b| {
+        (a.size_mm, a.y, a.x)
+            .partial_cmp(&(b.size_mm, b.y, b.x))
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    Ok(out)
+}

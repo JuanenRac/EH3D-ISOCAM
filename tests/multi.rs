@@ -607,7 +607,7 @@ fn a_bad_setting_is_an_error_with_its_line_and_never_a_panic() {
         ("fine_passes = -1", "whole number"),
         ("fine_tool_mm = 0", "tool_diameter_mm"),
         ("fine_tool_mm = 0.2\nres_mm = 0.5", "too coarse"),
-        ("alignment_holes = 4", "2 or 3"),
+        ("alignment_holes = 4", "2, 3 or 6"),
         ("panel_cols = 0", "panel"),
         ("panel_cols = 20\npanel_rows = 20", "at most 100"),
         ("rotate_quarters = 4", "0 to 3"),

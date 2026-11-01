@@ -18,7 +18,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 115 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il n'a pas encore de fenêtre, n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 134 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il n'a pas encore de fenêtre, n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.3` |
 | Maturité | Échafaudage |
-| Tests | 115 |
+| Tests | 134 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -49,7 +49,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Fichiers et disposition | 🟡 | lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, ajoute des trous d'alignement et vérifie les règles de conception avec l'endroit de chaque constat ; testé sur un ordinateur, pas avec des fichiers écrits par d'autres programmes ni sur une machine. |
 | Isolation forcée, correction, masque | 🟡 | trajets forcés dans les espaces où l'outil ne passe pas, trajets allégés, échelle et correction par points de référence, ouvertures du masque de soudure, unités et aperçu des passes ; testé sur un ordinateur avec des couches générées et des entrées abîmées, jamais avec de vraies cartes ni sur une machine, et la correction n'a pas été comparée à de vraies mesures d'une caméra. |
 | Ligne de commande | 🟡 | `eh3d-isocam` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 115 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
+| Tests | 🟡 | 134 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🔴 | Prévu : la fenêtre egui commune à la suite ; aujourd'hui il n'y a que la ligne de commande. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -69,6 +69,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 * **Un fichier de réglages** (`src/config.rs`) : chaque valeur réglable est un réglage avec une valeur par défaut, lu dans un fichier `clé = valeur` (`examples/isocam.cfg`) ou donné sous le même nom comme option de la ligne de commande.
 * **Isolation forcée** (`src/forced.rs`) : avec `forced_isolation = yes`, un trajet est aussi tracé au milieu de chaque espace où l'outil le plus fin ne passe pas, tant que l'espace n'est pas plus étroit que `forced_min_gap_mm` ; chaque endroit est signalé avec ses coordonnées et son espace, et les espaces plus étroits sont listés et laissés tels quels. Elle est désactivée par défaut : ces endroits sont alors seulement signalés.
 * **Zones à problème, tolérance et distance d'alignement** (`src/problems.rs`, `src/config.rs`) : `check` liste aussi, comme avertissements qui n'arrêtent rien, les coins intérieurs plus aigus que `problem_corner_angle_deg` (un outil rond laisse du cuivre dans la pointe d'une encoche ; 60 degrés par défaut, 0 le désactive) et les pistes qui passent entre deux pastilles plus proches d'elles que `problem_track_gap_factor` fois l'outil (1,5 par défaut, 0 le désactive) ; les deux critères sont des réglages, pas des valeurs fixées dans le code. `conflict_tolerance_mm` (0 par défaut : aucun espace n'est accepté) accepte les espaces plus étroits que l'outil d'au plus ce montant, dans `check` et dans `isolate`. La distance des trous d'alignement à la carte est `alignment_margin_mm` (5 mm par défaut ; d'autres programmes de ce genre les placent à 10 mm, soit `alignment_margin_mm = 10`).
+* **Ponts, réseaux, motifs de trous et dégagement de zones** (`src/drill.rs`, `src/isolate.rs`, `src/transform.rs`, `src/problems.rs`, `src/legacy.rs`) : `route` peut laisser des ponts qui retiennent la carte dans la plaque (`tab_count` par chemin fermé, 0 par défaut ; `tab_width_mm` de matière restante ; `tab_min_length_mm` entre les ponts) : la coupe s'arrête une demi-largeur de pont et un demi-diamètre d'outil avant le milieu de chaque pont. `isolate --net X,Y` n'isole que le réseau qui contient un point, avec l'outil `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` écrit des lignes parallèles de l'outil `rubout_lines_tool_mm` (direction `rubout_lines_direction`) qui dégagent une zone. Les trous d'alignement peuvent être 2, 3 ou 6, hors de la carte ou, avec `alignment_pattern = special`, selon un motif autour de son centre (`alignment_special_a_mm` d'écart pour la paire, `alignment_special_b_mm` pour les quatre autres). Avec une tolérance de conflit, `check` et `isolate` signalent les pistes et pastilles rectangulaires plus fines que le double de la tolérance plus `tolerance_warning_margin_mm`. L'estimation du format d'une couche Gerber ancienne utilise maintenant les unités indiquées par le fichier et la taille de la carte, et une liste d'ouvertures peut donner les deux côtés dans une cellule (`60x40`).
 * **Trajets allégés, échelle et correction** (`src/optimize.rs`, `src/fiducial.rs`) : les pointes sont retirées et les points alignés (dans `optimize_tolerance_mm`) deviennent un seul mouvement, activé par défaut (0,01 mm et 0,02 mm ; 0 le désactive) ; le travail peut être mis à l'échelle autour du centre de la carte, et des paires de points de référence relatives à ce centre (où une marque devrait être et où elle a été mesurée) donnent une similitude (deux paires) ou un ajustement affine (trois ou plus, moindres carrés) appliqué à chaque trajet et à chaque trou ; il est refusé quand l'échelle s'écarte beaucoup de 1 ou qu'une marque ne colle pas.
 * **Masque de soudure** (`src/mask.rs`) : les ouvertures sont écrites comme une couche Gerber, à partir de la couche de masque du dessin ou des pastilles du cuivre, chacune agrandie de `mask_margin_mm` ; les pistes restent couvertes.
 * **Unités et aperçu** (`src/units.rs`, `src/preview.rs`) : une longueur peut porter `mm`, `mil` ou `in`, le G-code peut être écrit en pouces, et `preview` dessine les passes sur le cuivre en dessin SVG ou en texte.
@@ -118,6 +119,7 @@ eh3d-isocam preview LAYER.gtl [OUT.svg|OUT.txt]    the passes drawn over the cop
 eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
 eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
 eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
+eh3d-isocam rubout-area OUT.nc|OUT.plt --area X0,Y0,X1,Y1  parallel lines of a tool that clear an area
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
@@ -188,7 +190,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Tests
 
-La suite compte 115 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 134 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 

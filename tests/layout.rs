@@ -4,8 +4,8 @@ use eh3d_gerberviewer::scene::{Bounds, Scene, Shape};
 use eh3d_isocam::drc::{check, Kind, Rules};
 use eh3d_isocam::drill::{read_drills, Hole};
 use eh3d_isocam::transform::{
-    alignment_holes, lay_out, mirror_holes, mirror_scene, panel_holes, panel_offsets, panel_scene,
-    rotate_scene, Axis, Board, Layout,
+    alignment_holes, alignment_pattern, lay_out, mirror_holes, mirror_scene, panel_holes,
+    panel_offsets, panel_scene, rotate_scene, Axis, Board, HolePattern, Layout,
 };
 use std::process::Command;
 
@@ -631,4 +631,214 @@ fn the_board_outline_is_routed_to_a_plot_file_and_a_drill_file() {
     }
     let (ok, _, err) = run(&["route", &outline]);
     assert!(!ok && err.contains("output file"));
+}
+
+#[test]
+fn six_holes_and_the_special_pattern_are_the_same_turned_over() {
+    let b = Bounds {
+        min_x: 0.0,
+        min_y: 0.0,
+        max_x: 100.0,
+        max_y: 50.0,
+    };
+    for (axis, at) in [(Axis::Vertical, 50.0), (Axis::Horizontal, 25.0)] {
+        for (pattern, count) in [
+            (HolePattern::Normal, 6),
+            (HolePattern::Special, 2),
+            (HolePattern::Special, 6),
+        ] {
+            let holes =
+                alignment_pattern(&b, 3.0, 5.0, count, axis, 90, pattern, (40.0, 60.0)).unwrap();
+            assert_eq!(holes.len(), count);
+            for t in &mirror_holes(&holes, axis, at) {
+                assert!(
+                    holes
+                        .iter()
+                        .any(|h| (h.x_mm - t.x_mm).abs() < 1e-9 && (h.y_mm - t.y_mm).abs() < 1e-9),
+                    "{axis:?} {pattern:?} {count}: {t:?} is not one of {holes:?}"
+                );
+            }
+        }
+    }
+    let near = |h: &[Hole], x: f64, y: f64| {
+        h.iter()
+            .any(|h| (h.x_mm - x).abs() < 1e-9 && (h.y_mm - y).abs() < 1e-9)
+    };
+    // normal, six: the two on the middle line and the four corners, all 5 mm outside the board
+    let six = alignment_pattern(
+        &b,
+        3.0,
+        5.0,
+        6,
+        Axis::Vertical,
+        90,
+        HolePattern::Normal,
+        (40.0, 60.0),
+    )
+    .unwrap();
+    for (x, y) in [
+        (-5.0, 25.0),
+        (105.0, 25.0),
+        (-5.0, -5.0),
+        (-5.0, 55.0),
+        (105.0, -5.0),
+        (105.0, 55.0),
+    ] {
+        assert!(near(&six, x, y), "({x}, {y}) in {six:?}");
+    }
+    // special: the pair 40 mm apart about the middle, and four more 60 mm apart level with them
+    let pair = alignment_pattern(
+        &b,
+        3.0,
+        5.0,
+        2,
+        Axis::Vertical,
+        90,
+        HolePattern::Special,
+        (40.0, 60.0),
+    )
+    .unwrap();
+    assert!(near(&pair, 30.0, 25.0) && near(&pair, 70.0, 25.0));
+    let special = alignment_pattern(
+        &b,
+        3.0,
+        5.0,
+        6,
+        Axis::Vertical,
+        90,
+        HolePattern::Special,
+        (40.0, 60.0),
+    )
+    .unwrap();
+    for (x, y) in [(30.0, -5.0), (30.0, 55.0), (70.0, -5.0), (70.0, 55.0)] {
+        assert!(near(&special, x, y), "({x}, {y}) in {special:?}");
+    }
+    let across = alignment_pattern(
+        &b,
+        3.0,
+        5.0,
+        6,
+        Axis::Horizontal,
+        90,
+        HolePattern::Special,
+        (40.0, 60.0),
+    )
+    .unwrap();
+    assert!(near(&across, 50.0, 5.0) && near(&across, 50.0, 45.0));
+    assert!(near(&across, 20.0, 5.0) && near(&across, 80.0, 45.0));
+    // the old entry point is the normal pattern
+    assert_eq!(
+        alignment_holes(&b, 3.0, 5.0, 6, Axis::Vertical, 90).unwrap(),
+        six
+    );
+    for (count, pattern, special) in [
+        (3, HolePattern::Special, (40.0, 60.0)),
+        (2, HolePattern::Special, (0.0, 60.0)),
+        (2, HolePattern::Special, (40.0, f64::NAN)),
+        (4, HolePattern::Normal, (40.0, 60.0)),
+    ] {
+        assert!(
+            alignment_pattern(&b, 3.0, 5.0, count, Axis::Vertical, 1, pattern, special).is_err(),
+            "{count} {pattern:?} {special:?}"
+        );
+    }
+    assert_eq!(HolePattern::parse("Special"), Ok(HolePattern::Special));
+    assert!(HolePattern::parse("round").is_err());
+}
+
+#[test]
+fn the_cut_gets_bridges_and_the_alignment_holes_come_in_six() {
+    let outline = tmp("isocam_tabs.gko");
+    std::fs::write(&outline, "%FSLAX24Y24*%\n%MOMM*%\n%ADD10C,0.1*%\nD10*\nG01*\nX0Y0D02*\nX500000Y0D01*\nX500000Y300000D01*\nX0Y300000D01*\nX0Y0D01*\nM02*\n").unwrap();
+    let file = tmp("isocam_tabs.ncd");
+    let (ok, out, err) = run(&[
+        "route",
+        &outline,
+        &file,
+        "--route-tool-mm",
+        "2",
+        "--tab-count",
+        "4",
+        "--tab-width-mm",
+        "3",
+    ]);
+    assert!(ok, "{err}");
+    assert!(out.contains("4 paths"), "{out}");
+    assert!(err.contains("4 bridges"), "{err}");
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert_eq!(text.matches("M15").count(), 4, "{text}");
+    // a bridge narrower than 0.1 mm or pieces shorter than two tools are refused
+    let (ok, _, err) = run(&[
+        "route",
+        &outline,
+        &file,
+        "--tab-count",
+        "2",
+        "--tab-width-mm",
+        "0.05",
+    ]);
+    assert!(!ok && err.contains("tab_width_mm"), "{err}");
+    let (ok, _, err) = run(&[
+        "route",
+        &outline,
+        &file,
+        "--tab-count",
+        "2",
+        "--tab-min-length-mm",
+        "1",
+    ]);
+    assert!(!ok && err.contains("tab_min_length_mm"), "{err}");
+    // six holes, and a special pattern with the distances of the settings
+    let input = tmp("isocam_six.ncd");
+    std::fs::write(&input, "M48\nINCH\nT1C0.0315\n%\nT1\nX1000Y1000\nM30\n").unwrap();
+    let out_file = tmp("isocam_six_out.ncd");
+    let (ok, text, err) = run(&[
+        "drills",
+        &input,
+        &out_file,
+        "--outline",
+        &outline,
+        "--align",
+        "--alignment-holes",
+        "6",
+    ]);
+    assert!(ok, "{err}");
+    assert!(text.contains("7 holes"), "{text}");
+    let (ok, text, err) = run(&[
+        "drills",
+        &input,
+        &out_file,
+        "--outline",
+        &outline,
+        "--align",
+        "--alignment-holes",
+        "6",
+        "--alignment-pattern",
+        "special",
+        "--alignment-special-a-mm",
+        "20",
+        "--alignment-special-b-mm",
+        "10",
+    ]);
+    assert!(ok, "{err}");
+    assert!(text.contains("7 holes"), "{text}");
+    let back = read_drills(&std::fs::read_to_string(&out_file).unwrap()).unwrap();
+    let extra: Vec<_> = back.holes.iter().filter(|h| h.tool == 90).collect();
+    assert_eq!(extra.len(), 6);
+    // the board is 50 x 30: the pair is 20 apart about its middle (25, 15)
+    assert!(extra
+        .iter()
+        .any(|h| (h.x_mm - 15.0).abs() < 0.05 && (h.y_mm - 15.0).abs() < 0.05));
+    let (ok, _, err) = run(&["drills", &input, &out_file, "--alignment-pattern", "round"]);
+    assert!(!ok && err.contains("normal or special"), "{err}");
+    let (ok, _, err) = run(&[
+        "drills",
+        &input,
+        &out_file,
+        "--alignment-pattern",
+        "special",
+        "--alignment-holes",
+        "3",
+    ]);
+    assert!(!ok && err.contains("2 or 6"), "{err}");
 }

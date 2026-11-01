@@ -4,6 +4,7 @@ use crate::bitmap::{from_scene, Bitmap};
 use crate::contour::{loops, orient_climb, simplify, simplify_open, Grid, Loop};
 use crate::edt::distance_mm;
 use crate::order::Cut;
+use crate::transform::Axis;
 use eh3d_gerberviewer::scene::{Scene, Shape};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -541,4 +542,166 @@ pub fn close_pieces(scene: &Scene, min_gap_mm: f64, res_mm: f64) -> Result<Vec<C
         }
     }
     Ok(out)
+}
+
+/// The label of the copper at a point, looking at the cell itself and the eight round it (a pad smaller than a cell may leave its own centre cell empty).
+fn label_near(bm: &Bitmap, ids: &[u32], x: f64, y: f64) -> Option<u32> {
+    let i = bm.index_at(x, y)?;
+    let (cx, cy) = ((i % bm.w) as isize, (i / bm.w) as isize);
+    for (dx, dy) in [
+        (0, 0),
+        (-1, 0),
+        (1, 0),
+        (0, -1),
+        (0, 1),
+        (-1, -1),
+        (1, -1),
+        (-1, 1),
+        (1, 1),
+    ] {
+        let (nx, ny) = (cx + dx, cy + dy);
+        if nx >= 0 && ny >= 0 && (nx as usize) < bm.w && (ny as usize) < bm.h {
+            let id = ids[ny as usize * bm.w + nx as usize];
+            if id != 0 {
+                return Some(id);
+            }
+        }
+    }
+    None
+}
+
+/// How far from the chosen point the copper of a net is looked for.
+pub const NET_SEARCH_MM: f64 = 0.5;
+
+/// The copper of one net: the shapes of the scene that are joined to the copper at (or within `NET_SEARCH_MM` of) the point `at`. Everything else is left out, so a plan made
+/// from the result isolates that net alone, with whichever tool the plan has.
+pub fn net_scene(scene: &Scene, at: (f64, f64), res_mm: f64) -> Result<Scene, String> {
+    if !(at.0.is_finite() && at.1.is_finite()) {
+        return Err("the point of the net is not a number".into());
+    }
+    let bm = from_scene(scene, 2.0 * res_mm, res_mm)?;
+    let (ids, _) = label(&bm.on, bm.w, bm.h);
+    // the nearest copper cell to the point, within the search distance
+    let reach = (NET_SEARCH_MM / res_mm).ceil() as isize;
+    let centre = bm
+        .index_at(at.0, at.1)
+        .ok_or_else(|| format!("the point ({}, {}) is not on the layer", at.0, at.1))?;
+    let (cx, cy) = ((centre % bm.w) as isize, (centre / bm.w) as isize);
+    let mut best: Option<(f64, u32)> = None;
+    for dy in -reach..=reach {
+        for dx in -reach..=reach {
+            let (nx, ny) = (cx + dx, cy + dy);
+            if nx < 0 || ny < 0 || nx as usize >= bm.w || ny as usize >= bm.h {
+                continue;
+            }
+            let id = ids[ny as usize * bm.w + nx as usize];
+            let d = ((dx * dx + dy * dy) as f64).sqrt() * res_mm;
+            if id != 0 && d <= NET_SEARCH_MM && best.is_none_or(|b| d < b.0) {
+                best = Some((d, id));
+            }
+        }
+    }
+    let (_, net) = best.ok_or_else(|| {
+        format!(
+            "there is no copper within {NET_SEARCH_MM} mm of ({}, {})",
+            at.0, at.1
+        )
+    })?;
+    let on_net = |x: f64, y: f64| label_near(&bm, &ids, x, y) == Some(net);
+    let shapes: Vec<Shape> = scene
+        .shapes
+        .iter()
+        .filter(|s| match s {
+            Shape::Disc { x, y, .. } | Shape::Rect { x, y, .. } | Shape::Obround { x, y, .. } => {
+                on_net(*x, *y)
+            }
+            Shape::Stroke { x0, y0, x1, y1, .. } => {
+                on_net(*x0, *y0) || on_net(*x1, *y1) || on_net((x0 + x1) / 2.0, (y0 + y1) / 2.0)
+            }
+            Shape::Region { pts } => pts.iter().any(|p| on_net(p.0, p.1)),
+        })
+        .cloned()
+        .collect();
+    if shapes.is_empty() {
+        return Err("the net holds no shape that can be drawn".into());
+    }
+    Ok(Scene {
+        shapes,
+        notes: scene.notes.clone(),
+    })
+}
+
+/// The most lines of the clearing of an area.
+pub const MAX_RUBOUT_LINES: usize = 5000;
+
+/// Clears an area (`x0, y0, x1, y1`) with parallel lines of a tool: the lines run along `direction` (horizontal lines for `Axis::Horizontal`), the tool reaches the edge of the
+/// area on every side, and neighbouring lines share `overlap` of the width of the tool (0 to 0.9) or a little more, so that the last one fits the area exactly. The lines are
+/// open runs that follow each other back and forth. Nothing is smoothed at the edges of the copper: this is for the leftover copper after the passes are cut.
+pub fn rubout_lines(
+    area: (f64, f64, f64, f64),
+    tool_mm: f64,
+    overlap: f64,
+    direction: Axis,
+) -> Result<Pass, String> {
+    let (x0, y0, x1, y1) = (
+        area.0.min(area.2),
+        area.1.min(area.3),
+        area.0.max(area.2),
+        area.1.max(area.3),
+    );
+    if ![x0, y0, x1, y1].iter().all(|v| v.is_finite()) {
+        return Err("the area is not a number".into());
+    }
+    if !(tool_mm.is_finite() && (0.1..=10.0).contains(&tool_mm)) {
+        return Err(format!(
+            "the tool of the lines is {tool_mm} mm: it must be from 0.1 to 10"
+        ));
+    }
+    if !(overlap.is_finite() && (0.0..=0.9).contains(&overlap)) {
+        return Err(format!(
+            "the overlap is {overlap}: it must be from 0 to 0.9"
+        ));
+    }
+    let (along, across) = match direction {
+        Axis::Horizontal => (x1 - x0, y1 - y0),
+        Axis::Vertical => (y1 - y0, x1 - x0),
+    };
+    if along <= tool_mm || across < tool_mm {
+        return Err(format!(
+            "the area is {} by {} mm: it must be wider than the tool of {tool_mm} mm along the lines and at least as wide across them",
+            x1 - x0,
+            y1 - y0
+        ));
+    }
+    let pitch = tool_mm * (1.0 - overlap);
+    let steps = ((across - tool_mm) / pitch).ceil().max(0.0) as usize;
+    if steps + 1 > MAX_RUBOUT_LINES {
+        return Err(format!(
+            "{} lines: at most {MAX_RUBOUT_LINES} (use a wider tool or a smaller area)",
+            steps + 1
+        ));
+    }
+    let r = tool_mm / 2.0;
+    let step = if steps == 0 {
+        0.0
+    } else {
+        (across - tool_mm) / steps as f64
+    };
+    let mut open: Vec<Loop> = Vec::new();
+    for k in 0..=steps {
+        let c = k as f64 * step + r;
+        let (a, b) = (r, along - r);
+        let (from, to) = if k % 2 == 0 { (a, b) } else { (b, a) };
+        open.push(match direction {
+            Axis::Horizontal => vec![(x0 + from, y0 + c), (x0 + to, y0 + c)],
+            Axis::Vertical => vec![(x0 + c, y0 + from), (x0 + c, y0 + to)],
+        });
+    }
+    Ok(Pass {
+        offset_mm: 0.0,
+        open,
+        diameter_mm: tool_mm,
+        rubout: true,
+        ..Pass::default()
+    })
 }

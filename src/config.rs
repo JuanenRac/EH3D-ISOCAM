@@ -10,7 +10,7 @@ use crate::legacy::{self, Format, Zeros};
 use crate::optimize::Optimize;
 use crate::order::{Direction, LoopStart, Order, Strategy};
 use crate::problems::ProblemRules;
-use crate::transform::{Axis, Layout};
+use crate::transform::{Axis, HolePattern, Layout};
 use crate::units::{parse_length, Unit};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -48,7 +48,13 @@ pub struct Settings {
     pub route_tool_mm: f64,
     pub alignment_hole_mm: f64,
     pub alignment_margin_mm: f64,
+    /// 2, 3 or 6 holes (a special pattern has 2 or 6).
     pub alignment_holes: usize,
+    /// Outside the board (normal) or in a fixed pattern about its middle (special).
+    pub alignment_pattern: HolePattern,
+    /// A special pattern: the distance between the two holes of the pair, and the distance between the two holes added on each side of it for six.
+    pub alignment_special_a_mm: f64,
+    pub alignment_special_b_mm: f64,
     /// The first tool number given to the holes the program adds.
     pub alignment_tool: u8,
     pub mirror: Option<Axis>,
@@ -101,6 +107,18 @@ pub struct Settings {
     pub problem_corner_angle_deg: f64,
     /// A track with a pad on each side nearer than this multiple of the tool is reported as a problem zone; 0 does not look for them.
     pub problem_track_gap_factor: f64,
+    /// Bridges that hold the board in the sheet when it is cut out: how many on each closed path (0 puts none), how wide the bridge of material is, and the shortest piece of
+    /// path that may be left between two bridges (a path too short for two of them gets fewer).
+    pub tab_count: usize,
+    pub tab_width_mm: f64,
+    pub tab_min_length_mm: f64,
+    /// A track narrower than twice the tolerance plus this is reported when a tolerance is set.
+    pub tolerance_warning_margin_mm: f64,
+    /// The tool that isolates one net chosen by a point (`--net X,Y`).
+    pub net_tool_mm: f64,
+    /// The tool and the direction of the parallel lines that clear an area (`rubout-area`).
+    pub rubout_lines_tool_mm: f64,
+    pub rubout_lines_direction: Axis,
 }
 
 impl Default for Settings {
@@ -134,6 +152,9 @@ impl Default for Settings {
             alignment_hole_mm: 3.0,
             alignment_margin_mm: 5.0,
             alignment_holes: 3,
+            alignment_pattern: HolePattern::Normal,
+            alignment_special_a_mm: 40.0,
+            alignment_special_b_mm: 60.0,
             alignment_tool: 90,
             mirror: None,
             rotate_quarters: 0,
@@ -169,6 +190,13 @@ impl Default for Settings {
             conflict_tolerance_mm: 0.0,
             problem_corner_angle_deg: 60.0,
             problem_track_gap_factor: 1.5,
+            tab_count: 0,
+            tab_width_mm: 1.0,
+            tab_min_length_mm: 4.0,
+            tolerance_warning_margin_mm: 0.05,
+            net_tool_mm: 1.0,
+            rubout_lines_tool_mm: 0.8,
+            rubout_lines_direction: Axis::Horizontal,
         }
     }
 }
@@ -253,6 +281,9 @@ impl Settings {
             "alignment_hole_mm" => self.alignment_hole_mm = num(key, v)?,
             "alignment_margin_mm" => self.alignment_margin_mm = num(key, v)?,
             "alignment_holes" => self.alignment_holes = count(key, v)?,
+            "alignment_pattern" => self.alignment_pattern = HolePattern::parse(v)?,
+            "alignment_special_a_mm" => self.alignment_special_a_mm = num(key, v)?,
+            "alignment_special_b_mm" => self.alignment_special_b_mm = num(key, v)?,
             "alignment_tool" => {
                 self.alignment_tool = u8::try_from(count(key, v)?)
                     .map_err(|_| format!("{key} '{v}' must be from 1 to 255"))?
@@ -319,6 +350,16 @@ impl Settings {
             "conflict_tolerance_mm" => self.conflict_tolerance_mm = num(key, v)?,
             "problem_corner_angle_deg" => self.problem_corner_angle_deg = num(key, v)?,
             "problem_track_gap_factor" => self.problem_track_gap_factor = num(key, v)?,
+            "tab_count" => self.tab_count = count(key, v)?,
+            "tab_width_mm" => self.tab_width_mm = num(key, v)?,
+            "tab_min_length_mm" => self.tab_min_length_mm = num(key, v)?,
+            "tolerance_warning_margin_mm" => self.tolerance_warning_margin_mm = num(key, v)?,
+            "net_tool_mm" => self.net_tool_mm = num(key, v)?,
+            "rubout_lines_tool_mm" => self.rubout_lines_tool_mm = num(key, v)?,
+            "rubout_lines_direction" => {
+                self.rubout_lines_direction = Axis::parse_option(v)?
+                    .ok_or_else(|| format!("{key} '{v}' must be horizontal or vertical"))?
+            }
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -357,7 +398,7 @@ impl Settings {
     pub fn to_text(&self) -> String {
         let b = |v: bool| if v { "yes" } else { "no" };
         let mut extra = format!(
-            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\ngerber_format = {}.{}\ngerber_zeros = {}\ngerber_units = {}\naperture_units = {}\naperture_size_column = {}\nconflict_tolerance_mm = {}\nproblem_corner_angle_deg = {}\nproblem_track_gap_factor = {}\n",
+            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\ngerber_format = {}.{}\ngerber_zeros = {}\ngerber_units = {}\naperture_units = {}\naperture_size_column = {}\nconflict_tolerance_mm = {}\nproblem_corner_angle_deg = {}\nproblem_track_gap_factor = {}\nalignment_pattern = {}\nalignment_special_a_mm = {}\nalignment_special_b_mm = {}\ntab_count = {}\ntab_width_mm = {}\ntab_min_length_mm = {}\ntolerance_warning_margin_mm = {}\nnet_tool_mm = {}\nrubout_lines_tool_mm = {}\nrubout_lines_direction = {}\n",
             self.output_units.name(),
             self.report_units.name(),
             b(self.forced_isolation),
@@ -380,7 +421,17 @@ impl Settings {
             self.aperture_size_column,
             self.conflict_tolerance_mm,
             self.problem_corner_angle_deg,
-            self.problem_track_gap_factor
+            self.problem_track_gap_factor,
+            self.alignment_pattern.name(),
+            self.alignment_special_a_mm,
+            self.alignment_special_b_mm,
+            self.tab_count,
+            self.tab_width_mm,
+            self.tab_min_length_mm,
+            self.tolerance_warning_margin_mm,
+            self.net_tool_mm,
+            self.rubout_lines_tool_mm,
+            self.rubout_lines_direction.name()
         );
         for p in &self.fiducials {
             extra.push_str(&format!(
@@ -439,8 +490,15 @@ impl Settings {
             return Ok(layer.to_string());
         }
         let list = apertures.ok_or_else(|| {
-            let hint = legacy::guess_format(layer)
-                .map(|f| format!(" (the longest coordinate has {} digits)", f.int + f.dec))
+            let hint = legacy::guess_format_and_units(layer)
+                .map(|(f, u)| {
+                    format!(
+                        " (the coordinates look like {}.{} in {}, a hint only)",
+                        f.int,
+                        f.dec,
+                        u.name()
+                    )
+                })
                 .unwrap_or_default();
             format!("the layer has no format statement (old-style Gerber){hint}: give its list of apertures with --apertures FILE and, if it is not 2.3 with the leading zeros left out, --gerber-format and --gerber-zeros")
         })?;
@@ -483,12 +541,54 @@ impl Settings {
         range("panel_gap_mm", self.panel_gap_mm, 0.0, 100.0)?;
         range("start_x_mm", self.start_x_mm, -10_000.0, 10_000.0)?;
         range("start_y_mm", self.start_y_mm, -10_000.0, 10_000.0)?;
-        if !(2..=3).contains(&self.alignment_holes) {
+        if !matches!(self.alignment_holes, 2 | 3 | 6) {
             return Err(format!(
-                "alignment_holes is {}: it must be 2 or 3",
+                "alignment_holes is {}: it must be 2, 3 or 6",
                 self.alignment_holes
             ));
         }
+        if self.alignment_pattern == HolePattern::Special {
+            if self.alignment_holes == 3 {
+                return Err("alignment_pattern is special: alignment_holes must be 2 or 6".into());
+            }
+            range(
+                "alignment_special_a_mm",
+                self.alignment_special_a_mm,
+                1.0,
+                1000.0,
+            )?;
+            range(
+                "alignment_special_b_mm",
+                self.alignment_special_b_mm,
+                1.0,
+                1000.0,
+            )?;
+        }
+        if self.tab_count > 0 {
+            if self.tab_count > 50 {
+                return Err(format!(
+                    "tab_count is {}: it must be from 0 to 50",
+                    self.tab_count
+                ));
+            }
+            range("tab_width_mm", self.tab_width_mm, 0.1, 50.0)?;
+            // a piece between two bridges must be longer than two tools
+            range(
+                "tab_min_length_mm",
+                self.tab_min_length_mm,
+                2.0 * self.route_tool_mm,
+                10_000.0,
+            )?;
+        }
+        range(
+            "tolerance_warning_margin_mm",
+            self.tolerance_warning_margin_mm,
+            0.0,
+            1.0,
+        )?;
+        range("net_tool_mm", self.net_tool_mm, 0.02, 10.0)?;
+        range("rubout_lines_tool_mm", self.rubout_lines_tool_mm, 0.1, 10.0)?;
+
         if self.alignment_tool == 0 {
             return Err("alignment_tool is 0: it must be from 1 to 255".into());
         }

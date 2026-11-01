@@ -18,7 +18,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 115 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Ainda não tem janela, não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 134 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Ainda não tem janela, não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versão | `0.0.3` |
 | Maturidade | Estrutura inicial |
-| Testes | 115 |
+| Testes | 134 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -49,7 +49,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ficheiros e disposição | 🟡 | lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, acrescenta furos de alinhamento e verifica as regras de projeto com a posição de cada achado; testado num computador, não com ficheiros escritos por outros programas nem numa máquina. |
 | Isolamento forçado, correção, máscara | 🟡 | percursos forçados nos espaços onde a ferramenta não cabe, percursos mais leves, escala e correção com pontos de referência, aberturas da máscara de soldadura, unidades e pré-visualização das passagens; testado num computador com camadas geradas e entradas danificadas, nunca com placas reais nem numa máquina, e a correção não foi comparada com medições reais de uma câmara. |
 | Linha de comandos | 🟡 | `eh3d-isocam` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 115 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 134 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🔴 | Previsto: a janela egui comum à suíte; hoje existe apenas a linha de comandos. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -69,6 +69,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **Um ficheiro de definições** (`src/config.rs`): cada valor que se pode afinar é uma definição com um valor por omissão, lida de um ficheiro `chave = valor` (`examples/isocam.cfg`) ou dada com o mesmo nome como opção da linha de comandos.
 * **Isolamento forçado** (`src/forced.rs`): com `forced_isolation = yes` é traçado também um percurso a meio de cada espaço em que a ferramenta mais fina não cabe, desde que o espaço não seja mais estreito do que `forced_min_gap_mm`; cada sítio é assinalado com as suas coordenadas e o seu espaço, e os espaços mais estreitos são listados e deixados como estão. Vem desativado: nesse caso esses sítios são apenas assinalados.
 * **Zonas problemáticas, tolerância e distância de alinhamento** (`src/problems.rs`, `src/config.rs`): o `check` também lista, como avisos que não param nada, os cantos internos mais agudos do que `problem_corner_angle_deg` (uma ferramenta redonda deixa cobre na ponta de um entalhe; 60 graus por omissão, 0 desativa) e as pistas que passam entre dois pads mais perto delas do que `problem_track_gap_factor` vezes a ferramenta (1,5 por omissão, 0 desativa); os dois critérios são definições, não estão fixos no código. O `conflict_tolerance_mm` (0 por omissão: nenhum espaço é aceite) aceita os espaços mais estreitos do que a ferramenta no máximo nessa quantidade, no `check` e no `isolate`. A distância dos furos de alinhamento à placa é `alignment_margin_mm` (5 mm por omissão; outros programas deste tipo põem-nos a 10 mm, ou seja `alignment_margin_mm = 10`).
+* **Pontes, redes, padrões de furos e limpeza de áreas** (`src/drill.rs`, `src/isolate.rs`, `src/transform.rs`, `src/problems.rs`, `src/legacy.rs`): `route` pode deixar pontes que seguram a placa na chapa (`tab_count` por cada percurso fechado, 0 por omissão; `tab_width_mm` de material que fica; `tab_min_length_mm` entre pontes): o corte pára meia largura de ponte e meio diâmetro de ferramenta antes do meio de cada ponte. `isolate --net X,Y` isola apenas a rede que contém um ponto, com a ferramenta `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` escreve linhas paralelas da ferramenta `rubout_lines_tool_mm` (direção `rubout_lines_direction`) que limpam uma área. Os furos de alinhamento podem ser 2, 3 ou 6, fora da placa ou, com `alignment_pattern = special`, num padrão em torno do seu centro (`alignment_special_a_mm` de distância no par, `alignment_special_b_mm` para os outros quatro). Com uma tolerância de conflitos, `check` e `isolate` avisam sobre as pistas e as ilhas retangulares mais finas do que o dobro da tolerância mais `tolerance_warning_margin_mm`. A estimativa do formato de uma camada Gerber antiga usa agora as unidades indicadas pelo ficheiro e o tamanho da placa, e uma lista de aberturas pode dar os dois lados numa célula (`60x40`).
 * **Percursos mais leves, escala e correção** (`src/optimize.rs`, `src/fiducial.rs`): os picos são retirados e os pontos numa reta (dentro de `optimize_tolerance_mm`) passam a ser um só movimento, ativado por predefinição (0,01 mm e 0,02 mm; com 0 desativa-se); o trabalho pode ser escalado em relação ao centro da placa, e pares de pontos de referência relativos a esse centro (onde uma marca devia estar e onde foi medida) dão uma semelhança (dois pares) ou um ajuste afim (três ou mais, mínimos quadrados) aplicado a cada percurso e a cada furo; é recusado quando a escala se afasta muito de 1 ou uma marca não encaixa.
 * **Máscara de soldadura** (`src/mask.rs`): as aberturas são escritas como uma camada Gerber, a partir da camada de máscara do desenho ou dos pads do cobre, cada uma alargada de `mask_margin_mm`; as pistas ficam cobertas.
 * **Unidades e pré-visualização** (`src/units.rs`, `src/preview.rs`): um comprimento pode levar `mm`, `mil` ou `in`, o G-code pode ser escrito em polegadas, e `preview` desenha as passagens sobre o cobre como desenho SVG ou como texto.
@@ -118,6 +119,7 @@ eh3d-isocam preview LAYER.gtl [OUT.svg|OUT.txt]    the passes drawn over the cop
 eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
 eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
 eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
+eh3d-isocam rubout-area OUT.nc|OUT.plt --area X0,Y0,X1,Y1  parallel lines of a tool that clear an area
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
@@ -188,7 +190,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Testes
 
-O conjunto tem 115 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 134 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 

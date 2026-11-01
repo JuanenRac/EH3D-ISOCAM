@@ -132,10 +132,17 @@ pub fn parse_apertures(
         let mut shape = Shape::Round;
         let mut nums: Vec<f64> = Vec::new();
         for t in &tokens[pos + 1..] {
+            let t = t.trim_end_matches(',');
             if let Some(s) = shape_word(t) {
                 shape = s;
-            } else if let Ok(v) = t.trim_end_matches(',').parse::<f64>() {
+            } else if let Ok(v) = t.parse::<f64>() {
                 nums.push(v);
+            } else if let Some((a, b)) = t.split_once(['x', 'X']) {
+                // both sides in one cell: 60x40
+                if let (Ok(a), Ok(b)) = (a.parse::<f64>(), b.parse::<f64>()) {
+                    nums.push(a);
+                    nums.push(b);
+                }
             }
         }
         let Some(&x) = nums.get(size_column - 1) else {
@@ -182,60 +189,169 @@ pub fn has_format_statement(text: &str) -> bool {
     text.contains("%FS")
 }
 
-/// A guess of the format from the longest coordinate of the file: the digits it has and the places it is written in. `None` when the file holds no coordinate.
-/// It is a hint only: 2.3 and 2.4 (or 3.3) can look the same, and the person confirms it.
-pub fn guess_format(text: &str) -> Option<Format> {
-    let mut longest = 0usize;
-    let mut zeros_trailing_hint = 0usize;
-    let mut leading_hint = 0usize;
-    let b = text.as_bytes();
-    let mut i = 0;
-    while i < b.len() {
-        if (b[i] == b'X' || b[i] == b'Y') && i + 1 < b.len() {
-            let mut j = i + 1;
-            if j < b.len() && (b[j] == b'-' || b[j] == b'+') {
-                j += 1;
-            }
-            let s = j;
-            while j < b.len() && b[j].is_ascii_digit() {
-                j += 1;
-            }
-            let digits = j - s;
-            if digits > 0 {
-                longest = longest.max(digits);
-                if b[s] == b'0' {
-                    leading_hint += 1;
+/// The units a layer states by itself: `G70` or `MOIN` is inch, `G71` or `MOMM` is mm; `None` when it says nothing (or says both).
+pub fn stated_units(text: &str) -> Option<Unit> {
+    let inch = text.contains("G70") || text.contains("MOIN");
+    let mm = text.contains("G71") || text.contains("MOMM");
+    match (inch, mm) {
+        (true, false) => Some(Unit::Inch),
+        (false, true) => Some(Unit::Mm),
+        _ => None,
+    }
+}
+
+/// What the coordinates of a file look like: the most digits one has, and how far apart the lowest and the highest value are on each axis (as the bare numbers written).
+struct Look {
+    longest: usize,
+    span_x: f64,
+    span_y: f64,
+    leading_zero: usize,
+    trailing_zero: usize,
+}
+
+impl Look {
+    fn of(text: &str) -> Option<Look> {
+        let b = text.as_bytes();
+        let mut look = Look {
+            longest: 0,
+            span_x: 0.0,
+            span_y: 0.0,
+            leading_zero: 0,
+            trailing_zero: 0,
+        };
+        let mut range = [(f64::INFINITY, f64::NEG_INFINITY); 2];
+        let mut i = 0;
+        while i < b.len() {
+            if (b[i] == b'X' || b[i] == b'Y') && i + 1 < b.len() {
+                let axis = usize::from(b[i] == b'Y');
+                let mut j = i + 1;
+                let negative = j < b.len() && b[j] == b'-';
+                if j < b.len() && (b[j] == b'-' || b[j] == b'+') {
+                    j += 1;
                 }
-                if b[j - 1] == b'0' {
-                    zeros_trailing_hint += 1;
+                let s = j;
+                while j < b.len() && b[j].is_ascii_digit() {
+                    j += 1;
                 }
+                let digits = j - s;
+                if digits > 0 {
+                    look.longest = look.longest.max(digits);
+                    if b[s] == b'0' {
+                        look.leading_zero += 1;
+                    }
+                    if b[j - 1] == b'0' {
+                        look.trailing_zero += 1;
+                    }
+                    if let Ok(v) = text[s..j.min(s + 15)].parse::<f64>() {
+                        let v = if negative { -v } else { v };
+                        range[axis].0 = range[axis].0.min(v);
+                        range[axis].1 = range[axis].1.max(v);
+                    }
+                }
+                i = j;
+            } else {
+                i += 1;
             }
-            i = j;
-        } else {
-            i += 1;
         }
+        if look.longest == 0 {
+            return None;
+        }
+        let span = |r: (f64, f64)| if r.1 >= r.0 { r.1 - r.0 } else { 0.0 };
+        look.span_x = span(range[0]);
+        look.span_y = span(range[1]);
+        Some(look)
     }
-    if longest == 0 {
-        return None;
+
+    fn big(&self, limit: f64) -> bool {
+        self.span_x > limit || self.span_y > limit
     }
+}
+
+/// The digits before and after the point for the number of digits of the longest coordinate, the units (when the file does not state them) and how far the board reaches.
+/// A coordinate of five digits is a board of a few inches written 2.3 or a few tens of millimetres written 3.2; the size of the board tells them apart.
+fn digits_for(look: &Look, units: Option<Unit>) -> (Unit, u8, u8) {
+    use Unit::{Inch, Mm};
+    match (look.longest.min(8), units) {
+        (8, Some(Mm)) => (Mm, 4, 4),
+        (8, Some(_)) => {
+            if look.big(200_000.0) {
+                (Inch, 4, 4)
+            } else {
+                (Inch, 3, 5)
+            }
+        }
+        (8, None) => {
+            if look.big(10_000_000.0) {
+                (Inch, 3, 5)
+            } else {
+                (Mm, 4, 4)
+            }
+        }
+        (7, Some(Mm)) => (Mm, 3, 4),
+        (7, Some(_)) => (Inch, 2, if look.big(1_500_000.0) { 6 } else { 5 }),
+        (7, None) => {
+            if look.big(800_000.0) {
+                (Inch, 2, 5)
+            } else {
+                (Mm, 3, 4)
+            }
+        }
+        (6, Some(Mm)) => {
+            if look.big(40_000.0) && !look.big(400_000.0) {
+                (Mm, 3, 3)
+            } else {
+                (Mm, 4, 2)
+            }
+        }
+        (6, Some(_)) => (Inch, 2, if look.big(150_000.0) { 5 } else { 4 }),
+        (6, None) => {
+            if !look.big(150_000.0) {
+                (Inch, 2, 4)
+            } else if look.big(800_000.0) {
+                (Mm, 2, 4)
+            } else {
+                (Mm, 3, 3)
+            }
+        }
+        (5, Some(Mm)) => (Mm, 3, if look.big(40_000.0) { 2 } else { 3 }),
+        (5, Some(_)) => {
+            if look.big(25_000.0) && look.big(40_000.0) {
+                (Inch, 1, 4)
+            } else {
+                (Inch, 2, 3)
+            }
+        }
+        (5, None) => {
+            if !look.big(15_000.0) {
+                (Inch, 2, 3)
+            } else if look.big(40_000.0) {
+                (Inch, 1, 4)
+            } else {
+                (Mm, 3, 2)
+            }
+        }
+        (_, Some(Mm)) => (Mm, 3, 3),
+        _ => (Inch, 2, 3),
+    }
+}
+
+/// A guess of the format and of the units from the longest coordinate of the file and the size of the board it draws. `None` when the file holds no coordinate.
+/// It is a hint only: the digits can look alike (2.3 and 2.4 with few zeros), and the person confirms it. The units the file states win over the guess.
+pub fn guess_format_and_units(text: &str) -> Option<(Format, Unit)> {
+    let look = Look::of(text)?;
     // a file that keeps its leading zeros and drops the trailing ones has many numbers that start with 0 and few that end with it; the reverse is a file that drops the leading ones
-    let zeros = if leading_hint > zeros_trailing_hint {
+    let zeros = if look.leading_zero > look.trailing_zero {
         Zeros::Trailing
     } else {
         Zeros::Leading
     };
-    let total = longest.clamp(2, 12) as u8;
-    let dec = if total >= 5 {
-        total - 2
-    } else {
-        total.saturating_sub(1).max(1)
-    };
-    let int = (total - dec).clamp(1, 6);
-    Some(Format {
-        int,
-        dec: total - int,
-        zeros,
-    })
+    let (unit, int, dec) = digits_for(&look, stated_units(text));
+    Some((Format { int, dec, zeros }, unit))
+}
+
+/// The format alone of `guess_format_and_units`.
+pub fn guess_format(text: &str) -> Option<Format> {
+    guess_format_and_units(text).map(|(f, _)| f)
 }
 
 fn mm_text(v: f64) -> String {
@@ -431,6 +547,58 @@ mod tests {
         let f = guess_format("X123456Y1000D01*\nX-200Y2000D01*\n").unwrap();
         assert_eq!(f.int + f.dec, 6);
         assert!(guess_format("G90*\nM02*\n").is_none());
+    }
+
+    #[test]
+    fn short_coordinates_in_inch_are_two_three() {
+        // thousandths of an inch: X7371 is 7.371 in
+        let t = "G90*\nG70*\nG54D20*\nX631Y4603D02*\nX7371Y5626D01*\nX-24Y3984D01*\n";
+        let (f, u) = guess_format_and_units(t).unwrap();
+        assert_eq!((f.int, f.dec, u), (2, 3, Unit::Inch));
+        assert_eq!(f.zeros, Zeros::Leading);
+    }
+
+    #[test]
+    fn the_size_of_the_board_tells_the_digits_apart() {
+        // five digits and stated mm: 3.3 for a small board, 3.2 for a big one
+        let (f, u) = guess_format_and_units("G71*\nX12345Y23456D01*\nX100Y200D02*\n").unwrap();
+        assert_eq!((f.int, f.dec, u), (3, 3, Unit::Mm));
+        let (f, u) = guess_format_and_units("G71*\nX45000Y23456D01*\nX100Y200D02*\n").unwrap();
+        assert_eq!((f.int, f.dec, u), (3, 2, Unit::Mm));
+        // five digits with no units: a small span is inch 2.3, a long one inch 1.4, a middle one mm 3.2
+        let (f, u) = guess_format_and_units("X10000Y10000D01*\nX100Y100D02*\n").unwrap();
+        assert_eq!((f.int, f.dec, u), (2, 3, Unit::Inch));
+        let (f, u) = guess_format_and_units("X50000Y10000D01*\nX100Y100D02*\n").unwrap();
+        assert_eq!((f.int, f.dec, u), (1, 4, Unit::Inch));
+        let (f, u) = guess_format_and_units("X30000Y10000D01*\nX100Y100D02*\n").unwrap();
+        assert_eq!((f.int, f.dec, u), (3, 2, Unit::Mm));
+        // seven digits: the units the file states win
+        let (f, u) = guess_format_and_units("G71*\nX1234567Y2000000D01*\n").unwrap();
+        assert_eq!((f.int, f.dec, u), (3, 4, Unit::Mm));
+        let (f, u) = guess_format_and_units("G70*\nX0100000Y0D02*\nX2000000Y1D01*\n").unwrap();
+        assert_eq!((f.int, f.dec, u), (2, 6, Unit::Inch));
+        let (f, u) = guess_format_and_units("G70*\nX1234567Y2000000D01*\n").unwrap();
+        assert_eq!((f.int, f.dec, u), (2, 5, Unit::Inch));
+        // eight digits
+        let (f, u) = guess_format_and_units("G71*\nX12345678Y1D01*\n").unwrap();
+        assert_eq!((f.int, f.dec, u), (4, 4, Unit::Mm));
+    }
+
+    #[test]
+    fn stated_units_are_read() {
+        assert_eq!(stated_units("%MOIN*%"), Some(Unit::Inch));
+        assert_eq!(stated_units("G71*"), Some(Unit::Mm));
+        assert_eq!(stated_units("G70*G71*"), None);
+        assert_eq!(stated_units("D10*"), None);
+    }
+
+    #[test]
+    fn both_sides_in_one_cell() {
+        let a = parse_apertures("D20 rect 60x40\nD21 70X70\n", Unit::Mil, 1).unwrap();
+        assert!((a[0].x_mm - 1.524).abs() < 1e-9);
+        assert!((a[0].y_mm - 1.016).abs() < 1e-9);
+        assert!((a[1].x_mm - 1.778).abs() < 1e-9);
+        assert!((a[1].y_mm - 1.778).abs() < 1e-9);
     }
 
     #[test]
