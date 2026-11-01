@@ -294,6 +294,16 @@ pub fn thin_for_tolerance(
     tolerance_mm: f64,
     margin_mm: f64,
 ) -> Result<Vec<ThinCopper>, String> {
+    thin_for_tolerance_in(scene, tolerance_mm, margin_mm, false)
+}
+
+/// Like `thin_for_tolerance`; with `pads_only` the tracks are left out (the tolerance is meant for pads alone).
+pub fn thin_for_tolerance_in(
+    scene: &Scene,
+    tolerance_mm: f64,
+    margin_mm: f64,
+    pads_only: bool,
+) -> Result<Vec<ThinCopper>, String> {
     if !(tolerance_mm.is_finite() && tolerance_mm >= 0.0) {
         return Err(format!(
             "the tolerance is {tolerance_mm} mm: it must be 0 or more"
@@ -312,7 +322,7 @@ pub fn thin_for_tolerance(
         .shapes
         .iter()
         .filter_map(|s| match s {
-            Shape::Stroke { x0, y0, x1, y1, w } => Some(ThinCopper {
+            Shape::Stroke { x0, y0, x1, y1, w } if !pads_only => Some(ThinCopper {
                 x: (x0 + x1) / 2.0,
                 y: (y0 + y1) / 2.0,
                 size_mm: *w,

@@ -4,6 +4,11 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Tolerance only for pads** (`conflict_tolerance_scope = pads`; `all` by default, as before): a gap narrower than the tool by up to the tolerance is accepted only when a pad is beside it, every other gap is judged against the whole tool, and the thin-copper warning looks at pads alone.
+- **Filling by contours** (`rubout-area OUT [LAYER.gtl] --contour FILE`, or `--area`; `rubout_fill_margin_mm`): the closed paths of a file are filled even-odd (an inner path is a hole) with back-and-forth lines of `rubout_lines_tool_mm`; with a layer the lines are cut to the copper, the whole tool lying on copper plus the margin.
+- **The kind of an input file** (`kind FILE...`): Gerber with a format statement, old-style Gerber, Excellon, HP-GL, DXF or unknown; a layer that is really a drill file, a plot or a drawing (or a drill file that is a Gerber layer) is refused with a plain message that names what it is and what to do.
+- **DXF output:** `isolate` and `rubout-area` write a DXF drawing (polylines in millimetres, one layer for each pass) when the output name ends in `.dxf`.
+- **Plot of the holes with pens** (`drills IN OUT.plt`, `hpgl_pen_map = tool:pen, ...`) and **pen speed** (`hpgl_pen_speed_cm_s`, 0 by default = the plot is as before and the machine uses its own speed): each drill tool is a pen, the tools the map leaves out take the lowest free pens, and a non-zero speed adds `VS` to any plot.
 - **Bridges on the cut of the board** (`tab_count`, `tab_width_mm`, `tab_min_length_mm`; 0 bridges by default): `route` opens each closed path into runs with a gap at every bridge, so the board stays held in the sheet; the cut stops half a bridge and half a tool short of the middle of the bridge, a path too short for a bridge is left closed and said so, and a bridge of less than 0.1 mm or pieces of less than two tools are refused.
 - **One net by itself** (`isolate --net X,Y`, `net_tool_mm`): only the copper joined to the point (up to half a millimetre from it) is isolated, with its own tool.
 - **Clearing an area with parallel lines** (`rubout-area OUT --area X0,Y0,X1,Y1`, `rubout_lines_tool_mm`, `rubout_lines_direction`, and `rubout_overlap`): back-and-forth lines whose tool reaches the edge of the area.

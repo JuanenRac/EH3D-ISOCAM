@@ -92,6 +92,19 @@
           }
         },
         {
+          "name": "dxf.rs",
+          "desc": {
+            "en": "the passes as a DXF drawing",
+            "es": "las pasadas como dibujo DXF",
+            "de": "die Durchgänge als DXF-Zeichnung",
+            "fr": "les passes en dessin DXF",
+            "it": "le passate come disegno DXF",
+            "ja": "パスを DXF 図面として出力",
+            "zh": "将路径输出为 DXF 图纸",
+            "pt": "as passagens como desenho DXF"
+          }
+        },
+        {
           "name": "edt.rs",
           "desc": {
             "en": "the exact distance to the copper",
@@ -115,6 +128,32 @@
             "ja": "基準点によるスケールと補正",
             "zh": "用参考点做缩放与补偿",
             "pt": "escala e correção com pontos de referência"
+          }
+        },
+        {
+          "name": "filetype.rs",
+          "desc": {
+            "en": "what kind of file an input is",
+            "es": "de qué tipo es un fichero de entrada",
+            "de": "welche Art Datei eine Eingabe ist",
+            "fr": "de quel type est un fichier d'entrée",
+            "it": "di che tipo è un file di ingresso",
+            "ja": "入力ファイルの種類の判別",
+            "zh": "判断输入文件的类型",
+            "pt": "de que tipo é um ficheiro de entrada"
+          }
+        },
+        {
+          "name": "fill.rs",
+          "desc": {
+            "en": "lines that fill contours, cut to the copper",
+            "es": "líneas que rellenan contornos, recortadas al cobre",
+            "de": "Linien, die Konturen füllen, aufs Kupfer beschnitten",
+            "fr": "lignes qui remplissent des contours, coupées au cuivre",
+            "it": "linee che riempiono i contorni, tagliate al rame",
+            "ja": "輪郭を埋める線（銅に合わせて切り取り）",
+            "zh": "填充轮廓的线条，按铜箔裁剪",
+            "pt": "linhas que preenchem contornos, recortadas ao cobre"
           }
         },
         {
@@ -274,6 +313,19 @@
           }
         },
         {
+          "name": "tolerance.rs",
+          "desc": {
+            "en": "where the tolerance applies: all gaps or only pads",
+            "es": "dónde se aplica la tolerancia: todos los huecos o solo pads",
+            "de": "wo die Toleranz gilt: alle Spalten oder nur Pads",
+            "fr": "où la tolérance s'applique : tous les espaces ou seulement les pastilles",
+            "it": "dove vale la tolleranza: tutti gli spazi o solo i pad",
+            "ja": "許容差の適用先：すべての隙間またはパッドのみ",
+            "zh": "容差适用范围：所有间隙或仅焊盘",
+            "pt": "onde se aplica a tolerância: todos os intervalos ou só pads"
+          }
+        },
+        {
           "name": "transform.rs",
           "desc": {
             "en": "both sides, panels and alignment holes",
@@ -343,6 +395,19 @@
             "ja": "ライブラリとコマンドラインのテスト",
             "zh": "库和命令行的测试",
             "pt": "testes da biblioteca e da linha de comandos"
+          }
+        },
+        {
+          "name": "kinds.rs",
+          "desc": {
+            "en": "tolerance for pads, contour fills, file kinds, pens, DXF",
+            "es": "tolerancia para pads, rellenos, tipos de fichero, plumas, DXF",
+            "de": "Toleranz für Pads, Konturfüllung, Dateiarten, Stifte, DXF",
+            "fr": "tolérance pastilles, remplissages, types de fichier, plumes, DXF",
+            "it": "tolleranza per pad, riempimenti, tipi di file, penne, DXF",
+            "ja": "パッド許容差・輪郭塗り・ファイル種別・ペン・DXF",
+            "zh": "焊盘容差、轮廓填充、文件类型、笔、DXF",
+            "pt": "tolerância para pads, preenchimentos, tipos de ficheiro, canetas, DXF"
           }
         },
         {

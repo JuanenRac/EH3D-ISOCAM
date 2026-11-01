@@ -18,7 +18,7 @@
 
 ---
 
-**正直さの確認 - 現在実際に動くもの：** Rustライブラリとコマンドラインプログラム（`eh3d-isocam`）で、コンピュータ上で動くテストが134件あります。Gerberレイヤーの銅の周囲に1本または複数のミリング工具の経路を描き、残りの銅を除去し、切削の向き・開始点・順序を選び、ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、設計ルールを確認し、GコードまたはHP-GLを書き出します。まだウィンドウはなく、実機では試しておらず、実際のファイル群での確認もしていません。
+**正直さの確認 - 現在実際に動くもの：** Rustライブラリとコマンドラインプログラム（`eh3d-isocam`）で、コンピュータ上で動くテストが154件あります。Gerberレイヤーの銅の周囲に1本または複数のミリング工具の経路を描き、残りの銅を除去し、切削の向き・開始点・順序を選び、ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、設計ルールを確認し、GコードまたはHP-GLを書き出します。まだウィンドウはなく、実機では試しておらず、実際のファイル群での確認もしていません。
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | バージョン | `0.0.3` |
 | 成熟度 | 足場 |
-| テスト | 134 |
+| テスト | 154 |
 | 技術スタック | Rust |
 | 実機での動作 | 未試験：ここにあるものは機械で動かしたことがありません |
 
@@ -49,7 +49,7 @@
 | ファイルと配置 | 🟡 | ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、位置合わせ穴を追加し、設計ルールを検出位置つきで確認します。コンピュータ上でテスト済みで、他のプログラムが書いたファイルや実機では試していません。 |
 | 強制アイソレーション・補正・マスク | 🟡 | 工具が入らない隙間に沿う強制経路、軽い経路、基準点によるスケールと補正、ソルダーマスクの開口部、単位とパスのプレビュー。生成したレイヤーと破損入力でコンピュータ上でテストしましたが、実際の基板や機械では試しておらず、補正はカメラの実測値と比較していません。 |
 | コマンドライン | 🟡 | `eh3d-isocam` はライブラリと同じ関数を実行して結果を表示します。エラーはメッセージと 0 以外の終了コードで返ります。 |
-| テスト | 🟡 | 134 件のテストが通ります（`cargo test`）。通常ケース、境界ケース、破損入力を含みます。 |
+| テスト | 🟡 | 154 件のテストが通ります（`cargo test`）。通常ケース、境界ケース、破損入力を含みます。 |
 | セキュリティ | 🟡 | 安全な Rust のみ（`forbid(unsafe_code)`）。受け取ったファイルでパニックせず、不正な値は理由付きのエラーになります。独立したレビューはありません。 |
 | ウィンドウ | 🔴 | 予定：スイート共通の egui ウィンドウ。現在はコマンドラインのみです。 |
 | 実機 | 🔴 | 未試験：ここにあるものは機械で実行したことがありません。 |
@@ -70,6 +70,7 @@
 * **強制アイソレーション**（`src/forced.rs`）：`forced_isolation = yes` にすると、最も細い工具が入らない隙間の中央にも、その隙間が `forced_min_gap_mm` より狭くない限り経路を引きます。各箇所は座標と隙間の幅つきで報告され、それより狭い隙間は一覧に出して手を付けません。初期値はオフで、その場合これらの箇所は報告されるだけです。
 * **問題箇所・許容差・位置合わせ穴の距離**（`src/problems.rs`、`src/config.rs`）：`check` は、何も止めない警告として、`problem_corner_angle_deg` より鋭い内角（丸い工具は切り欠きの先端に銅を残します。既定は 60 度、0 で無効）と、`problem_track_gap_factor` 掛ける工具径より近くに 2 つのパッドがあるトラック（既定は 1.5、0 で無効）も一覧にします。どちらの基準も設定であり、コードに固定されていません。`conflict_tolerance_mm`（既定は 0：どの隙間も受け入れません）は、工具より最大でその分だけ狭い隙間を `check` と `isolate` で受け入れます。位置合わせ穴と基板の距離は `alignment_margin_mm`（既定は 5 mm。この種の他のプログラムは 10 mm に置きます。それは `alignment_margin_mm = 10` です）。
 * **ブリッジ、ネット、穴パターン、領域の除去** （`src/drill.rs`、`src/isolate.rs`、`src/transform.rs`、`src/problems.rs`、`src/legacy.rs`）：`route` は基板をシートに保持するブリッジを残せます（閉じた経路ごとに `tab_count`、初期値は0。残す材料の幅は `tab_width_mm`、ブリッジの間隔は `tab_min_length_mm`）。切削は各ブリッジの中心の手前、ブリッジ幅の半分と工具径の半分の位置で止まります。`isolate --net X,Y` は、点を含むネットだけを工具 `net_tool_mm` で絶縁します。`rubout-area OUT --area X0,Y0,X1,Y1` は、工具 `rubout_lines_tool_mm` の平行線（向きは `rubout_lines_direction`）を書き出して領域を除去します。位置合わせ穴は2、3、6個で、基板の外側、または `alignment_pattern = special` で中心まわりのパターン（ペアの間隔は `alignment_special_a_mm`、追加の4個は `alignment_special_b_mm`）に置けます。競合許容差を設定すると、`check` と `isolate` は、許容差の2倍に `tolerance_warning_margin_mm` を足した値より細い配線と長方形パッドを警告します。旧形式のGerberレイヤーの形式推定は、ファイルが示す単位と基板の大きさを使うようになり、アパーチャ一覧は1つのセルに両辺を書けます（`60x40`）。
+* **パッド専用の許容差、輪郭による塗りつぶし、ファイル種別、DXF とプロッタのペン** （`src/tolerance.rs`、`src/fill.rs`、`src/filetype.rs`、`src/dxf.rs`、`src/hpgl.rs`）：`conflict_tolerance_scope = pads`（既定は従来どおり `all`）にすると、競合許容差は隣にパッドがある隙間だけに適用され、細い銅の警告もパッドだけを見ます。`rubout-area OUT [LAYER.gtl] --contour FILE`（または `--area`）は、ファイルの閉じたパスを偶奇規則で塗りつぶし（内側のパスは穴）、`rubout_lines_tool_mm` の往復線を引きます。レイヤを渡すと線は銅に合わせて切り取られ、工具全体が銅の上にあり、さらに `rubout_fill_margin_mm` だけ内側になります。実は Excellon・HP-GL・DXF のファイルであるレイヤ（または Gerber レイヤであるドリルファイル）は名前を挙げて拒否され、`kind FILE...` は各ファイルの種類を答えます。`isolate` と `rubout-area` は `.dxf` なら DXF 図面を書きます。`drills IN OUT.plt` はドリルごとに 1 本のペンで穴をプロットし（`hpgl_pen_map = 1:2, 3:1`。指定のないドリルは空いている最小のペンを使います）、`hpgl_pen_speed_cm_s`（0 = 機械側の速度、既定）はあらゆるプロットにペン速度を書き込みます。
 * **軽い経路、スケールと補正**（`src/optimize.rs`、`src/fiducial.rs`）：スパイクを取り除き、直線上の点（`optimize_tolerance_mm` 以内）を1つの動きにまとめます（どちらも既定で有効：0.01 mm と 0.02 mm、0 で無効）。作業全体を基板の中心を基準にスケール変更でき、基準点のペア（基板の中心からの相対座標で、マークがあるべき位置と実測位置）から相似変換（2組）またはアフィン近似（3組以上、最小二乗）を求めて、すべての経路と穴に適用します。スケールが1から大きく外れる場合やマークが合わない場合は拒否されます。
 * **ソルダーマスク**（`src/mask.rs`）：開口部を Gerber レイヤーとして書き出します。設計のマスクレイヤーまたは銅のパッドから作り、それぞれ `mask_margin_mm` だけ広げます。配線は覆われたままです。
 * **単位とプレビュー**（`src/units.rs`、`src/preview.rs`）：長さには `mm`、`mil`、`in` を付けられ、G-code はインチでも書き出せます。`preview` は銅の上にパスを SVG 図またはテキストで描きます。
@@ -112,14 +113,15 @@ EH3D-ISOCAM は EH3D Fabrication Suite のプログラムの一つです。現�
 ライブラリは`eh3d_isocam`（`use eh3d_isocam::...`）、コマンドラインは`eh3d-isocam`です。各コマンドは結果を標準出力に表示し、エラーは標準エラー出力に非ゼロの終了コードで報告します。ネットワークアクセスはありません。ヘルプ（`eh3d-isocam help`）の文章は英語です。
 
 ```text
-eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt     paths round the copper (G-code, or HP-GL for a .plt)
+eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt|OUT.dxf  paths round the copper (G-code, HP-GL for a .plt, DXF for a .dxf)
 eh3d-isocam check LAYER.gtl                      places where the tool does not fit between pieces of copper
 eh3d-isocam info LAYER.gtl                       passes, paths each way round, travel through the air
 eh3d-isocam preview LAYER.gtl [OUT.svg|OUT.txt]    the passes drawn over the copper, as SVG or text
 eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
-eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
+eh3d-isocam drills IN.ncd OUT.ncd|OUT.plt [--align]  read, turn over, panel and add alignment holes; .plt = a pen per drill
 eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
-eh3d-isocam rubout-area OUT.nc|OUT.plt --area X0,Y0,X1,Y1  parallel lines of a tool that clear an area
+eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--contour FILE  parallel lines of a tool that clear an area or fill closed paths, cut to the copper of LAYER
+eh3d-isocam kind FILE...                        say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
@@ -134,8 +136,11 @@ EH3D-ISOCAM/
 │   ├── contour.rs                               1回分のパスをたどって軽量化
 │   ├── drc.rs                                   設計ルール：幅・間隔・リング（位置つき）
 │   ├── drill.rs                                 穴と基板外形の読み書き
+│   ├── dxf.rs                                   パスを DXF 図面として出力
 │   ├── edt.rs                                   銅までの正確な距離
 │   ├── fiducial.rs                              基準点によるスケールと補正
+│   ├── filetype.rs                              入力ファイルの種類の判別
+│   ├── fill.rs                                  輪郭を埋める線（銅に合わせて切り取り）
 │   ├── forced.rs                                工具が入らない隙間に沿う経路
 │   ├── gcode.rs                                 パスをGコードに
 │   ├── hpgl.rs                                  パスをHP-GLプロットファイルに
@@ -148,12 +153,14 @@ EH3D-ISOCAM/
 │   ├── order.rs                                 切削の向き・開始点・順序
 │   ├── preview.rs                               パスを SVG またはテキストで描画
 │   ├── problems.rs                              問題箇所：鋭い内角とパッド間のトラック
+│   ├── tolerance.rs                             許容差の適用先：すべての隙間またはパッドのみ
 │   ├── transform.rs                             両面・パネル・位置合わせ穴
 │   └── units.rs                                 mm・ミル・インチ
 ├── tests/
 │   ├── advanced.rs                              強制アイソレーション・補正・マスク・単位・プレビュー
 │   ├── files.rs                                 ドリル・外形ファイルのテスト
 │   ├── isocam.rs                                ライブラリとコマンドラインのテスト
+│   ├── kinds.rs                                 パッド許容差・輪郭塗り・ファイル種別・ペン・DXF
 │   ├── layout.rs                                両面・パネル・ルール・コマンドラインのテスト
 │   ├── legacy.rs                                旧形式のガーバーレイヤーとコマンドラインのテスト
 │   ├── multi.rs                                 工具・残り銅・向き・順序・設定のテスト
@@ -190,7 +197,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 テスト
 
-テストは 134 件あります（`cargo test`、CI では Windows と Linux で実行）。通常ケース、境界ケース、破損入力を確認し、空のファイル、ゴミデータ、途中で切れたファイルでもパニックしません。CI は `cargo fmt --check`、警告をエラーにした `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
+テストは 154 件あります（`cargo test`、CI では Windows と Linux で実行）。通常ケース、境界ケース、破損入力を確認し、空のファイル、ゴミデータ、途中で切れたファイルでもパニックしません。CI は `cargo fmt --check`、警告をエラーにした `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
 
 ## 🏗️ ビルドとリリース
 
@@ -213,8 +220,11 @@ EH3D-ISOCAM/
 │   ├── contour.rs                               1回分のパスをたどって軽量化
 │   ├── drc.rs                                   設計ルール：幅・間隔・リング（位置つき）
 │   ├── drill.rs                                 穴と基板外形の読み書き
+│   ├── dxf.rs                                   パスを DXF 図面として出力
 │   ├── edt.rs                                   銅までの正確な距離
 │   ├── fiducial.rs                              基準点によるスケールと補正
+│   ├── filetype.rs                              入力ファイルの種類の判別
+│   ├── fill.rs                                  輪郭を埋める線（銅に合わせて切り取り）
 │   ├── forced.rs                                工具が入らない隙間に沿う経路
 │   ├── gcode.rs                                 パスをGコードに
 │   ├── hpgl.rs                                  パスをHP-GLプロットファイルに
@@ -227,12 +237,14 @@ EH3D-ISOCAM/
 │   ├── order.rs                                 切削の向き・開始点・順序
 │   ├── preview.rs                               パスを SVG またはテキストで描画
 │   ├── problems.rs                              問題箇所：鋭い内角とパッド間のトラック
+│   ├── tolerance.rs                             許容差の適用先：すべての隙間またはパッドのみ
 │   ├── transform.rs                             両面・パネル・位置合わせ穴
 │   └── units.rs                                 mm・ミル・インチ
 ├── tests/
 │   ├── advanced.rs                              強制アイソレーション・補正・マスク・単位・プレビュー
 │   ├── files.rs                                 ドリル・外形ファイルのテスト
 │   ├── isocam.rs                                ライブラリとコマンドラインのテスト
+│   ├── kinds.rs                                 パッド許容差・輪郭塗り・ファイル種別・ペン・DXF
 │   ├── layout.rs                                両面・パネル・ルール・コマンドラインのテスト
 │   ├── legacy.rs                                旧形式のガーバーレイヤーとコマンドラインのテスト
 │   ├── multi.rs                                 工具・残り銅・向き・順序・設定のテスト

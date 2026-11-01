@@ -52,20 +52,22 @@
       "title": "isolate, forced, contour",
       "lines": [
         "tools, passes, leftover copper,",
-        "forced paths, narrow gaps"
+        "forced paths, narrow gaps, fills"
       ],
       "code": [
         "src/isolate.rs::pub fn plan",
         "src/isolate.rs::pub fn plan_with_pads",
         "src/forced.rs::pub fn forced_passes",
-        "src/contour.rs::pub fn loops"
+        "src/contour.rs::pub fn loops",
+        "src/fill.rs::pub fn rubout_contours",
+        "src/tolerance.rs::pub fn close_pieces_scoped"
       ]
     },
     {
       "id": "order",
       "column": 1,
       "level": "tested",
-      "title": "order, gcode, hpgl",
+      "title": "order, gcode, hpgl, dxf",
       "lines": [
         "direction, start, order of the",
         "cuts, written as G-code or HP-GL"
@@ -73,7 +75,8 @@
       "code": [
         "src/order.rs::pub fn arrange",
         "src/gcode.rs::pub fn write_with",
-        "src/hpgl.rs::pub fn write_with"
+        "src/hpgl.rs::pub fn write_with",
+        "src/dxf.rs::pub fn write"
       ]
     },
     {
@@ -88,7 +91,8 @@
       "code": [
         "src/drill.rs::pub fn read_drills",
         "src/drill.rs::pub fn route_outline",
-        "src/transform.rs::pub fn lay_out"
+        "src/transform.rs::pub fn lay_out",
+        "src/filetype.rs::pub fn detect"
       ]
     },
     {

@@ -9,16 +9,20 @@ use eh3d_isocam::drill::{
     add_tabs, read_drills, read_outline, route_outline, write_drills, write_route_excellon, Hole,
     Tabs,
 };
+use eh3d_isocam::dxf;
 use eh3d_isocam::fiducial::{apply_to_holes, apply_to_passes};
+use eh3d_isocam::filetype;
+use eh3d_isocam::fill::{rubout_contours, Fill};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::gcode::write_in;
-use eh3d_isocam::hpgl::{write_with as hpgl_with, PenBy};
-use eh3d_isocam::isolate::{close_pieces, net_scene, plan_with_pads, rubout_lines, Pass};
+use eh3d_isocam::hpgl::{set_pen_speed, write_holes, write_with as hpgl_with, PenBy};
+use eh3d_isocam::isolate::{net_scene, plan_with_pads, rubout_lines, Pass};
 use eh3d_isocam::mask;
 use eh3d_isocam::optimize::optimize_passes;
 use eh3d_isocam::order::{arrange, directions, travel_mm, Cut, Strategy};
 use eh3d_isocam::preview;
-use eh3d_isocam::problems::{problem_zones, thin_for_tolerance};
+use eh3d_isocam::problems::{problem_zones, thin_for_tolerance_in};
+use eh3d_isocam::tolerance::{close_pieces_scoped, ToleranceScope};
 use eh3d_isocam::transform::{alignment_pattern, lay_out, Axis, Board};
 use eh3d_isocam::units::{parse_length, Unit};
 use std::env;
@@ -27,15 +31,16 @@ use std::process::ExitCode;
 
 const HELP: &str = "eh3d-isocam: isolation milling of copper from a Gerber layer
 
-  eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt   the paths of the tools round the copper (G-code, or HP-GL for a .plt)
+  eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt|OUT.dxf  the paths of the tools round the copper (G-code, HP-GL for a .plt, a DXF drawing for a .dxf)
   eh3d-isocam check LAYER.gtl                    the places where two pieces of copper are closer than the tool is wide
   eh3d-isocam info LAYER.gtl                     the passes: how many paths, which way round, and the travel through the air
   eh3d-isocam preview LAYER.gtl [OUT.svg|OUT.txt] the passes drawn over the copper: an SVG drawing, or text (on the screen when there is no file)
   eh3d-isocam drc LAYER.gtl [--drills F.ncd]     the design rules, with the place of every finding
-  eh3d-isocam drills IN.ncd OUT.ncd [--align]    read a drill file and write it back (turned over, repeated on a panel, with alignment holes)
+  eh3d-isocam drills IN.ncd OUT.ncd|OUT.plt [--align]  read a drill file and write it back (turned over, repeated on a panel, with alignment holes), or as a plot with a pen for each drill (hpgl_pen_map)
   eh3d-isocam route OUTLINE OUT.plt|OUT.ncd      the path of the tool round the board (OUTLINE is a Gerber outline layer, a .dxf or a .plt)
   eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F.gts]  the openings of the solder mask, from the mask layer or from the pads of the copper
-  eh3d-isocam rubout-area OUT.nc|OUT.plt --area X0,Y0,X1,Y1  parallel lines of a tool that clear an area (the tool and the direction are settings)
+  eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--contour FILE  parallel lines of a tool that clear an area or fill closed paths, cut to the copper of LAYER when it is given
+  eh3d-isocam kind FILE...                       say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
   eh3d-isocam config                             every setting with its default, as a configuration file
 
 Every option is a setting of the configuration file: --config FILE reads one, and --fine-tool-mm 0.15 is fine_tool_mm = 0.15 (the old --tool, --passes, --stepover, --res,
@@ -49,7 +54,9 @@ every such gap that is not narrower than --forced-min-gap-mm and refuses only fo
 --scale-x/--scale-y (about the centre of the board) and --fiducial \"DESIGN_X,DESIGN_Y,MEASURED_X,MEASURED_Y\" (two or more times) scale and correct the work for a stretched or turned board.
 isolate --net X,Y isolates only the net that holds the point (up to half a millimetre from its copper) with the tool of net_tool_mm. route puts bridges on the cut with tab_count,
 tab_width_mm and tab_min_length_mm. With a conflict tolerance, check and isolate warn about the tracks and pads that are thin for it (tolerance_warning_margin_mm). The alignment
-holes are 2, 3 or 6, outside the board or in a special pattern (alignment_pattern, alignment_special_a_mm and alignment_special_b_mm).";
+holes are 2, 3 or 6, outside the board or in a special pattern (alignment_pattern, alignment_special_a_mm and alignment_special_b_mm).
+conflict_tolerance_scope = pads keeps the tolerance for the gaps beside a pad. A layer that is really a drill file, a plot or a drawing (and the other way round) is refused by name; kind says
+what a file is. hpgl_pen_map and hpgl_pen_speed_cm_s (0 = the machine's own) set the pens of a plot of holes and the speed of a plot.";
 
 #[derive(Clone)]
 struct Cli {
@@ -61,6 +68,8 @@ struct Cli {
     drills: Option<String>,
     mask_layer: Option<String>,
     apertures: Option<String>,
+    /// A file whose closed paths are filled with lines (`--contour FILE`).
+    contour: Option<String>,
     /// A point of the net to isolate by itself (`--net X,Y`).
     net: Option<(f64, f64)>,
     /// The area to clear with lines (`--area X0,Y0,X1,Y1`).
@@ -91,6 +100,7 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
         drills: None,
         mask_layer: None,
         apertures: None,
+        contour: None,
         net: None,
         area: None,
     };
@@ -117,12 +127,13 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
             "--config" | "--input-units" => {
                 it.next();
             }
-            "--outline" | "--drills" | "--mask-layer" | "--apertures" => {
+            "--outline" | "--drills" | "--mask-layer" | "--apertures" | "--contour" => {
                 let v = it.next().ok_or_else(|| format!("{a} needs a file"))?;
                 match a.as_str() {
                     "--outline" => cli.outline = Some(v),
                     "--drills" => cli.drills = Some(v),
                     "--apertures" => cli.apertures = Some(v),
+                    "--contour" => cli.contour = Some(v),
                     _ => cli.mask_layer = Some(v),
                 }
             }
@@ -156,6 +167,7 @@ fn read(path: &str) -> Result<String, String> {
 /// A Gerber layer read from a file: extended Gerber as it is, an old-style layer with the format and the list of apertures of the settings.
 fn read_layer(cli: &Cli, path: &str) -> Result<eh3d_parser_gerber::GerberFile, String> {
     let text = read(path)?;
+    filetype::expect_gerber(path, filetype::detect(&text))?;
     let list = match &cli.apertures {
         Some(f) => Some(read(f)?),
         None => None,
@@ -197,7 +209,9 @@ fn load_board(
         }
     }
     if let Some(d) = &cli.drills {
-        let drills = read_drills(&read(d)?).map_err(|e| format!("{d}: {e}"))?;
+        let text = read(d)?;
+        filetype::expect_drills(d, filetype::detect(&text))?;
+        let drills = read_drills(&text).map_err(|e| format!("{d}: {e}"))?;
         for n in &drills.notes {
             eprintln!("note: {d}: {n}");
         }
@@ -220,6 +234,30 @@ fn write_text(out: &str, text: String) -> Result<(), String> {
     fs::write(out, text).map_err(|e| format!("{out}: {e}"))
 }
 
+/// The places where the finest tool does not fit, with the conflict tolerance applied as the settings say (to every gap, or only beside pads).
+fn close_scoped(
+    s: &Settings,
+    scene: &eh3d_gerberviewer::scene::Scene,
+    pl: &eh3d_isocam::isolate::Plan,
+) -> Result<Vec<eh3d_isocam::isolate::Closeness>, String> {
+    close_pieces_scoped(
+        scene,
+        pl.finest_mm(),
+        s.conflict_tolerance_mm,
+        s.conflict_tolerance_scope,
+        pl.res_mm,
+    )
+}
+
+/// A plot file with the pen speed of the settings (none when it is 0).
+fn plot(cli: &Cli, text: Result<String, String>) -> Result<String, String> {
+    set_pen_speed(&text?, cli.settings.hpgl_pen_speed_cm_s)
+}
+
+fn is_dxf(path: &str) -> bool {
+    path.to_ascii_lowercase().ends_with(".dxf")
+}
+
 fn is_plot(path: &str) -> bool {
     path.to_ascii_lowercase().ends_with(".plt")
 }
@@ -231,10 +269,11 @@ fn warn_thin(
     out: &mut dyn FnMut(String),
 ) -> Result<(), String> {
     let s = &cli.settings;
-    let thin = thin_for_tolerance(
+    let thin = thin_for_tolerance_in(
         scene,
         s.conflict_tolerance_mm,
         s.tolerance_warning_margin_mm,
+        s.conflict_tolerance_scope == ToleranceScope::Pads,
     )?;
     for c in thin.iter().take(5) {
         out(format!(
@@ -286,7 +325,7 @@ fn build_passes(
     let s = &cli.settings;
     let pl = s.plan()?;
     warn_thin(cli, &board.scene, &mut |m| eprintln!("warning: {m}"))?;
-    let close = close_pieces(&board.scene, s.conflict_gap_mm(pl.finest_mm()), pl.res_mm)?;
+    let close = close_scoped(s, &board.scene, &pl)?;
     let mut passes = plan_with_pads(&board.scene, &pl, s.around_pads())?;
     let mut unfixed = close.len();
     if let Some(f) = s.forced() {
@@ -379,6 +418,15 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
     }
     let s = &cli.settings;
     match cmd.as_str() {
+        "kind" => {
+            if cli.positional.is_empty() {
+                return Err("kind needs a file".into());
+            }
+            for f in &cli.positional {
+                println!("{f}: {}", filetype::detect(&read(f)?).name());
+            }
+            Ok(())
+        }
         "config" => {
             print!("{}", s.to_text());
             Ok(())
@@ -399,8 +447,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let pl = s.plan()?;
             pl.validate()?;
             if cmd == "check" {
-                let close =
-                    close_pieces(&board.scene, s.conflict_gap_mm(pl.finest_mm()), pl.res_mm)?;
+                let close = close_scoped(s, &board.scene, &pl)?;
                 for z in problem_zones(&board.scene, &s.problem_rules(), pl.res_mm)? {
                     println!("warning: {}", z.describe());
                 }
@@ -479,7 +526,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 } else {
                     PenBy::Pass
                 };
-                hpgl_with(&passes, &order, pens)?
+                plot(&cli, hpgl_with(&passes, &order, pens))?
+            } else if is_dxf(out) {
+                dxf::write(&passes)?
             } else {
                 write_in(&passes, &s.job(), &order, s.output_units)?
             };
@@ -499,18 +548,57 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         }
         "rubout-area" => {
             let out = arg(&cli, 0, "rubout-area needs an output file")?;
-            let area = cli
-                .area
-                .ok_or("rubout-area needs --area X0,Y0,X1,Y1 (the corners of the area)")?;
-            let pass = rubout_lines(
-                area,
-                s.rubout_lines_tool_mm,
-                s.rubout_overlap,
-                s.rubout_lines_direction,
-            )?;
+            let layer = cli.positional.get(1).map(String::as_str);
+            let pass = if cli.contour.is_some() || layer.is_some() {
+                // contours (a file, or the box of --area), cut to the copper of the layer when one is given
+                let contours =
+                    match (&cli.contour, cli.area) {
+                        (Some(f), _) => {
+                            let o = read_outline(f, &read(f)?).map_err(|e| format!("{f}: {e}"))?;
+                            o.closed
+                        }
+                        (None, Some((x0, y0, x1, y1))) => {
+                            vec![vec![(x0, y0), (x1, y0), (x1, y1), (x0, y1)]]
+                        }
+                        (None, None) => return Err(
+                            "rubout-area with a layer needs --contour FILE or --area X0,Y0,X1,Y1"
+                                .into(),
+                        ),
+                    };
+                let copper = match layer {
+                    Some(l) => Some(from_gerber(&read_layer(&cli, l)?)),
+                    None => None,
+                };
+                rubout_contours(
+                    &contours,
+                    copper.as_ref(),
+                    &Fill {
+                        tool_mm: s.rubout_lines_tool_mm,
+                        overlap: s.rubout_overlap,
+                        direction: s.rubout_lines_direction,
+                        margin_mm: s.rubout_fill_margin_mm,
+                        res_mm: s.res_mm.min(s.rubout_lines_tool_mm / 2.0),
+                    },
+                )?
+            } else {
+                let area = cli.area.ok_or(
+                    "rubout-area needs --area X0,Y0,X1,Y1 (the corners of the area) or --contour FILE",
+                )?;
+                rubout_lines(
+                    area,
+                    s.rubout_lines_tool_mm,
+                    s.rubout_overlap,
+                    s.rubout_lines_direction,
+                )?
+            };
             let order = s.order();
             let text = if is_plot(out) {
-                hpgl_with(std::slice::from_ref(&pass), &order, PenBy::Pass)?
+                plot(
+                    &cli,
+                    hpgl_with(std::slice::from_ref(&pass), &order, PenBy::Pass),
+                )?
+            } else if is_dxf(out) {
+                dxf::write(std::slice::from_ref(&pass))?
             } else {
                 write_in(
                     std::slice::from_ref(&pass),
@@ -598,7 +686,12 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             if !t.is_identity() {
                 apply_to_holes(&mut holes, &t)?;
             }
-            write_text(out, write_drills(&holes)?)?;
+            let text = if is_plot(out) {
+                plot(&cli, write_holes(&holes, &s.hpgl_pen_map))?
+            } else {
+                write_drills(&holes)?
+            };
+            write_text(out, text)?;
             println!("{} holes written to {out}", holes.len());
             Ok(())
         }
@@ -650,7 +743,10 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let pass = passes.remove(0);
             let order = s.order();
             let text = if is_plot(out) {
-                hpgl_with(std::slice::from_ref(&pass), &order, PenBy::Pass)?
+                plot(
+                    &cli,
+                    hpgl_with(std::slice::from_ref(&pass), &order, PenBy::Pass),
+                )?
             } else {
                 let (cuts, _) = arrange(&pass.cuts(), &order, order.start);
                 write_route_excellon(&cuts, s.route_tool_mm, 1)?

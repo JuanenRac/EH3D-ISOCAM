@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 134 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 154 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.3` |
 | Maturity | Scaffolding |
-| Tests | 134 |
+| Tests | 154 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -49,7 +49,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 134 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 154 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🔴 | Planned: the egui window common to the suite; today there is only the command line. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -70,6 +70,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **Forced isolation** (`src/forced.rs`): with `forced_isolation = yes` a path is also laid along the middle of every gap that the finest tool does not fit in, as long as the gap is not narrower than `forced_min_gap_mm`; each place is reported with its coordinates and its gap, and the gaps that are narrower are listed and left alone. It is off by default: then these places are only reported.
 * **Problem zones, tolerance and alignment distance** (`src/problems.rs`, `src/config.rs`): `check` also lists, as warnings that do not stop anything, the inner corners sharper than `problem_corner_angle_deg` (a round tool leaves copper in the tip of a notch; 60 degrees by default, 0 switches it off) and the tracks that run between two pads nearer to them than `problem_track_gap_factor` times the tool (1.5 by default, 0 switches it off); both criteria are settings, not fixed in the code. `conflict_tolerance_mm` (0 by default: no gap is accepted) accepts the gaps that are narrower than the tool by at most that much, in `check` and in `isolate`. The distance of the alignment holes from the board is `alignment_margin_mm` (5 mm by default; other programs of this kind put them 10 mm away, which is `alignment_margin_mm = 10`).
 * **Bridges, nets, hole patterns and area clearing** (`src/drill.rs`, `src/isolate.rs`, `src/transform.rs`, `src/problems.rs`, `src/legacy.rs`): `route` can leave bridges that hold the board in the sheet (`tab_count` for each closed path, 0 by default; `tab_width_mm` of material left; `tab_min_length_mm` between bridges): the cut stops half a bridge and half a tool short of the middle of each bridge. `isolate --net X,Y` isolates only the net that holds a point, with the tool `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` writes parallel lines of the tool `rubout_lines_tool_mm` (direction `rubout_lines_direction`) that clear an area. The alignment holes can be 2, 3 or 6, outside the board or, with `alignment_pattern = special`, in a pattern about its middle (`alignment_special_a_mm` apart for the pair, `alignment_special_b_mm` for the four more). With a conflict tolerance, `check` and `isolate` warn about the tracks and rectangular pads thinner than twice the tolerance plus `tolerance_warning_margin_mm`. The guess of the format of an old-style Gerber layer now uses the units the file states and the size of the board, and a list of apertures may give both sides in one cell (`60x40`).
+* **Tolerance for pads, filling by contours, kind of file, DXF and plotter pens** (`src/tolerance.rs`, `src/fill.rs`, `src/filetype.rs`, `src/dxf.rs`, `src/hpgl.rs`): `conflict_tolerance_scope = pads` (all by default, as before) keeps the conflict tolerance for the gaps that have a pad beside them, and the thin-copper warning then looks at pads only. `rubout-area OUT [LAYER.gtl] --contour FILE` (or `--area`) fills the closed paths of a file, even-odd so that an inner path is a hole, with back-and-forth lines of `rubout_lines_tool_mm`; with a layer the lines are cut to the copper, the whole tool on copper plus `rubout_fill_margin_mm`. A layer that is really an Excellon, HP-GL or DXF file (or a drill file that is a Gerber layer) is refused by name, and `kind FILE...` says what each file is. `isolate` and `rubout-area` write a DXF drawing for a `.dxf`. `drills IN OUT.plt` plots the holes with a pen for each drill (`hpgl_pen_map = 1:2, 3:1`; the tools it leaves out take the lowest free pens), and `hpgl_pen_speed_cm_s` (0 = the machine's own, the default) writes the pen speed into any plot.
 * **Lighter paths, scale and correction** (`src/optimize.rs`, `src/fiducial.rs`): spikes are taken out and points on a straight line (within `optimize_tolerance_mm`) become one move, on by default (0.01 mm and 0.02 mm, 0 switches them off); the work can be scaled about the centre of the board, and pairs of reference points relative to that centre (where a mark should be and where it was measured) give a similarity (two pairs) or an affine fit (three or more, least squares) that is applied to every path and hole; it is refused when the scale is far from 1 or a mark does not fit.
 * **Solder mask** (`src/mask.rs`): the openings are written as a Gerber layer, from the mask layer of the design or from the pads of the copper, each grown by `mask_margin_mm`; tracks stay covered.
 * **Units and preview** (`src/units.rs`, `src/preview.rs`): a length may carry `mm`, `mil` or `in`, the G-code can be written in inches, and `preview` draws the passes over the copper as an SVG drawing or as text.
@@ -112,14 +113,15 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 The library is `eh3d_isocam` (`use eh3d_isocam::...`); the command line is `eh3d-isocam`. Each command prints its result on the standard output and reports an error on the standard error with a non-zero exit code. There is no network access. The text of the help (`eh3d-isocam help`) is in English:
 
 ```text
-eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt     paths round the copper (G-code, or HP-GL for a .plt)
+eh3d-isocam isolate LAYER.gtl OUT.nc|OUT.plt|OUT.dxf  paths round the copper (G-code, HP-GL for a .plt, DXF for a .dxf)
 eh3d-isocam check LAYER.gtl                      places where the tool does not fit between pieces of copper
 eh3d-isocam info LAYER.gtl                       passes, paths each way round, travel through the air
 eh3d-isocam preview LAYER.gtl [OUT.svg|OUT.txt]    the passes drawn over the copper, as SVG or text
 eh3d-isocam drc LAYER.gtl [--drills F.ncd]       design rules, with the place of every finding
-eh3d-isocam drills IN.ncd OUT.ncd [--align]      read, turn over, panel and add alignment holes
+eh3d-isocam drills IN.ncd OUT.ncd|OUT.plt [--align]  read, turn over, panel and add alignment holes; .plt = a pen per drill
 eh3d-isocam route OUTLINE OUT.plt|OUT.ncd        path of the tool round the board
-eh3d-isocam rubout-area OUT.nc|OUT.plt --area X0,Y0,X1,Y1  parallel lines of a tool that clear an area
+eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--contour FILE  parallel lines of a tool that clear an area or fill closed paths, cut to the copper of LAYER
+eh3d-isocam kind FILE...                        say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
@@ -134,8 +136,11 @@ EH3D-ISOCAM/
 │   ├── contour.rs                               the paths of a pass, traced and made lighter
 │   ├── drc.rs                                   design rules: widths, gaps and rings, with places
 │   ├── drill.rs                                 holes and board outline, read and written
+│   ├── dxf.rs                                   the passes as a DXF drawing
 │   ├── edt.rs                                   the exact distance to the copper
 │   ├── fiducial.rs                              scale and correction from reference points
+│   ├── filetype.rs                              what kind of file an input is
+│   ├── fill.rs                                  lines that fill contours, cut to the copper
 │   ├── forced.rs                                paths along the gaps the tool does not fit in
 │   ├── gcode.rs                                 the paths as G-code
 │   ├── hpgl.rs                                  the paths as an HP-GL plot file
@@ -148,12 +153,14 @@ EH3D-ISOCAM/
 │   ├── order.rs                                 direction, starting points and order of the cuts
 │   ├── preview.rs                               the passes drawn as SVG or text
 │   ├── problems.rs                              problem zones: sharp inner corners and tracks between pads
+│   ├── tolerance.rs                             where the tolerance applies: all gaps or only pads
 │   ├── transform.rs                             both sides, panels and alignment holes
 │   └── units.rs                                 mm, mil and inch
 ├── tests/
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── files.rs                                 tests of the drill and outline files
 │   ├── isocam.rs                                tests of the library and the command line
+│   ├── kinds.rs                                 tolerance for pads, contour fills, file kinds, pens, DXF
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
 │   ├── legacy.rs                                tests of old-style Gerber layers and the command line
 │   ├── multi.rs                                 tests of tools, rubout, direction, order and settings
@@ -190,7 +197,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Testing
 
-The suite has 134 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 154 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -213,8 +220,11 @@ EH3D-ISOCAM/
 │   ├── contour.rs                               the paths of a pass, traced and made lighter
 │   ├── drc.rs                                   design rules: widths, gaps and rings, with places
 │   ├── drill.rs                                 holes and board outline, read and written
+│   ├── dxf.rs                                   the passes as a DXF drawing
 │   ├── edt.rs                                   the exact distance to the copper
 │   ├── fiducial.rs                              scale and correction from reference points
+│   ├── filetype.rs                              what kind of file an input is
+│   ├── fill.rs                                  lines that fill contours, cut to the copper
 │   ├── forced.rs                                paths along the gaps the tool does not fit in
 │   ├── gcode.rs                                 the paths as G-code
 │   ├── hpgl.rs                                  the paths as an HP-GL plot file
@@ -227,12 +237,14 @@ EH3D-ISOCAM/
 │   ├── order.rs                                 direction, starting points and order of the cuts
 │   ├── preview.rs                               the passes drawn as SVG or text
 │   ├── problems.rs                              problem zones: sharp inner corners and tracks between pads
+│   ├── tolerance.rs                             where the tolerance applies: all gaps or only pads
 │   ├── transform.rs                             both sides, panels and alignment holes
 │   └── units.rs                                 mm, mil and inch
 ├── tests/
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── files.rs                                 tests of the drill and outline files
 │   ├── isocam.rs                                tests of the library and the command line
+│   ├── kinds.rs                                 tolerance for pads, contour fills, file kinds, pens, DXF
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
 │   ├── legacy.rs                                tests of old-style Gerber layers and the command line
 │   ├── multi.rs                                 tests of tools, rubout, direction, order and settings

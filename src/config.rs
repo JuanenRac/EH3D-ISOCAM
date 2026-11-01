@@ -10,6 +10,7 @@ use crate::legacy::{self, Format, Zeros};
 use crate::optimize::Optimize;
 use crate::order::{Direction, LoopStart, Order, Strategy};
 use crate::problems::ProblemRules;
+use crate::tolerance::ToleranceScope;
 use crate::transform::{Axis, HolePattern, Layout};
 use crate::units::{parse_length, Unit};
 
@@ -119,6 +120,14 @@ pub struct Settings {
     /// The tool and the direction of the parallel lines that clear an area (`rubout-area`).
     pub rubout_lines_tool_mm: f64,
     pub rubout_lines_direction: Axis,
+    /// Where the conflict tolerance applies: to every gap (`all`) or only to the gaps beside a pad (`pads`).
+    pub conflict_tolerance_scope: ToleranceScope,
+    /// How far from the edge of the copper, beyond the radius of the tool, the lines that fill a contour stay when they are cut to the copper.
+    pub rubout_fill_margin_mm: f64,
+    /// The pen of each drill tool in a plot of the holes (`tool:pen, ...`); the tools it leaves out take the lowest free pens.
+    pub hpgl_pen_map: Vec<(u8, u8)>,
+    /// The pen speed of a plot file in cm/s; 0 leaves it to the machine.
+    pub hpgl_pen_speed_cm_s: f64,
 }
 
 impl Default for Settings {
@@ -197,6 +206,10 @@ impl Default for Settings {
             net_tool_mm: 1.0,
             rubout_lines_tool_mm: 0.8,
             rubout_lines_direction: Axis::Horizontal,
+            conflict_tolerance_scope: ToleranceScope::All,
+            rubout_fill_margin_mm: 0.0,
+            hpgl_pen_map: Vec::new(),
+            hpgl_pen_speed_cm_s: 0.0,
         }
     }
 }
@@ -360,6 +373,13 @@ impl Settings {
                 self.rubout_lines_direction = Axis::parse_option(v)?
                     .ok_or_else(|| format!("{key} '{v}' must be horizontal or vertical"))?
             }
+            "conflict_tolerance_scope" => self.conflict_tolerance_scope = ToleranceScope::parse(v)?,
+            "rubout_fill_margin_mm" => self.rubout_fill_margin_mm = num(key, v)?,
+            "hpgl_pen_map" => {
+                self.hpgl_pen_map =
+                    crate::hpgl::parse_pen_map(v).map_err(|e| format!("{key}: {e}"))?
+            }
+            "hpgl_pen_speed_cm_s" => self.hpgl_pen_speed_cm_s = num(key, v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -433,6 +453,17 @@ impl Settings {
             self.rubout_lines_tool_mm,
             self.rubout_lines_direction.name()
         );
+        extra.push_str(&format!(
+            "conflict_tolerance_scope = {}
+rubout_fill_margin_mm = {}
+hpgl_pen_map = {}
+hpgl_pen_speed_cm_s = {}
+",
+            self.conflict_tolerance_scope.name(),
+            self.rubout_fill_margin_mm,
+            crate::hpgl::pen_map_text(&self.hpgl_pen_map),
+            self.hpgl_pen_speed_cm_s
+        ));
         for p in &self.fiducials {
             extra.push_str(&format!(
                 "fiducial = {}, {}, {}, {}\n",
@@ -587,6 +618,15 @@ impl Settings {
             1.0,
         )?;
         range("net_tool_mm", self.net_tool_mm, 0.02, 10.0)?;
+        range(
+            "rubout_fill_margin_mm",
+            self.rubout_fill_margin_mm,
+            0.0,
+            10.0,
+        )?;
+        if self.hpgl_pen_speed_cm_s != 0.0 {
+            range("hpgl_pen_speed_cm_s", self.hpgl_pen_speed_cm_s, 0.1, 100.0)?;
+        }
         range("rubout_lines_tool_mm", self.rubout_lines_tool_mm, 0.1, 10.0)?;
 
         if self.alignment_tool == 0 {
