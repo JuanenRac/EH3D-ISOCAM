@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **More tests:** the limits of the job, the G-code with tool changes and in inches, the HP-GL plots with pens, speeds and the style of the original program, the DXF drawings, the kind of a file and the reading of drill files.
 
 ## [0.0.6] - Library parts moved to the shared crates and reading with limits
 
