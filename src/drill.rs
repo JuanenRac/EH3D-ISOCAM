@@ -137,6 +137,28 @@ fn inches(mm: f64) -> String {
 
 /// The holes as an Excellon file in whole mils, a tool after the other in the order they first appear. Holes that share a tool number must share its diameter.
 pub fn write_drills(holes: &[Hole]) -> Result<String, String> {
+    write_drills_as(holes, &DrillStyle::default())
+}
+
+/// How a drill file is written.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct DrillStyle {
+    /// The plain form of the files of the Bungard programs: `M48` and `%`, the tools by number only (no unit line, no diameters), a coordinate left out when it is the same as
+    /// the one before it, CR LF line ends and `M00` at the end.
+    pub plain: bool,
+    /// Digits of a coordinate, filled with zeros in front; 0 writes the number as it is.
+    pub digits: u8,
+}
+
+fn coordinate(v: i64, digits: u8) -> String {
+    format!("{v:0w$}", w = usize::from(digits))
+}
+
+/// The holes as an Excellon file in whole mils, as `style` says.
+pub fn write_drills_as(holes: &[Hole], style: &DrillStyle) -> Result<String, String> {
+    if style.plain {
+        return write_plain_drills(holes, style.digits);
+    }
     if holes.is_empty() {
         return Err("there are no holes to write".into());
     }
@@ -174,10 +196,60 @@ pub fn write_drills(holes: &[Hole]) -> Result<String, String> {
     for (t, _) in &tools {
         s.push_str(&format!("T{t}\n"));
         for h in holes.iter().filter(|h| h.tool == *t) {
-            s.push_str(&format!("X{}Y{}\n", mil(h.x_mm)?, mil(h.y_mm)?));
+            s.push_str(&format!(
+                "X{}Y{}\n",
+                coordinate(mil(h.x_mm)?, style.digits),
+                coordinate(mil(h.y_mm)?, style.digits)
+            ));
         }
     }
     s.push_str("M30\n");
+    Ok(s)
+}
+
+fn write_plain_drills(holes: &[Hole], digits: u8) -> Result<String, String> {
+    if holes.is_empty() {
+        return Err("there are no holes to write".into());
+    }
+    let mut tools: Vec<(u8, f64)> = Vec::new();
+    for h in holes {
+        if h.tool == 0 {
+            return Err("a hole has tool number 0: tools are numbered from 1".into());
+        }
+        match tools.iter().find(|t| t.0 == h.tool) {
+            Some(t) if (t.1 - h.diameter_mm).abs() > 0.005 => {
+                return Err(format!(
+                    "tool {} is used with {} mm and with {} mm",
+                    h.tool, t.1, h.diameter_mm
+                ));
+            }
+            Some(_) => {}
+            None => tools.push((h.tool, h.diameter_mm)),
+        }
+    }
+    let mut s = String::from("M48\r\n%\r\n");
+    for (t, _) in &tools {
+        s.push_str(&format!("T{t}\r\n"));
+        let mut last: Option<(i64, i64)> = None;
+        for h in holes.iter().filter(|h| h.tool == *t) {
+            let (x, y) = (mil(h.x_mm)?, mil(h.y_mm)?);
+            match last {
+                Some((lx, ly)) if lx == x && ly != y => {
+                    s.push_str(&format!("Y{}\r\n", coordinate(y, digits)));
+                }
+                Some((lx, ly)) if ly == y && lx != x => {
+                    s.push_str(&format!("X{}\r\n", coordinate(x, digits)));
+                }
+                _ => s.push_str(&format!(
+                    "X{}Y{}\r\n",
+                    coordinate(x, digits),
+                    coordinate(y, digits)
+                )),
+            }
+            last = Some((x, y));
+        }
+    }
+    s.push_str("M00\r\n");
     Ok(s)
 }
 

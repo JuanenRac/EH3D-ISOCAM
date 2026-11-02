@@ -6,8 +6,8 @@ use eh3d_gerberviewer::scene::from_gerber;
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::drc;
 use eh3d_isocam::drill::{
-    add_tabs, read_drills, read_outline, route_outline, write_drills, write_route_excellon, Hole,
-    Tabs,
+    add_tabs, read_drills, read_outline, route_outline, write_drills_as, write_route_excellon,
+    DrillStyle, Hole, Tabs,
 };
 use eh3d_isocam::dxf;
 use eh3d_isocam::fiducial::{apply_to_holes, apply_to_passes};
@@ -15,7 +15,7 @@ use eh3d_isocam::filetype;
 use eh3d_isocam::fill::{rubout_contours, Fill};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::gcode::write_in;
-use eh3d_isocam::hpgl::{set_pen_speed, write_holes, write_with as hpgl_with, PenBy};
+use eh3d_isocam::hpgl::{set_pen_speed, write_holes_opts, write_opts, PenBy, PlotOptions};
 use eh3d_isocam::isolate::{net_scene, plan_with_pads, rubout_lines, Pass};
 use eh3d_isocam::mask;
 use eh3d_isocam::optimize::optimize_passes;
@@ -56,7 +56,11 @@ isolate --net X,Y isolates only the net that holds the point (up to half a milli
 tab_width_mm and tab_min_length_mm. With a conflict tolerance, check and isolate warn about the tracks and pads that are thin for it (tolerance_warning_margin_mm). The alignment
 holes are 2, 3 or 6, outside the board or in a special pattern (alignment_pattern, alignment_special_a_mm and alignment_special_b_mm).
 conflict_tolerance_scope = pads keeps the tolerance for the gaps beside a pad. A layer that is really a drill file, a plot or a drawing (and the other way round) is refused by name; kind says
-what a file is. hpgl_pen_map and hpgl_pen_speed_cm_s (0 = the machine's own) set the pens of a plot of holes and the speed of a plot. hpgl_isocam_style (on) writes a plot with a PA for each point and lines of about 75 columns, as the original program did.";
+what a file is. hpgl_pen_map and hpgl_pen_speed_cm_s (0 = the machine's own) set the pens of a plot of holes and the speed of a plot. hpgl_isocam_style (on) writes a plot with a PA for each point and lines of about 75 columns, as the original program did.
+hpgl_shift_negative = no keeps the coordinates of the board in a plot, negative ones included, so that a plot and a drill file share one origin. isolate with plot_outline = yes and
+--outline FILE puts the cut round the outline (the tool of route_tool_mm) first in the plot, on hpgl_outline_pen (0 = the pen after the others), the isolation on hpgl_isolation_pen
+(0 = as usual). ncd_isocam_style = yes writes a drill file as the Bungard programs do (M48 and %, tools by number, a repeated coordinate left out, CR LF, M00), and ncd_digits fills
+the coordinates with zeros in front (5 for whole mils in five digits).";
 
 #[derive(Clone)]
 struct Cli {
@@ -257,6 +261,14 @@ fn plot(cli: &Cli, text: Result<String, String>) -> Result<String, String> {
     } else {
         text
     })
+}
+
+/// How a plot is written, from the settings.
+fn plot_options(cli: &Cli) -> PlotOptions {
+    PlotOptions {
+        keep_negative: !cli.settings.hpgl_shift_negative,
+        pen_of_pass: Vec::new(),
+    }
 }
 
 fn is_dxf(path: &str) -> bool {
@@ -531,7 +543,52 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 } else {
                     PenBy::Pass
                 };
-                plot(&cli, hpgl_with(&passes, &order, pens))?
+                let mut all = passes.clone();
+                let mut opts = plot_options(&cli);
+                if s.plot_outline {
+                    if board.outline.is_empty() {
+                        return Err(
+                            "plot_outline needs the outline of the board: give --outline FILE"
+                                .into(),
+                        );
+                    }
+                    let outline = eh3d_isocam::drill::Outline {
+                        closed: board.outline.clone(),
+                        open: Vec::new(),
+                    };
+                    let mut cut = route_outline(
+                        &outline,
+                        s.route_tool_mm,
+                        s.res_mm.min(s.route_tool_mm / 2.0),
+                    )?;
+                    let (t, _) = s.transform(centre_of(&whole))?;
+                    if !t.is_identity() {
+                        let mut one = vec![cut];
+                        apply_to_passes(&mut one, &t)?;
+                        cut = one.remove(0);
+                    }
+                    // the pens of the passes as they would be, then the cut in front of them
+                    let usual = |k: usize, p: &Pass| match pens {
+                        PenBy::Pass => k + 1,
+                        PenBy::Tool => p.tool + 1,
+                    };
+                    let mut pen_of: Vec<usize> = all
+                        .iter()
+                        .enumerate()
+                        .map(|(k, p)| match s.hpgl_isolation_pen {
+                            0 => usual(k, p),
+                            n => usize::from(n),
+                        })
+                        .collect();
+                    let outline_pen = match s.hpgl_outline_pen {
+                        0 => pen_of.iter().copied().max().unwrap_or(0) + 1,
+                        n => usize::from(n),
+                    };
+                    pen_of.insert(0, outline_pen);
+                    all.insert(0, cut);
+                    opts.pen_of_pass = pen_of;
+                }
+                plot(&cli, write_opts(&all, &order, pens, &opts))?
             } else if is_dxf(out) {
                 dxf::write(&passes)?
             } else {
@@ -600,7 +657,12 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let text = if is_plot(out) {
                 plot(
                     &cli,
-                    hpgl_with(std::slice::from_ref(&pass), &order, PenBy::Pass),
+                    write_opts(
+                        std::slice::from_ref(&pass),
+                        &order,
+                        PenBy::Pass,
+                        &plot_options(&cli),
+                    ),
                 )?
             } else if is_dxf(out) {
                 dxf::write(std::slice::from_ref(&pass))?
@@ -692,9 +754,18 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 apply_to_holes(&mut holes, &t)?;
             }
             let text = if is_plot(out) {
-                plot(&cli, write_holes(&holes, &s.hpgl_pen_map))?
+                plot(
+                    &cli,
+                    write_holes_opts(&holes, &s.hpgl_pen_map, !s.hpgl_shift_negative),
+                )?
             } else {
-                write_drills(&holes)?
+                write_drills_as(
+                    &holes,
+                    &DrillStyle {
+                        plain: s.ncd_isocam_style,
+                        digits: s.ncd_digits,
+                    },
+                )?
             };
             write_text(out, text)?;
             println!("{} holes written to {out}", holes.len());
@@ -750,7 +821,12 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let text = if is_plot(out) {
                 plot(
                     &cli,
-                    hpgl_with(std::slice::from_ref(&pass), &order, PenBy::Pass),
+                    write_opts(
+                        std::slice::from_ref(&pass),
+                        &order,
+                        PenBy::Pass,
+                        &plot_options(&cli),
+                    ),
                 )?
             } else {
                 let (cuts, _) = arrange(&pass.cuts(), &order, order.start);

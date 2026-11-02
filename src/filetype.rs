@@ -102,6 +102,22 @@ pub fn detect(text: &str) -> FileKind {
     if defs >= 1 && stars == 0 && lines.iter().any(|l| l.starts_with(['X', 'Y'])) {
         return FileKind::Excellon;
     }
+    // Excellon with no header line: a `%`, tools by number alone and the holes (the drill files of CAM programs that leave the header out)
+    let bare_tools = lines
+        .iter()
+        .filter(|l| {
+            l.strip_prefix('T').is_some_and(|r| {
+                (1..=2).contains(&r.len()) && r.chars().all(|c| c.is_ascii_digit())
+            })
+        })
+        .count();
+    if stars == 0
+        && lines.contains(&"%")
+        && bare_tools >= 1
+        && lines.iter().any(|l| l.starts_with(['X', 'Y']))
+    {
+        return FileKind::Excellon;
+    }
     // old-style Gerber: blocks that end in `*` and draw with D01, D02 or D03
     if stars >= 2 {
         let draws = text

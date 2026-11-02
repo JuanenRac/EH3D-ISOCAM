@@ -130,6 +130,18 @@ pub struct Settings {
     pub hpgl_pen_speed_cm_s: f64,
     /// Write a plot file the way the original program did (a `PA` for each point, lines of about 75 columns); off writes the compact form.
     pub hpgl_isocam_style: bool,
+    /// Move a plot so that no coordinate is negative (the usual way); off keeps the coordinates of the board, negative ones included, so that a plot and a drill file share one origin.
+    pub hpgl_shift_negative: bool,
+    /// Put the cut round the outline (`--outline`) first in a plot of `isolate`.
+    pub plot_outline: bool,
+    /// The pen of the cut round the outline when it is in the plot; 0 takes the first pen after those of the passes.
+    pub hpgl_outline_pen: u8,
+    /// The pen of the isolation passes when the cut round the outline is in the plot; 0 leaves them as they are.
+    pub hpgl_isolation_pen: u8,
+    /// Write a drill file the way the original program did (no unit line, no tool diameters, a coordinate left out when it repeats, CR LF, M00 at the end).
+    pub ncd_isocam_style: bool,
+    /// Digits of a coordinate in a drill file, filled with zeros in front; 0 writes the number as it is.
+    pub ncd_digits: u8,
 }
 
 impl Default for Settings {
@@ -213,12 +225,30 @@ impl Default for Settings {
             hpgl_pen_map: Vec::new(),
             hpgl_pen_speed_cm_s: 0.0,
             hpgl_isocam_style: true,
+            hpgl_shift_negative: true,
+            plot_outline: false,
+            hpgl_outline_pen: 0,
+            hpgl_isolation_pen: 0,
+            ncd_isocam_style: false,
+            ncd_digits: 0,
         }
     }
 }
 
 /// The most reference points.
 pub const MAX_FIDUCIALS: usize = 50;
+
+/// A pen number: 0 (take the usual one) or from 1 to the most pens of a plot.
+fn pen(key: &str, v: &str) -> Result<u8, String> {
+    let n = num(key, v)?;
+    if n.fract() != 0.0 || !(0.0..=crate::hpgl::MAX_PENS as f64).contains(&n) {
+        return Err(format!(
+            "{key} '{v}': it must be 0 or a pen from 1 to {}",
+            crate::hpgl::MAX_PENS
+        ));
+    }
+    Ok(n as u8)
+}
 
 fn num(key: &str, v: &str) -> Result<f64, String> {
     v.trim()
@@ -384,6 +414,20 @@ impl Settings {
             }
             "hpgl_pen_speed_cm_s" => self.hpgl_pen_speed_cm_s = num(key, v)?,
             "hpgl_isocam_style" => self.hpgl_isocam_style = flag(key, v)?,
+            "hpgl_shift_negative" => self.hpgl_shift_negative = flag(key, v)?,
+            "plot_outline" => self.plot_outline = flag(key, v)?,
+            "hpgl_outline_pen" => self.hpgl_outline_pen = pen(key, v)?,
+            "hpgl_isolation_pen" => self.hpgl_isolation_pen = pen(key, v)?,
+            "ncd_isocam_style" => self.ncd_isocam_style = flag(key, v)?,
+            "ncd_digits" => {
+                let n = num(key, v)?;
+                if n.fract() != 0.0 || !(0.0..=8.0).contains(&n) {
+                    return Err(format!(
+                        "{key} '{v}': it must be a whole number from 0 to 8"
+                    ));
+                }
+                self.ncd_digits = n as u8;
+            }
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -463,12 +507,24 @@ rubout_fill_margin_mm = {}
 hpgl_pen_map = {}
 hpgl_pen_speed_cm_s = {}
 hpgl_isocam_style = {}
+hpgl_shift_negative = {}
+plot_outline = {}
+hpgl_outline_pen = {}
+hpgl_isolation_pen = {}
+ncd_isocam_style = {}
+ncd_digits = {}
 ",
             self.conflict_tolerance_scope.name(),
             self.rubout_fill_margin_mm,
             crate::hpgl::pen_map_text(&self.hpgl_pen_map),
             self.hpgl_pen_speed_cm_s,
-            self.hpgl_isocam_style
+            self.hpgl_isocam_style,
+            self.hpgl_shift_negative,
+            self.plot_outline,
+            self.hpgl_outline_pen,
+            self.hpgl_isolation_pen,
+            self.ncd_isocam_style,
+            self.ncd_digits
         ));
         for p in &self.fiducials {
             extra.push_str(&format!(

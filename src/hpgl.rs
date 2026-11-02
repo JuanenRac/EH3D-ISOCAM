@@ -35,9 +35,31 @@ pub fn write(passes: &[Pass]) -> Result<String, String> {
 
 /// The passes as HP-GL with the paths in the order, direction and starting points that `order` says.
 pub fn write_with(passes: &[Pass], order: &Order, pens: PenBy) -> Result<String, String> {
-    let pen_of = |k: usize, p: &Pass| match pens {
-        PenBy::Pass => k + 1,
-        PenBy::Tool => p.tool + 1,
+    write_opts(passes, order, pens, &PlotOptions::default())
+}
+
+/// How a plot differs from the usual one.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PlotOptions {
+    /// Keep the coordinates as they are, negative ones included, instead of moving the plot so that none is negative.
+    pub keep_negative: bool,
+    /// The pen of each pass, by position; 0 (or no entry) takes the usual pen.
+    pub pen_of_pass: Vec<usize>,
+}
+
+/// The passes as HP-GL with the paths in the order of `order`, the pens of `pens` and the changes of `opts`.
+pub fn write_opts(
+    passes: &[Pass],
+    order: &Order,
+    pens: PenBy,
+    opts: &PlotOptions,
+) -> Result<String, String> {
+    let pen_of = |k: usize, p: &Pass| match opts.pen_of_pass.get(k).copied().unwrap_or(0) {
+        0 => match pens {
+            PenBy::Pass => k + 1,
+            PenBy::Tool => p.tool + 1,
+        },
+        n => n,
     };
     let most = passes
         .iter()
@@ -60,10 +82,14 @@ pub fn write_with(passes: &[Pass], order: &Order, pens: PenBy) -> Result<String,
             min_y = min_y.min(q.1);
         }
     }
-    let (dx, dy) = (
-        if min_x < 0.0 { -min_x } else { 0.0 },
-        if min_y < 0.0 { -min_y } else { 0.0 },
-    );
+    let (dx, dy) = if opts.keep_negative {
+        (0.0, 0.0)
+    } else {
+        (
+            if min_x < 0.0 { -min_x } else { 0.0 },
+            if min_y < 0.0 { -min_y } else { 0.0 },
+        )
+    };
     let mut s = String::from("IN;\n");
     let mut at = order.start;
     let mut pen = 0;
@@ -240,6 +266,15 @@ pub fn pens_for(tools: &[u8], map: &[(u8, u8)]) -> Result<Vec<(u8, u8)>, String>
 
 /// The holes as a plot file: one pen for each drill tool (`map` gives the pen of a tool, the others take the lowest free pens), and at each hole the pen is put down and lifted.
 pub fn write_holes(holes: &[Hole], map: &[(u8, u8)]) -> Result<String, String> {
+    write_holes_opts(holes, map, false)
+}
+
+/// The holes as a plot file; with `keep_negative` the coordinates stay as they are, negative ones included.
+pub fn write_holes_opts(
+    holes: &[Hole],
+    map: &[(u8, u8)],
+    keep_negative: bool,
+) -> Result<String, String> {
     if holes.is_empty() {
         return Err("there are no holes to write".into());
     }
@@ -253,10 +288,14 @@ pub fn write_holes(holes: &[Hole], map: &[(u8, u8)]) -> Result<String, String> {
     let pens = pens_for(&tools, map)?;
     let min_x = holes.iter().map(|h| h.x_mm).fold(f64::INFINITY, f64::min);
     let min_y = holes.iter().map(|h| h.y_mm).fold(f64::INFINITY, f64::min);
-    let (dx, dy) = (
-        if min_x < 0.0 { -min_x } else { 0.0 },
-        if min_y < 0.0 { -min_y } else { 0.0 },
-    );
+    let (dx, dy) = if keep_negative {
+        (0.0, 0.0)
+    } else {
+        (
+            if min_x < 0.0 { -min_x } else { 0.0 },
+            if min_y < 0.0 { -min_y } else { 0.0 },
+        )
+    };
     let mut order: Vec<(u8, u8)> = pens.clone();
     order.sort_by_key(|(_, p)| *p);
     let mut s = String::from("IN;\n");

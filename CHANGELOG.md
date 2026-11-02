@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A plot that keeps the origin of the board** (`hpgl_shift_negative`, yes by default as before): with `no`, the coordinates of a plot (and of a plot of holes) stay as they are, negative ones included, so that a plot and a drill file made from the same design share one origin.
+- **The cut round the outline in the plot of `isolate`** (`plot_outline = yes`, `--outline FILE`, `hpgl_outline_pen`, `hpgl_isolation_pen`): the cut of the tool of `route_tool_mm` round the outline comes first, on its own pen, followed by the isolation on its pen; 0 for a pen takes the usual one (the outline after the others).
+- **A plain drill file** (`ncd_isocam_style`, `ncd_digits`; both off by default): the drill file is written as the Bungard programs do (`M48` and `%`, tools by number only, a repeated coordinate left out, CR LF, `M00` at the end), and the coordinates can be filled with zeros in front (five digits for whole mils).
+- **A drill file with no header line is known:** a `%`, tools by number and the holes are taken for Excellon by `kind` and by the readers.
+- **Tests for turning the holes over about the middle of the outline** with `--mirror vertical` (a board milled on its other side finds its holes where they were).
+
 ## [0.0.4] - Plots as the original program wrote them, tolerance for pads, filling by contours and DXF output
 
 - **Plots as the original program wrote them** (`hpgl_isocam_style`, on by default; off keeps the compact form): every point of a path is its own `PA`, lines are ended with CR LF after about 75 columns, `IN`, `VS` and `SP` stand on lines of their own, and the plot ends with `PU;` and `PA0,0;SP;`.
