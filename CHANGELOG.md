@@ -4,6 +4,11 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Files are read with a size limit and an encoding check:** `--max-bytes N` refuses a file over the limit (256 MiB by default), and text that is not UTF-8 is read as Latin-1 with a warning that carries the code `input-not-utf8`.
+- **The notices of the Gerber reader are shown by their stable code** on the error output, and `--hide CODE[,CODE]` leaves out the notices of those codes (a misspelt code is an error).
+- **No note when nothing changed:** the note about the lighter paths and the one about the bridges of the cut are printed only when they changed something.
+- **Tests that run what the README and the scripts promise:** the sample of `run.sh`, `run.bat` and the README is the same command, and it is run on the files of `examples/`.
+
 ## [0.0.5] - A plot that keeps the origin of the board, the cut round the outline and a plain drill file
 
 - **A plot that keeps the origin of the board** (`hpgl_shift_negative`, yes by default as before): with `no`, the coordinates of a plot (and of a plot of holes) stay as they are, negative ones included, so that a plot and a drill file made from the same design share one origin.

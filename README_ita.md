@@ -18,7 +18,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 154 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Non ha ancora una finestra, non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 171 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Non ha ancora una finestra, non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versione | `0.0.5` |
 | Maturità | Impalcatura |
-| Test | 154 |
+| Test | 171 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -49,7 +49,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 154 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 171 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🔴 | Previsto: la finestra egui comune alla suite; oggi esiste solo la riga di comando. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -76,6 +76,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **Maschera di saldatura** (`src/mask.rs`): le aperture sono scritte come livello Gerber, dal livello maschera del progetto o dai pad del rame, ciascuna ingrandita di `mask_margin_mm`; le piste restano coperte.
 * **Unità e anteprima** (`src/units.rs`, `src/preview.rs`): una lunghezza può portare `mm`, `mil` o `in`, il G-code può essere scritto in pollici, e `preview` disegna le passate sul rame come disegno SVG o come testo.
 * **Livelli Gerber vecchio stile** (`src/legacy.rs`): un livello senza istruzione di formato (RS-274D, come lo scrivono molti programmi più vecchi) viene letto quando si indica il suo elenco di aperture (`--apertures`, un codice D e la sua dimensione per riga) insieme al suo formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); viene riscritto come Gerber esteso e passa dal lettore normale. Provato con livelli scritti a mano, non con file di altri programmi.
+* **Lettura e avvisi per codice (riga di comando):** i file sono letti con un limite di dimensione (`--max-bytes N`, 256 MiB di default) e il testo non UTF-8 viene letto come Latin-1 con un avviso (`input-not-utf8`); gli avvisi del lettore Gerber sono mostrati con il loro codice stabile e `--hide CODE[,CODE]` omette quei codici. La nota sui percorsi alleggeriti e quella sui ponti del taglio compaiono solo quando hanno cambiato qualcosa.
 
 ## 🧩 Ruolo in EH3D
 
@@ -159,13 +160,15 @@ EH3D-ISOCAM/
 │   └── units.rs                                 mm, mil e pollice
 ├── tests/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
+│   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice
 │   ├── files.rs                                 test dei file di foratura e contorno
 │   ├── isocam.rs                                test della libreria e della riga di comando
 │   ├── kinds.rs                                 tolleranza per pad, riempimenti, tipi di file, penne, DXF
 │   ├── layout.rs                                test di doppia faccia, pannelli, regole e riga di comando
 │   ├── legacy.rs                                test dei livelli Gerber vecchio stile e della riga di comando
 │   ├── multi.rs                                 test di utensili, rame residuo, verso, ordine e impostazioni
-│   └── problems.rs                              test delle zone problematiche, della tolleranza e dei fori di allineamento
+│   ├── problems.rs                              test delle zone problematiche, della tolleranza e dei fori di allineamento
+│   └── readme.rs                                test che eseguono ciò che promettono il README e gli script run
 ├── examples/
 │   ├── isocam.cfg                               tutte le impostazioni con il valore predefinito, da copiare e modificare
 │   └── sample.gtl                               un esempio per provare il programma
@@ -198,7 +201,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Test
 
-La suite ha 154 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 171 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
@@ -243,13 +246,15 @@ EH3D-ISOCAM/
 │   └── units.rs                                 mm, mil e pollice
 ├── tests/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
+│   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice
 │   ├── files.rs                                 test dei file di foratura e contorno
 │   ├── isocam.rs                                test della libreria e della riga di comando
 │   ├── kinds.rs                                 tolleranza per pad, riempimenti, tipi di file, penne, DXF
 │   ├── layout.rs                                test di doppia faccia, pannelli, regole e riga di comando
 │   ├── legacy.rs                                test dei livelli Gerber vecchio stile e della riga di comando
 │   ├── multi.rs                                 test di utensili, rame residuo, verso, ordine e impostazioni
-│   └── problems.rs                              test delle zone problematiche, della tolleranza e dei fori di allineamento
+│   ├── problems.rs                              test delle zone problematiche, della tolleranza e dei fori di allineamento
+│   └── readme.rs                                test che eseguono ciò che promettono il README e gli script run
 ├── examples/
 │   ├── isocam.cfg                               tutte le impostazioni con il valore predefinito, da copiare e modificare
 │   └── sample.gtl                               un esempio per provare il programma

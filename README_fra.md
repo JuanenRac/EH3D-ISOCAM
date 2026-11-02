@@ -18,7 +18,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 154 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il n'a pas encore de fenêtre, n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 171 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il n'a pas encore de fenêtre, n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.5` |
 | Maturité | Échafaudage |
-| Tests | 154 |
+| Tests | 171 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -49,7 +49,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Fichiers et disposition | 🟡 | lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, ajoute des trous d'alignement et vérifie les règles de conception avec l'endroit de chaque constat ; testé sur un ordinateur, pas avec des fichiers écrits par d'autres programmes ni sur une machine. |
 | Isolation forcée, correction, masque | 🟡 | trajets forcés dans les espaces où l'outil ne passe pas, trajets allégés, échelle et correction par points de référence, ouvertures du masque de soudure, unités et aperçu des passes ; testé sur un ordinateur avec des couches générées et des entrées abîmées, jamais avec de vraies cartes ni sur une machine, et la correction n'a pas été comparée à de vraies mesures d'une caméra. |
 | Ligne de commande | 🟡 | `eh3d-isocam` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 154 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
+| Tests | 🟡 | 171 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🔴 | Prévu : la fenêtre egui commune à la suite ; aujourd'hui il n'y a que la ligne de commande. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -76,6 +76,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 * **Masque de soudure** (`src/mask.rs`) : les ouvertures sont écrites comme une couche Gerber, à partir de la couche de masque du dessin ou des pastilles du cuivre, chacune agrandie de `mask_margin_mm` ; les pistes restent couvertes.
 * **Unités et aperçu** (`src/units.rs`, `src/preview.rs`) : une longueur peut porter `mm`, `mil` ou `in`, le G-code peut être écrit en pouces, et `preview` dessine les passes sur le cuivre en dessin SVG ou en texte.
 * **Couches Gerber anciennes** (`src/legacy.rs`) : une couche sans instruction de format (RS-274D, comme l'écrivent beaucoup d'anciens programmes) est lue quand on donne sa liste d'ouvertures (`--apertures`, un code D et sa taille par ligne) avec son format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`) ; elle est réécrite en Gerber étendu et passe par le lecteur normal. Testé avec des couches écrites à la main, pas avec des fichiers d'autres programmes.
+* **Lecture et avis par code (ligne de commande) :** les fichiers sont lus avec une limite de taille (`--max-bytes N`, 256 MiB par défaut) et le texte non UTF-8 est lu comme du Latin-1 avec un avertissement (`input-not-utf8`) ; les avis du lecteur Gerber sont affichés avec leur code stable et `--hide CODE[,CODE]` omet ces codes. La note sur les tracés allégés et celle sur les ponts de la découpe ne sont affichées que lorsqu'elles ont changé quelque chose.
 
 ## 🧩 Rôle dans EH3D
 
@@ -159,13 +160,15 @@ EH3D-ISOCAM/
 │   └── units.rs                                 mm, mil et pouce
 ├── tests/
 │   ├── advanced.rs                              isolation forcée, correction, masque, unités, aperçu
+│   ├── cli_reading.rs                           tests de lecture des fichiers : la limite de taille, le texte non UTF-8, les avis par code
 │   ├── files.rs                                 tests des fichiers de perçage et de contour
 │   ├── isocam.rs                                tests de la bibliothèque et de la ligne de commande
 │   ├── kinds.rs                                 tolérance pastilles, remplissages, types de fichier, plumes, DXF
 │   ├── layout.rs                                tests du double face, des panneaux, des règles et de la ligne de commande
 │   ├── legacy.rs                                tests des couches Gerber anciennes et de la ligne de commande
 │   ├── multi.rs                                 tests des outils, du cuivre restant, du sens, de l'ordre et des réglages
-│   └── problems.rs                              tests des zones à problème, de la tolérance et des trous d'alignement
+│   ├── problems.rs                              tests des zones à problème, de la tolérance et des trous d'alignement
+│   └── readme.rs                                tests qui exécutent ce que promettent le README et les scripts run
 ├── examples/
 │   ├── isocam.cfg                               tous les réglages avec leur valeur par défaut, à copier et modifier
 │   └── sample.gtl                               un exemple pour essayer le programme
@@ -198,7 +201,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Tests
 
-La suite compte 154 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 171 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -243,13 +246,15 @@ EH3D-ISOCAM/
 │   └── units.rs                                 mm, mil et pouce
 ├── tests/
 │   ├── advanced.rs                              isolation forcée, correction, masque, unités, aperçu
+│   ├── cli_reading.rs                           tests de lecture des fichiers : la limite de taille, le texte non UTF-8, les avis par code
 │   ├── files.rs                                 tests des fichiers de perçage et de contour
 │   ├── isocam.rs                                tests de la bibliothèque et de la ligne de commande
 │   ├── kinds.rs                                 tolérance pastilles, remplissages, types de fichier, plumes, DXF
 │   ├── layout.rs                                tests du double face, des panneaux, des règles et de la ligne de commande
 │   ├── legacy.rs                                tests des couches Gerber anciennes et de la ligne de commande
 │   ├── multi.rs                                 tests des outils, du cuivre restant, du sens, de l'ordre et des réglages
-│   └── problems.rs                              tests des zones à problème, de la tolérance et des trous d'alignement
+│   ├── problems.rs                              tests des zones à problème, de la tolérance et des trous d'alignement
+│   └── readme.rs                                tests qui exécutent ce que promettent le README et les scripts run
 ├── examples/
 │   ├── isocam.cfg                               tous les réglages avec leur valeur par défaut, à copier et modifier
 │   └── sample.gtl                               un exemple pour essayer le programme
