@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.5] - A plot that keeps the origin of the board, the cut round the outline and a plain drill file
+
 - **A plot that keeps the origin of the board** (`hpgl_shift_negative`, yes by default as before): with `no`, the coordinates of a plot (and of a plot of holes) stay as they are, negative ones included, so that a plot and a drill file made from the same design share one origin.
 - **The cut round the outline in the plot of `isolate`** (`plot_outline = yes`, `--outline FILE`, `hpgl_outline_pen`, `hpgl_isolation_pen`): the cut of the tool of `route_tool_mm` round the outline comes first, on its own pen, followed by the isolation on its pen; 0 for a pen takes the usual one (the outline after the others).
 - **A plain drill file** (`ncd_isocam_style`, `ncd_digits`; both off by default): the drill file is written as the Bungard programs do (`M48` and `%`, tools by number only, a repeated coordinate left out, CR LF, `M00` at the end), and the coordinates can be filled with zeros in front (five digits for whole mils).

@@ -16,7 +16,7 @@ dependencies = [
 
 [[package]]
 name = "eh3d-isocam"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "eh3d-bungard-formats",
  "eh3d-gerberviewer",
@@ -25,9 +25,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "eh3d-parser-common"
+version = "0.0.2"
+
+[[package]]
 name = "eh3d-parser-excellon"
 version = "0.0.2"
+dependencies = [
+ "eh3d-parser-common",
+]
 
 [[package]]
 name = "eh3d-parser-gerber"
 version = "0.0.2"
+dependencies = [
+ "eh3d-parser-common",
+]
