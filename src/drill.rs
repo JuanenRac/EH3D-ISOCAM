@@ -79,11 +79,35 @@ pub fn read_drills(text: &str) -> Result<Drills, String> {
             f.routes.len()
         ));
     }
+    // the holes keep their tool as a number of 1 to 255: a larger one gets a free number so that two tools never merge
+    let used: std::collections::BTreeSet<u32> = f.drills.iter().map(|h| h.tool).collect();
+    let mut free = (1..=u32::from(u8::MAX)).rev().filter(|n| !used.contains(n));
+    let mut renumbered: std::collections::BTreeMap<u32, u8> = std::collections::BTreeMap::new();
+    let mut unresolved: Vec<u32> = Vec::new();
+    for &t in used.iter().filter(|t| **t > u32::from(u8::MAX)) {
+        match free.next() {
+            Some(n) => {
+                renumbered.insert(t, n as u8);
+            }
+            None => unresolved.push(t),
+        }
+    }
+    for (from, to) in &renumbered {
+        notes.push(format!(
+            "tool-number-too-large: tool {from} is above 255 and was renumbered as {to}"
+        ));
+    }
+    for t in &unresolved {
+        notes.push(format!(
+            "tool-number-too-large: tool {t} is above 255, no free number was left and it was read as 255"
+        ));
+    }
     let holes = f
         .drills
         .iter()
         .map(|h| Hole {
-            tool: u8::try_from(h.tool).unwrap_or(u8::MAX),
+            tool: u8::try_from(h.tool)
+                .unwrap_or_else(|_| renumbered.get(&h.tool).copied().unwrap_or(u8::MAX)),
             x_mm: units.to_mm(h.at.x),
             y_mm: units.to_mm(h.at.y),
             diameter_mm: f

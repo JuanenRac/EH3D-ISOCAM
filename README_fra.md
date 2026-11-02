@@ -18,7 +18,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 183 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il n'a pas encore de fenêtre, n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 184 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il n'a pas encore de fenêtre, n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.6` |
 | Maturité | Échafaudage |
-| Tests | 183 |
+| Tests | 184 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -49,7 +49,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Fichiers et disposition | 🟡 | lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, ajoute des trous d'alignement et vérifie les règles de conception avec l'endroit de chaque constat ; testé sur un ordinateur, pas avec des fichiers écrits par d'autres programmes ni sur une machine. |
 | Isolation forcée, correction, masque | 🟡 | trajets forcés dans les espaces où l'outil ne passe pas, trajets allégés, échelle et correction par points de référence, ouvertures du masque de soudure, unités et aperçu des passes ; testé sur un ordinateur avec des couches générées et des entrées abîmées, jamais avec de vraies cartes ni sur une machine, et la correction n'a pas été comparée à de vraies mesures d'une caméra. |
 | Ligne de commande | 🟡 | `eh3d-isocam` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 183 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
+| Tests | 🟡 | 184 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🔴 | Prévu : la fenêtre egui commune à la suite ; aujourd'hui il n'y a que la ligne de commande. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -63,7 +63,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 * **HP-GL pour les machines Bungard** (`src/hpgl.rs`) : avec un fichier de sortie qui se termine par `.plt`, les passes sont écrites en fichier de tracé HP-GL à 40 unités au millimètre, un stylo par passe, ce que lit le programme de fraisage des machines Bungard.
 * **Plusieurs outils et cuivre restant** (`isolate`) : un plan compte jusqu'à quatre outils, le plus large coupe d'abord ; là où un outil plus large a déjà coupé le long d'un trajet d'un outil plus fin, ce tronçon est omis (le reste devient des tronçons ouverts), et des anneaux d'un outil plus large, chacun chevauchant le précédent, peuvent dégager le cuivre resté au-delà des passes ; le G-code s'arrête pour changer d'outil quand la largeur de l'outil change. Avec `around_pads_min_mm` supérieur à 0, les outils plus larges ne coupent que les anneaux autour des pastilles d'au moins cette largeur et l'outil le plus fin fait le reste (pistes et petites pastilles).
 * **Sens, départ et ordre** (`order`) : les trajets sont tracés avec le cuivre à droite de l'outil (fraisage en avalant avec une broche qui tourne dans le sens horaire) ; les réglages peuvent l'inverser (en opposition), imposer horaire ou antihoraire, faire commencer chaque trajet fermé à son point le plus proche, à son point le plus bas ou là où il a été tracé, fixer le point d'où part l'outil et ranger les trajets dans l'ordre du tracé, le plus proche d'abord ou raccourcis encore en retournant des tronçons de l'ordre ; `info` montre combien de trajets vont dans chaque sens et le déplacement à vide.
-* **Perçages et contour de la carte** (`src/drill.rs`) : les fichiers de perçage sont lus (ceux de Bungard en millièmes de pouce avec le lecteur des formats Bungard, les métriques avec le lecteur de la suite) et écrits en millièmes entiers ; un contour est lu depuis une couche Gerber de contour, un dessin DXF ou un fichier de tracé HP-GL, les traits dessinés un à un sont reliés, et le trajet de l'outil autour de la carte et dans ses découpes est écrit en HP-GL ou en fichier Excellon de détourage.
+* **Perçages et contour de la carte** (`src/drill.rs`) : les fichiers de perçage sont lus (ceux de Bungard en millièmes de pouce avec le lecteur des formats Bungard, les métriques avec le lecteur de la suite) et écrits en millièmes entiers ; un contour est lu depuis une couche Gerber de contour, un dessin DXF ou un fichier de tracé HP-GL, les traits dessinés un à un sont reliés, et le trajet de l'outil autour de la carte et dans ses découpes est écrit en HP-GL ou en fichier Excellon de détourage. Un fichier de perçage avec des outils numérotés au-delà de 255 les renumérote avec des numéros libres, avec un avis, pour que deux outils ne deviennent jamais un seul.
 * **Deux faces, panneaux et trous d'alignement** (`transform`) : la couche, les perçages et le contour sont retournés, tournés par quarts de tour et répétés sur un panneau ensemble ; les trous d'alignement sont placés hors de la carte là où la carte retournée les retrouve (un troisième sur l'axe la distingue de la même carte tournée d'un demi-tour).
 * **Règles de conception** (`drc`) : cuivre plus étroit que la règle, pièces de cuivre plus proches que la règle ou que la largeur de l'outil, et perçages avec moins de cuivre autour que la règle, chacun avec sa position en millimètres.
 * **Un fichier de réglages** (`src/config.rs`) : chaque valeur réglable est un réglage avec une valeur par défaut, lu dans un fichier `clé = valeur` (`examples/isocam.cfg`) ou donné sous le même nom comme option de la ligne de commande.
@@ -183,7 +183,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Tests
 
-La suite compte 183 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 184 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 

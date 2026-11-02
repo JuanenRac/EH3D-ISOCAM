@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **Tool numbers above 255 are no longer merged:** a drill file with tools numbered above 255 gets them renumbered to free numbers so two tools never become one, and the reader reports a `tool-number-too-large` notice for each.
 - **More tests:** the limits of the job, the G-code with tool changes and in inches, the HP-GL plots with pens, speeds and the style of the original program, the DXF drawings, the kind of a file and the reading of drill files.
 
 ## [0.0.6] - Library parts moved to the shared crates and reading with limits

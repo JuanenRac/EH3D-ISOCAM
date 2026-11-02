@@ -413,3 +413,31 @@ fn bridges_have_limits() {
         );
     }
 }
+
+#[test]
+fn a_tool_number_above_255_is_renumbered_with_a_notice_and_two_tools_never_merge() {
+    let text = "M48\nMETRIC\nT1C0.8\nT300C1.2\nT301C1.6\n%\nT1\nX1.0Y1.0\nT300\nX2.0Y2.0\nT301\nX3.0Y3.0\nM30\n";
+    let d = read_drills(text).unwrap();
+    assert_eq!(d.holes.len(), 3);
+    let tools: Vec<u8> = d.holes.iter().map(|h| h.tool).collect();
+    assert_eq!(tools[0], 1);
+    assert!(
+        tools[1] != tools[2] && tools[1] != 1 && tools[2] != 1,
+        "{tools:?}"
+    );
+    // each hole keeps its own diameter
+    assert!((d.holes[1].diameter_mm - 1.2).abs() < 1e-9);
+    assert!((d.holes[2].diameter_mm - 1.6).abs() < 1e-9);
+    let notices = d
+        .notes
+        .iter()
+        .filter(|n| n.starts_with("tool-number-too-large"))
+        .count();
+    assert_eq!(notices, 2, "{:?}", d.notes);
+    // a file within the range says nothing
+    assert!(read_drills("M48\nMETRIC\nT1C0.8\n%\nT1\nX1.0Y1.0\nM30\n")
+        .unwrap()
+        .notes
+        .iter()
+        .all(|n| !n.starts_with("tool-number-too-large")));
+}
