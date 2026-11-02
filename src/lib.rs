@@ -6,11 +6,9 @@
 
 pub mod bitmap;
 pub mod config;
-pub mod contour;
 pub mod drc;
 pub mod drill;
 pub mod dxf;
-pub mod edt;
 pub mod fiducial;
 pub mod filetype;
 pub mod fill;
@@ -26,4 +24,6 @@ pub mod preview;
 pub mod problems;
 pub mod tolerance;
 pub mod transform;
-pub mod units;
+
+// raster geometry shared with the other programs of the suite
+pub use eh3d_raster::{contour, edt, units};

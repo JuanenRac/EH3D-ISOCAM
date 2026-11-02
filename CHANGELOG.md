@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **Units, distance transform and contour lines come from `eh3d-raster`:** the three modules moved to the shared library of the suite; `eh3d_isocam::units`, `edt` and `contour` still work as before.
 - **The CI builds against the tag of each sibling:** the sibling repositories are read from `depends_on` of the manifest (the ones they need in turn included) and checked out at the tag the repository is built from, so a build does not move when a sibling changes; a separate job, `Siblings at main`, builds against the main branch of every sibling to show a break before the sibling is tagged and does not hold a merge. The manifest now names its three siblings in `depends_on`.
 
 - **Files are read with a size limit and an encoding check:** `--max-bytes N` refuses a file over the limit (256 MiB by default), and text that is not UTF-8 is read as Latin-1 with a warning that carries the code `input-not-utf8`.

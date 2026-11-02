@@ -58,7 +58,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 ## 🎯 Panoramica
 
 * **Il rame su una griglia** (`src/bitmap.rs`): pad (tondi, rettangolari, ovali), piste e regioni sono disegnati su celle della dimensione scelta; piste e pad sovrapposti sono un unico pezzo perché una griglia non ha sovrapposizioni, quindi non serve alcun caso speciale; una griglia che non starebbe in memoria è rifiutata.
-* **La distanza esatta** (`src/edt.rs`, `src/contour.rs`): la distanza di ogni cella dal rame più vicino è calcolata esattamente (e provata contro la forza bruta) e il percorso di una passata è la linea dove vale il raggio dell'utensile, tracciata come poligonali chiuse e alleggerita con una tolleranza di mezza cella; le passate successive vanno una passata laterale più lontano ciascuna.
+* **La distanza esatta** (`eh3d-raster`): la distanza di ogni cella dal rame più vicino è calcolata esattamente (e provata contro la forza bruta) e il percorso di una passata è la linea dove vale il raggio dell'utensile, tracciata come poligonali chiuse e alleggerita con una tolleranza di mezza cella; le passate successive vanno una passata laterale più lontano ciascuna.
 * **Ciò che l'utensile non può fare** (`src/isolate.rs`): dove due pezzi di rame separati sono più vicini della larghezza dell'utensile nessun percorso può passare tra loro: `check` elenca quei punti e `isolate` non scrive il G-code finché non li si guarda (o `--force`). Il G-code (`src/gcode.rs`) solleva l'utensile tra i percorsi, scende alla profondità scelta e taglia poi il percorso più vicino.
 * **HP-GL per le macchine Bungard** (`src/hpgl.rs`): con un file di uscita che termina in `.plt` le passate sono scritte come file di tracciato HP-GL a 40 unità al millimetro, una penna per passata, ciò che legge il programma di fresatura delle macchine Bungard.
 * **Più utensili e rame residuo** (`src/isolate.rs`): un piano ha fino a quattro utensili, taglia per primo il più largo; dove un utensile più largo ha già tagliato lungo un percorso di uno più fine, quel tratto viene omesso (il resto resta come tratti aperti), e anelli di un utensile più largo, ciascuno sovrapposto al precedente, possono ripulire il rame rimasto oltre le passate; il G-code si ferma per il cambio utensile quando cambia la larghezza dell'utensile. Con `around_pads_min_mm` maggiore di 0, gli utensili più larghi tagliano solo gli anelli attorno ai pad larghi almeno così e l'utensile più sottile fa il resto (piste e pad piccoli).
@@ -74,7 +74,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **Schede a doppia faccia e file di foratura semplice** (`src/hpgl.rs`, `src/drill.rs`, `src/filetype.rs`): `hpgl_shift_negative = no` mantiene nel tracciato le coordinate della scheda (anche quelle negative), così tracciato e file di foratura condividono l'origine; `isolate` con `plot_outline = yes` e `--outline FILE` mette per primo nel tracciato il taglio attorno al contorno (con l'utensile di `route_tool_mm`), sulla penna `hpgl_outline_pen`, con l'isolamento sulla penna `hpgl_isolation_pen`. `--mirror vertical` rovescia i fori rispetto al centro del contorno. `ncd_isocam_style = yes` scrive un file di foratura come i programmi Bungard (`M48` e `%`, utensili solo col numero, coordinata ripetuta omessa, CR LF, `M00`) e `ncd_digits` riempie le coordinate con zeri davanti. Un file di foratura senza riga `M48` è riconosciuto come Excellon.
 * **Percorsi più leggeri, scala e correzione** (`src/optimize.rs`, `src/fiducial.rs`): le punte sono tolte e i punti su una retta (entro `optimize_tolerance_mm`) diventano un solo movimento, attivo per impostazione predefinita (0,01 mm e 0,02 mm; con 0 si disattiva); il lavoro può essere scalato rispetto al centro della scheda, e coppie di punti di riferimento relative a quel centro (dove un segno dovrebbe essere e dove è stato misurato) danno una similitudine (due coppie) o un adattamento affine (tre o più, minimi quadrati) applicato a ogni percorso e a ogni foro; viene rifiutato se la scala è lontana da 1 o un segno non si adatta.
 * **Maschera di saldatura** (`src/mask.rs`): le aperture sono scritte come livello Gerber, dal livello maschera del progetto o dai pad del rame, ciascuna ingrandita di `mask_margin_mm`; le piste restano coperte.
-* **Unità e anteprima** (`src/units.rs`, `src/preview.rs`): una lunghezza può portare `mm`, `mil` o `in`, il G-code può essere scritto in pollici, e `preview` disegna le passate sul rame come disegno SVG o come testo.
+* **Unità e anteprima** (`eh3d-raster`, `src/preview.rs`): una lunghezza può portare `mm`, `mil` o `in`, il G-code può essere scritto in pollici, e `preview` disegna le passate sul rame come disegno SVG o come testo.
 * **Livelli Gerber vecchio stile** (`src/legacy.rs`): un livello senza istruzione di formato (RS-274D, come lo scrivono molti programmi più vecchi) viene letto quando si indica il suo elenco di aperture (`--apertures`, un codice D e la sua dimensione per riga) insieme al suo formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); viene riscritto come Gerber esteso e passa dal lettore normale. Provato con livelli scritti a mano, non con file di altri programmi.
 * **Lettura e avvisi per codice (riga di comando):** i file sono letti con un limite di dimensione (`--max-bytes N`, 256 MiB di default) e il testo non UTF-8 viene letto come Latin-1 con un avviso (`input-not-utf8`); gli avvisi del lettore Gerber sono mostrati con il loro codice stabile e `--hide CODE[,CODE]` omette quei codici. La nota sui percorsi alleggeriti e quella sui ponti del taglio compaiono solo quando hanno cambiato qualcosa.
 
@@ -135,11 +135,9 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── bitmap.rs                                il rame su una griglia
 │   ├── config.rs                                tutti i valori regolabili, da un file di impostazioni
-│   ├── contour.rs                               i percorsi di una passata, tracciati e alleggeriti
 │   ├── drc.rs                                   regole di progetto: larghezze, distanze e anelli, con le posizioni
 │   ├── drill.rs                                 fori e contorno della scheda, letti e scritti
 │   ├── dxf.rs                                   le passate come disegno DXF
-│   ├── edt.rs                                   la distanza esatta dal rame
 │   ├── fiducial.rs                              scala e correzione con punti di riferimento
 │   ├── filetype.rs                              di che tipo è un file di ingresso
 │   ├── fill.rs                                  linee che riempiono i contorni, tagliate al rame
@@ -156,8 +154,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               le passate disegnate in SVG o testo
 │   ├── problems.rs                              zone problematiche: angoli interni acuti e piste tra pad
 │   ├── tolerance.rs                             dove vale la tolleranza: tutti gli spazi o solo i pad
-│   ├── transform.rs                             doppia faccia, pannelli e fori di allineamento
-│   └── units.rs                                 mm, mil e pollice
+│   └── transform.rs                             doppia faccia, pannelli e fori di allineamento
 ├── tests/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice
@@ -221,11 +218,9 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── bitmap.rs                                il rame su una griglia
 │   ├── config.rs                                tutti i valori regolabili, da un file di impostazioni
-│   ├── contour.rs                               i percorsi di una passata, tracciati e alleggeriti
 │   ├── drc.rs                                   regole di progetto: larghezze, distanze e anelli, con le posizioni
 │   ├── drill.rs                                 fori e contorno della scheda, letti e scritti
 │   ├── dxf.rs                                   le passate come disegno DXF
-│   ├── edt.rs                                   la distanza esatta dal rame
 │   ├── fiducial.rs                              scala e correzione con punti di riferimento
 │   ├── filetype.rs                              di che tipo è un file di ingresso
 │   ├── fill.rs                                  linee che riempiono i contorni, tagliate al rame
@@ -242,8 +237,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               le passate disegnate in SVG o testo
 │   ├── problems.rs                              zone problematiche: angoli interni acuti e piste tra pad
 │   ├── tolerance.rs                             dove vale la tolleranza: tutti gli spazi o solo i pad
-│   ├── transform.rs                             doppia faccia, pannelli e fori di allineamento
-│   └── units.rs                                 mm, mil e pollice
+│   └── transform.rs                             doppia faccia, pannelli e fori di allineamento
 ├── tests/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice

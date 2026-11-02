@@ -58,7 +58,7 @@ Each line is one part of this repository and the light says how far it is today.
 ## 🎯 Overview
 
 * **The copper on a grid** (`src/bitmap.rs`): pads (round, rectangular, obround), tracks and regions are drawn on cells of the size you choose; overlapping tracks and pads are one piece because a grid has no overlaps, so no special case is needed; a grid that would not fit in memory is refused.
-* **The exact distance** (`src/edt.rs`, `src/contour.rs`): the distance from every cell to the nearest copper is worked out exactly (and tested against a brute force), and the path of a pass is the line where it equals the radius of the tool, traced as closed polylines and made lighter with a tolerance of half a cell; further passes go one stepover farther each.
+* **The exact distance** (`eh3d-raster`): the distance from every cell to the nearest copper is worked out exactly (and tested against a brute force), and the path of a pass is the line where it equals the radius of the tool, traced as closed polylines and made lighter with a tolerance of half a cell; further passes go one stepover farther each.
 * **What the tool cannot do** (`src/isolate.rs`): where two separate pieces of copper are closer than the width of the tool, no path can go between them: `check` lists those places, and `isolate` does not write the G-code until they are looked at (or `--force`). The G-code (`src/gcode.rs`) lifts the tool between paths, goes down to the depth chosen and cuts the nearest path next.
 * **HP-GL for the Bungard machines** (`src/hpgl.rs`): with an output file that ends in `.plt` the passes are written as an HP-GL plot file at 40 units to the millimetre, one pen for each pass, which is what the routing program of the Bungard machines reads.
 * **Several tools and leftover copper** (`src/isolate.rs`): a plan has up to four tools and the widest cuts first; where a wider tool has already cut along a path of a narrower one, that stretch is left out (the rest stays as open runs), and rings of a wider tool, each overlapping the one before, can clear the copper that is left beyond the passes; the G-code stops for a tool change when the width of the tool changes. With `around_pads_min_mm` above 0 the wider tools cut only the rings round pads at least that wide and the narrowest tool does the rest (tracks and small pads).
@@ -74,7 +74,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **Two-sided boards and the plain drill file** (`src/hpgl.rs`, `src/drill.rs`, `src/filetype.rs`): `hpgl_shift_negative = no` keeps the coordinates of the board in a plot (negative ones included), so that a plot and a drill file share one origin; `isolate` with `plot_outline = yes` and `--outline FILE` puts the cut round the outline (the tool of `route_tool_mm`) first in the plot, on `hpgl_outline_pen`, with the isolation on `hpgl_isolation_pen`. `--mirror vertical` turns the holes over about the middle of the outline. `ncd_isocam_style = yes` writes a drill file as the Bungard programs do (`M48` and `%`, tools by number, a repeated coordinate left out, CR LF, `M00`) and `ncd_digits` fills the coordinates with zeros in front. A drill file with no `M48` line is known as Excellon.
 * **Lighter paths, scale and correction** (`src/optimize.rs`, `src/fiducial.rs`): spikes are taken out and points on a straight line (within `optimize_tolerance_mm`) become one move, on by default (0.01 mm and 0.02 mm, 0 switches them off); the work can be scaled about the centre of the board, and pairs of reference points relative to that centre (where a mark should be and where it was measured) give a similarity (two pairs) or an affine fit (three or more, least squares) that is applied to every path and hole; it is refused when the scale is far from 1 or a mark does not fit.
 * **Solder mask** (`src/mask.rs`): the openings are written as a Gerber layer, from the mask layer of the design or from the pads of the copper, each grown by `mask_margin_mm`; tracks stay covered.
-* **Units and preview** (`src/units.rs`, `src/preview.rs`): a length may carry `mm`, `mil` or `in`, the G-code can be written in inches, and `preview` draws the passes over the copper as an SVG drawing or as text.
+* **Units and preview** (`eh3d-raster`, `src/preview.rs`): a length may carry `mm`, `mil` or `in`, the G-code can be written in inches, and `preview` draws the passes over the copper as an SVG drawing or as text.
 * **Old-style Gerber layers** (`src/legacy.rs`): a layer with no format statement (RS-274D, as many older programs write it) is read when its list of apertures is given (`--apertures`, one D code and its size per line) together with its format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); it is rewritten as extended Gerber and goes through the normal reader. Tested with hand-written layers, not with files from other programs.
 * **Reading and notices by code (command line):** files are read with a size limit (`--max-bytes N`, 256 MiB by default) and text that is not UTF-8 is read as Latin-1 with a warning (`input-not-utf8`); the notices of the Gerber reader are shown with their stable code and `--hide CODE[,CODE]` leaves out those codes. The note about the lighter paths and the one about the bridges of the cut are printed only when they changed something.
 
@@ -135,11 +135,9 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── bitmap.rs                                the copper on a grid
 │   ├── config.rs                                every tunable value, from one settings file
-│   ├── contour.rs                               the paths of a pass, traced and made lighter
 │   ├── drc.rs                                   design rules: widths, gaps and rings, with places
 │   ├── drill.rs                                 holes and board outline, read and written
 │   ├── dxf.rs                                   the passes as a DXF drawing
-│   ├── edt.rs                                   the exact distance to the copper
 │   ├── fiducial.rs                              scale and correction from reference points
 │   ├── filetype.rs                              what kind of file an input is
 │   ├── fill.rs                                  lines that fill contours, cut to the copper
@@ -156,8 +154,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               the passes drawn as SVG or text
 │   ├── problems.rs                              problem zones: sharp inner corners and tracks between pads
 │   ├── tolerance.rs                             where the tolerance applies: all gaps or only pads
-│   ├── transform.rs                             both sides, panels and alignment holes
-│   └── units.rs                                 mm, mil and inch
+│   └── transform.rs                             both sides, panels and alignment holes
 ├── tests/
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── cli_reading.rs                           tests of reading files: the size limit, text that is not UTF-8, notices by code
@@ -221,11 +218,9 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── bitmap.rs                                the copper on a grid
 │   ├── config.rs                                every tunable value, from one settings file
-│   ├── contour.rs                               the paths of a pass, traced and made lighter
 │   ├── drc.rs                                   design rules: widths, gaps and rings, with places
 │   ├── drill.rs                                 holes and board outline, read and written
 │   ├── dxf.rs                                   the passes as a DXF drawing
-│   ├── edt.rs                                   the exact distance to the copper
 │   ├── fiducial.rs                              scale and correction from reference points
 │   ├── filetype.rs                              what kind of file an input is
 │   ├── fill.rs                                  lines that fill contours, cut to the copper
@@ -242,8 +237,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               the passes drawn as SVG or text
 │   ├── problems.rs                              problem zones: sharp inner corners and tracks between pads
 │   ├── tolerance.rs                             where the tolerance applies: all gaps or only pads
-│   ├── transform.rs                             both sides, panels and alignment holes
-│   └── units.rs                                 mm, mil and inch
+│   └── transform.rs                             both sides, panels and alignment holes
 ├── tests/
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── cli_reading.rs                           tests of reading files: the size limit, text that is not UTF-8, notices by code

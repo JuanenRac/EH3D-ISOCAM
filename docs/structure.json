@@ -53,19 +53,6 @@
           }
         },
         {
-          "name": "contour.rs",
-          "desc": {
-            "en": "the paths of a pass, traced and made lighter",
-            "es": "los recorridos de una pasada, trazados y aligerados",
-            "de": "die Bahnen eines Durchgangs, verfolgt und vereinfacht",
-            "fr": "les trajets d'une passe, tracés et allégés",
-            "it": "i percorsi di una passata, tracciati e alleggeriti",
-            "ja": "1回分のパスをたどって軽量化",
-            "zh": "追踪并简化一次走刀的路径",
-            "pt": "os percursos de uma passagem, traçados e aligeirados"
-          }
-        },
-        {
           "name": "drc.rs",
           "desc": {
             "en": "design rules: widths, gaps and rings, with places",
@@ -102,19 +89,6 @@
             "ja": "パスを DXF 図面として出力",
             "zh": "将路径输出为 DXF 图纸",
             "pt": "as passagens como desenho DXF"
-          }
-        },
-        {
-          "name": "edt.rs",
-          "desc": {
-            "en": "the exact distance to the copper",
-            "es": "la distancia exacta al cobre",
-            "de": "der genaue Abstand zum Kupfer",
-            "fr": "la distance exacte au cuivre",
-            "it": "la distanza esatta dal rame",
-            "ja": "銅までの正確な距離",
-            "zh": "到铜箔的精确距离",
-            "pt": "a distância exata ao cobre"
           }
         },
         {
@@ -336,19 +310,6 @@
             "ja": "両面・パネル・位置合わせ穴",
             "zh": "双面、拼板和对位孔",
             "pt": "dupla face, painéis e furos de alinhamento"
-          }
-        },
-        {
-          "name": "units.rs",
-          "desc": {
-            "en": "mm, mil and inch",
-            "es": "mm, mil y pulgada",
-            "de": "mm, mil und Zoll",
-            "fr": "mm, mil et pouce",
-            "it": "mm, mil e pollice",
-            "ja": "mm・ミル・インチ",
-            "zh": "毫米、密耳和英寸",
-            "pt": "mm, mil e polegada"
           }
         }
       ]

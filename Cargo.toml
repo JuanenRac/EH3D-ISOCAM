@@ -19,7 +19,9 @@ path = "src/main.rs"
 [dependencies]
 # the readers and the shapes of the suite (path dependencies on the sibling repositories)
 eh3d-parser-gerber = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d-parser-gerber" }
-eh3d-gerberviewer = { version = ">=0.0.1", path = "../EH3D-GERBERVIEWER" }
+# raster geometry: units of length, distance transform, contour lines
+eh3d-raster = { version = ">=0.0.3", path = "../EH3D-CORE-LIBS/crates/eh3d-raster" }
+eh3d-gerberviewer ={ version = ">=0.0.1", path = "../EH3D-GERBERVIEWER" }
 eh3d-parser-excellon = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d-parser-excellon" }
 # the Bungard file formats: Excellon (mils), plotter files, board outlines (Gerber and DXF)
 eh3d-bungard-formats = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/formats" }

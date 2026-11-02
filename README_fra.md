@@ -58,7 +58,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 ## 🎯 Présentation
 
 * **Le cuivre sur une grille** (`src/bitmap.rs`) : pastilles (rondes, rectangulaires, oblongues), pistes et régions sont dessinées sur des cellules de la taille choisie ; les pistes et pastilles qui se chevauchent forment une seule pièce car une grille n'a pas de chevauchements, donc aucun cas particulier ; une grille qui ne tiendrait pas en mémoire est refusée.
-* **La distance exacte** (`src/edt.rs`, `src/contour.rs`) : la distance de chaque cellule au cuivre le plus proche est calculée exactement (et testée contre la force brute), et le trajet d'une passe est la ligne où elle vaut le rayon de l'outil, tracée en polylignes fermées et allégée avec une tolérance d'une demi-cellule ; les passes suivantes vont chacune un pas latéral plus loin.
+* **La distance exacte** (`eh3d-raster`) : la distance de chaque cellule au cuivre le plus proche est calculée exactement (et testée contre la force brute), et le trajet d'une passe est la ligne où elle vaut le rayon de l'outil, tracée en polylignes fermées et allégée avec une tolérance d'une demi-cellule ; les passes suivantes vont chacune un pas latéral plus loin.
 * **Ce que l'outil ne peut pas faire** (`src/isolate.rs`) : là où deux pièces de cuivre séparées sont plus proches que la largeur de l'outil, aucun trajet ne peut passer entre elles : `check` liste ces endroits et `isolate` n'écrit pas le G-code tant qu'on ne les a pas regardés (ou `--force`). Le G-code (`src/gcode.rs`) lève l'outil entre les trajets, descend à la profondeur choisie et coupe ensuite le trajet le plus proche.
 * **HP-GL pour les machines Bungard** (`src/hpgl.rs`) : avec un fichier de sortie qui se termine par `.plt`, les passes sont écrites en fichier de tracé HP-GL à 40 unités au millimètre, un stylo par passe, ce que lit le programme de fraisage des machines Bungard.
 * **Plusieurs outils et cuivre restant** (`src/isolate.rs`) : un plan compte jusqu'à quatre outils, le plus large coupe d'abord ; là où un outil plus large a déjà coupé le long d'un trajet d'un outil plus fin, ce tronçon est omis (le reste devient des tronçons ouverts), et des anneaux d'un outil plus large, chacun chevauchant le précédent, peuvent dégager le cuivre resté au-delà des passes ; le G-code s'arrête pour changer d'outil quand la largeur de l'outil change. Avec `around_pads_min_mm` supérieur à 0, les outils plus larges ne coupent que les anneaux autour des pastilles d'au moins cette largeur et l'outil le plus fin fait le reste (pistes et petites pastilles).
@@ -74,7 +74,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 * **Cartes double face et fichier de perçage simple** (`src/hpgl.rs`, `src/drill.rs`, `src/filetype.rs`) : `hpgl_shift_negative = no` conserve dans le tracé les coordonnées de la carte (négatives comprises), de sorte que le tracé et le fichier de perçage partagent la même origine ; `isolate` avec `plot_outline = yes` et `--outline FICHIER` place d'abord dans le tracé la coupe autour du contour (avec l'outil de `route_tool_mm`), sur la plume `hpgl_outline_pen`, l'isolation étant sur la plume `hpgl_isolation_pen`. `--mirror vertical` retourne les trous autour du milieu du contour. `ncd_isocam_style = yes` écrit un fichier de perçage comme les programmes Bungard (`M48` et `%`, outils par leur seul numéro, coordonnée répétée omise, CR LF, `M00`) et `ncd_digits` complète les coordonnées par des zéros devant. Un fichier de perçage sans ligne `M48` est reconnu comme Excellon.
 * **Trajets allégés, échelle et correction** (`src/optimize.rs`, `src/fiducial.rs`) : les pointes sont retirées et les points alignés (dans `optimize_tolerance_mm`) deviennent un seul mouvement, activé par défaut (0,01 mm et 0,02 mm ; 0 le désactive) ; le travail peut être mis à l'échelle autour du centre de la carte, et des paires de points de référence relatives à ce centre (où une marque devrait être et où elle a été mesurée) donnent une similitude (deux paires) ou un ajustement affine (trois ou plus, moindres carrés) appliqué à chaque trajet et à chaque trou ; il est refusé quand l'échelle s'écarte beaucoup de 1 ou qu'une marque ne colle pas.
 * **Masque de soudure** (`src/mask.rs`) : les ouvertures sont écrites comme une couche Gerber, à partir de la couche de masque du dessin ou des pastilles du cuivre, chacune agrandie de `mask_margin_mm` ; les pistes restent couvertes.
-* **Unités et aperçu** (`src/units.rs`, `src/preview.rs`) : une longueur peut porter `mm`, `mil` ou `in`, le G-code peut être écrit en pouces, et `preview` dessine les passes sur le cuivre en dessin SVG ou en texte.
+* **Unités et aperçu** (`eh3d-raster`, `src/preview.rs`) : une longueur peut porter `mm`, `mil` ou `in`, le G-code peut être écrit en pouces, et `preview` dessine les passes sur le cuivre en dessin SVG ou en texte.
 * **Couches Gerber anciennes** (`src/legacy.rs`) : une couche sans instruction de format (RS-274D, comme l'écrivent beaucoup d'anciens programmes) est lue quand on donne sa liste d'ouvertures (`--apertures`, un code D et sa taille par ligne) avec son format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`) ; elle est réécrite en Gerber étendu et passe par le lecteur normal. Testé avec des couches écrites à la main, pas avec des fichiers d'autres programmes.
 * **Lecture et avis par code (ligne de commande) :** les fichiers sont lus avec une limite de taille (`--max-bytes N`, 256 MiB par défaut) et le texte non UTF-8 est lu comme du Latin-1 avec un avertissement (`input-not-utf8`) ; les avis du lecteur Gerber sont affichés avec leur code stable et `--hide CODE[,CODE]` omet ces codes. La note sur les tracés allégés et celle sur les ponts de la découpe ne sont affichées que lorsqu'elles ont changé quelque chose.
 
@@ -135,11 +135,9 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── bitmap.rs                                le cuivre sur une grille
 │   ├── config.rs                                toutes les valeurs réglables, depuis un fichier de réglages
-│   ├── contour.rs                               les trajets d'une passe, tracés et allégés
 │   ├── drc.rs                                   règles de conception : largeurs, écarts et anneaux, avec les endroits
 │   ├── drill.rs                                 perçages et contour de la carte, lus et écrits
 │   ├── dxf.rs                                   les passes en dessin DXF
-│   ├── edt.rs                                   la distance exacte au cuivre
 │   ├── fiducial.rs                              échelle et correction par points de référence
 │   ├── filetype.rs                              de quel type est un fichier d'entrée
 │   ├── fill.rs                                  lignes qui remplissent des contours, coupées au cuivre
@@ -156,8 +154,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               les passes dessinées en SVG ou en texte
 │   ├── problems.rs                              zones à problème : coins intérieurs aigus et pistes entre pastilles
 │   ├── tolerance.rs                             où la tolérance s'applique : tous les espaces ou seulement les pastilles
-│   ├── transform.rs                             double face, panneaux et trous d'alignement
-│   └── units.rs                                 mm, mil et pouce
+│   └── transform.rs                             double face, panneaux et trous d'alignement
 ├── tests/
 │   ├── advanced.rs                              isolation forcée, correction, masque, unités, aperçu
 │   ├── cli_reading.rs                           tests de lecture des fichiers : la limite de taille, le texte non UTF-8, les avis par code
@@ -221,11 +218,9 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── bitmap.rs                                le cuivre sur une grille
 │   ├── config.rs                                toutes les valeurs réglables, depuis un fichier de réglages
-│   ├── contour.rs                               les trajets d'une passe, tracés et allégés
 │   ├── drc.rs                                   règles de conception : largeurs, écarts et anneaux, avec les endroits
 │   ├── drill.rs                                 perçages et contour de la carte, lus et écrits
 │   ├── dxf.rs                                   les passes en dessin DXF
-│   ├── edt.rs                                   la distance exacte au cuivre
 │   ├── fiducial.rs                              échelle et correction par points de référence
 │   ├── filetype.rs                              de quel type est un fichier d'entrée
 │   ├── fill.rs                                  lignes qui remplissent des contours, coupées au cuivre
@@ -242,8 +237,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               les passes dessinées en SVG ou en texte
 │   ├── problems.rs                              zones à problème : coins intérieurs aigus et pistes entre pastilles
 │   ├── tolerance.rs                             où la tolérance s'applique : tous les espaces ou seulement les pastilles
-│   ├── transform.rs                             double face, panneaux et trous d'alignement
-│   └── units.rs                                 mm, mil et pouce
+│   └── transform.rs                             double face, panneaux et trous d'alignement
 ├── tests/
 │   ├── advanced.rs                              isolation forcée, correction, masque, unités, aperçu
 │   ├── cli_reading.rs                           tests de lecture des fichiers : la limite de taille, le texte non UTF-8, les avis par code

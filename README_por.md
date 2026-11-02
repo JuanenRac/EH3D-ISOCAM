@@ -58,7 +58,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 ## 🎯 Visão geral
 
 * **O cobre numa grelha** (`src/bitmap.rs`): pads (redondos, retangulares, ovais), pistas e regiões são desenhados em células do tamanho escolhido; pistas e pads sobrepostos são uma só peça porque uma grelha não tem sobreposições, por isso não é preciso nenhum caso especial; uma grelha que não coubesse na memória é recusada.
-* **A distância exata** (`src/edt.rs`, `src/contour.rs`): a distância de cada célula ao cobre mais próximo calcula-se exatamente (e testa-se contra força bruta), e a trajetória de uma passagem é a linha onde vale o raio da ferramenta, traçada como polilinhas fechadas e aliviada com uma tolerância de meia célula; as passagens seguintes vão cada uma um passo lateral mais longe.
+* **A distância exata** (`eh3d-raster`): a distância de cada célula ao cobre mais próximo calcula-se exatamente (e testa-se contra força bruta), e a trajetória de uma passagem é a linha onde vale o raio da ferramenta, traçada como polilinhas fechadas e aliviada com uma tolerância de meia célula; as passagens seguintes vão cada uma um passo lateral mais longe.
 * **O que a ferramenta não consegue fazer** (`src/isolate.rs`): onde duas peças de cobre separadas estão mais perto do que a largura da ferramenta nenhuma trajetória passa entre elas: `check` lista esses sítios e `isolate` não escreve o G-code até serem vistos (ou `--force`). O G-code (`src/gcode.rs`) levanta a ferramenta entre trajetórias, desce à profundidade escolhida e corta a seguir a trajetória mais próxima.
 * **HP-GL para as máquinas Bungard** (`src/hpgl.rs`): com um ficheiro de saída que acaba em `.plt` as passagens são escritas como ficheiro de traçado HP-GL a 40 unidades por milímetro, uma caneta por passagem, que é o que lê o programa de fresagem das máquinas Bungard.
 * **Várias ferramentas e cobre restante** (`src/isolate.rs`): um plano tem até quatro ferramentas e corta primeiro a mais larga; onde uma ferramenta mais larga já cortou ao longo de um percurso de outra mais fina, esse troço é omitido (o resto fica como troços abertos), e anéis de uma ferramenta mais larga, cada um sobreposto ao anterior, podem limpar o cobre que fica para além das passagens; o G-code pára para a troca de ferramenta quando a largura da ferramenta muda. Com `around_pads_min_mm` maior que 0, as ferramentas mais largas cortam apenas os anéis à volta de pads com pelo menos essa largura e a mais fina faz o resto (pistas e pads pequenos).
@@ -74,7 +74,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **Placas de duas faces e o ficheiro de furação simples** (`src/hpgl.rs`, `src/drill.rs`, `src/filetype.rs`): `hpgl_shift_negative = no` mantém no traçado as coordenadas da placa (também as negativas), de modo que o traçado e o ficheiro de furação partilham a mesma origem; `isolate` com `plot_outline = yes` e `--outline FICHEIRO` põe primeiro no traçado o corte à volta do contorno (com a fresa de `route_tool_mm`), na caneta `hpgl_outline_pen`, ficando o isolamento na caneta `hpgl_isolation_pen`. `--mirror vertical` vira os furos em torno do centro do contorno. `ncd_isocam_style = yes` escreve o ficheiro de furação como os programas Bungard (`M48` e `%`, ferramentas só pelo número, coordenada repetida omitida, CR LF, `M00`) e `ncd_digits` preenche as coordenadas com zeros à frente. Um ficheiro de furação sem linha `M48` é reconhecido como Excellon.
 * **Percursos mais leves, escala e correção** (`src/optimize.rs`, `src/fiducial.rs`): os picos são retirados e os pontos numa reta (dentro de `optimize_tolerance_mm`) passam a ser um só movimento, ativado por predefinição (0,01 mm e 0,02 mm; com 0 desativa-se); o trabalho pode ser escalado em relação ao centro da placa, e pares de pontos de referência relativos a esse centro (onde uma marca devia estar e onde foi medida) dão uma semelhança (dois pares) ou um ajuste afim (três ou mais, mínimos quadrados) aplicado a cada percurso e a cada furo; é recusado quando a escala se afasta muito de 1 ou uma marca não encaixa.
 * **Máscara de soldadura** (`src/mask.rs`): as aberturas são escritas como uma camada Gerber, a partir da camada de máscara do desenho ou dos pads do cobre, cada uma alargada de `mask_margin_mm`; as pistas ficam cobertas.
-* **Unidades e pré-visualização** (`src/units.rs`, `src/preview.rs`): um comprimento pode levar `mm`, `mil` ou `in`, o G-code pode ser escrito em polegadas, e `preview` desenha as passagens sobre o cobre como desenho SVG ou como texto.
+* **Unidades e pré-visualização** (`eh3d-raster`, `src/preview.rs`): um comprimento pode levar `mm`, `mil` ou `in`, o G-code pode ser escrito em polegadas, e `preview` desenha as passagens sobre o cobre como desenho SVG ou como texto.
 * **Camadas Gerber antigas** (`src/legacy.rs`): uma camada sem instrução de formato (RS-274D, como muitos programas antigos a escrevem) é lida quando se indica a sua lista de aberturas (`--apertures`, um código D e o seu tamanho por linha) juntamente com o seu formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); é reescrita como Gerber estendido e passa pelo leitor normal. Testado com camadas escritas à mão, não com ficheiros de outros programas.
 * **Leitura e avisos por código (linha de comandos):** os ficheiros são lidos com um limite de tamanho (`--max-bytes N`, 256 MiB por omissão) e o texto que não é UTF-8 é lido como Latin-1 com um aviso (`input-not-utf8`); os avisos do leitor de Gerber são mostrados com o seu código estável e `--hide CODE[,CODE]` omite esses códigos. A nota sobre os trajetos mais leves e a das pontes do corte só são impressas quando mudaram alguma coisa.
 
@@ -135,11 +135,9 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── bitmap.rs                                o cobre numa grelha
 │   ├── config.rs                                todos os valores ajustáveis, a partir de um ficheiro de definições
-│   ├── contour.rs                               os percursos de uma passagem, traçados e aligeirados
 │   ├── drc.rs                                   regras de projeto: larguras, distâncias e anéis, com as posições
 │   ├── drill.rs                                 furos e contorno da placa, lidos e escritos
 │   ├── dxf.rs                                   as passagens como desenho DXF
-│   ├── edt.rs                                   a distância exata ao cobre
 │   ├── fiducial.rs                              escala e correção com pontos de referência
 │   ├── filetype.rs                              de que tipo é um ficheiro de entrada
 │   ├── fill.rs                                  linhas que preenchem contornos, recortadas ao cobre
@@ -156,8 +154,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               as passagens desenhadas em SVG ou texto
 │   ├── problems.rs                              zonas problemáticas: cantos internos agudos e pistas entre pads
 │   ├── tolerance.rs                             onde se aplica a tolerância: todos os intervalos ou só pads
-│   ├── transform.rs                             dupla face, painéis e furos de alinhamento
-│   └── units.rs                                 mm, mil e polegada
+│   └── transform.rs                             dupla face, painéis e furos de alinhamento
 ├── tests/
 │   ├── advanced.rs                              isolamento forçado, correção, máscara, unidades, pré-visualização
 │   ├── cli_reading.rs                           testes de leitura de ficheiros: o limite de tamanho, texto que não é UTF-8, avisos por código
@@ -221,11 +218,9 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── bitmap.rs                                o cobre numa grelha
 │   ├── config.rs                                todos os valores ajustáveis, a partir de um ficheiro de definições
-│   ├── contour.rs                               os percursos de uma passagem, traçados e aligeirados
 │   ├── drc.rs                                   regras de projeto: larguras, distâncias e anéis, com as posições
 │   ├── drill.rs                                 furos e contorno da placa, lidos e escritos
 │   ├── dxf.rs                                   as passagens como desenho DXF
-│   ├── edt.rs                                   a distância exata ao cobre
 │   ├── fiducial.rs                              escala e correção com pontos de referência
 │   ├── filetype.rs                              de que tipo é um ficheiro de entrada
 │   ├── fill.rs                                  linhas que preenchem contornos, recortadas ao cobre
@@ -242,8 +237,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               as passagens desenhadas em SVG ou texto
 │   ├── problems.rs                              zonas problemáticas: cantos internos agudos e pistas entre pads
 │   ├── tolerance.rs                             onde se aplica a tolerância: todos os intervalos ou só pads
-│   ├── transform.rs                             dupla face, painéis e furos de alinhamento
-│   └── units.rs                                 mm, mil e polegada
+│   └── transform.rs                             dupla face, painéis e furos de alinhamento
 ├── tests/
 │   ├── advanced.rs                              isolamento forçado, correção, máscara, unidades, pré-visualização
 │   ├── cli_reading.rs                           testes de leitura de ficheiros: o limite de tamanho, texto que não é UTF-8, avisos por código

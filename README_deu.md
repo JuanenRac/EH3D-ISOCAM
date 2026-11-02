@@ -58,7 +58,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 ## 🎯 Überblick
 
 * **Das Kupfer auf einem Raster** (`src/bitmap.rs`): Pads (rund, rechteckig, oval), Leiterbahnen und Flächen werden auf Zellen der gewählten Größe gezeichnet; überlappende Bahnen und Pads sind ein Stück, weil ein Raster keine Überlappungen kennt, es braucht also keinen Sonderfall; ein Raster, das nicht in den Speicher passt, wird abgelehnt.
-* **Der exakte Abstand** (`src/edt.rs`, `src/contour.rs`): Der Abstand jeder Zelle zum nächsten Kupfer wird exakt berechnet (und gegen Brute Force getestet), und die Bahn eines Durchgangs ist die Linie, auf der er dem Werkzeugradius entspricht, als geschlossene Polylinien verfolgt und mit einer Toleranz von einer halben Zelle ausgedünnt; weitere Durchgänge liegen je eine Zustellung weiter außen.
+* **Der exakte Abstand** (`eh3d-raster`): Der Abstand jeder Zelle zum nächsten Kupfer wird exakt berechnet (und gegen Brute Force getestet), und die Bahn eines Durchgangs ist die Linie, auf der er dem Werkzeugradius entspricht, als geschlossene Polylinien verfolgt und mit einer Toleranz von einer halben Zelle ausgedünnt; weitere Durchgänge liegen je eine Zustellung weiter außen.
 * **Was das Werkzeug nicht kann** (`src/isolate.rs`): Wo zwei getrennte Kupferstücke näher beieinander liegen als das Werkzeug breit ist, passt keine Bahn dazwischen: `check` listet diese Stellen, und `isolate` schreibt den G-Code erst, wenn man sie angesehen hat (oder `--force`). Der G-Code (`src/gcode.rs`) hebt das Werkzeug zwischen den Bahnen an, fährt auf die gewählte Tiefe und schneidet als Nächstes die nächstgelegene Bahn.
 * **HP-GL für die Bungard-Maschinen** (`src/hpgl.rs`): Bei einer Ausgabedatei mit der Endung `.plt` werden die Durchgänge als HP-GL-Plotdatei mit 40 Einheiten je Millimeter geschrieben, ein Stift je Durchgang; das liest das Fräsprogramm der Bungard-Maschinen.
 * **Mehrere Werkzeuge und Restkupfer** (`src/isolate.rs`): ein Plan hat bis zu vier Werkzeuge, das breiteste schneidet zuerst; wo ein breiteres Werkzeug schon entlang einer Bahn eines schmaleren geschnitten hat, entfällt dieses Stück (der Rest bleibt als offene Abschnitte), und Ringe eines breiteren Werkzeugs, die sich jeweils mit dem vorigen überlappen, können das Kupfer jenseits der Durchgänge abräumen; der G-Code hält zum Werkzeugwechsel an, wenn sich die Werkzeugbreite ändert. Ist `around_pads_min_mm` größer als 0, schneiden die breiteren Werkzeuge nur die Ringe um Pads mit mindestens dieser Breite, und das feinste Werkzeug übernimmt den Rest (Leiterbahnen und kleine Pads).
@@ -74,7 +74,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 * **Zweiseitige Platinen und die schlichte Bohrdatei** (`src/hpgl.rs`, `src/drill.rs`, `src/filetype.rs`): `hpgl_shift_negative = no` behält die Koordinaten der Platine im Plot bei (auch negative), sodass Plot und Bohrdatei denselben Ursprung haben; `isolate` mit `plot_outline = yes` und `--outline DATEI` setzt den Schnitt um die Kontur (mit dem Werkzeug von `route_tool_mm`) an den Anfang des Plots, auf den Stift `hpgl_outline_pen`, die Isolation auf den Stift `hpgl_isolation_pen`. `--mirror vertical` dreht die Bohrungen um die Mitte der Kontur um. `ncd_isocam_style = yes` schreibt eine Bohrdatei wie die Bungard-Programme (`M48` und `%`, Werkzeuge nur mit Nummer, wiederholte Koordinate weggelassen, CR LF, `M00`), und `ncd_digits` füllt die Koordinaten vorn mit Nullen auf. Eine Bohrdatei ohne `M48`-Zeile wird als Excellon erkannt.
 * **Leichtere Bahnen, Skalierung und Korrektur** (`src/optimize.rs`, `src/fiducial.rs`): Spitzen werden entfernt und Punkte auf einer Geraden (innerhalb von `optimize_tolerance_mm`) werden zu einer Bewegung, standardmäßig aktiv (0,01 mm und 0,02 mm; mit 0 abgeschaltet); die Arbeit lässt sich um die Mitte der Platine skalieren, und Paare von Referenzpunkten relativ zu dieser Mitte (wo eine Marke sein sollte und wo sie gemessen wurde) ergeben eine Ähnlichkeit (zwei Paare) oder eine affine Anpassung (drei oder mehr, kleinste Quadrate), die auf jede Bahn und jede Bohrung angewendet wird; abgelehnt wird sie, wenn der Maßstab weit von 1 abweicht oder eine Marke nicht passt.
 * **Lötstoppmaske** (`src/mask.rs`): die Öffnungen werden als Gerber-Lage geschrieben, aus der Maskenlage des Entwurfs oder aus den Pads des Kupfers, jede um `mask_margin_mm` vergrößert; Leiterbahnen bleiben bedeckt.
-* **Einheiten und Vorschau** (`src/units.rs`, `src/preview.rs`): eine Länge kann `mm`, `mil` oder `in` tragen, der G-Code kann in Zoll geschrieben werden, und `preview` zeichnet die Durchgänge über das Kupfer als SVG-Zeichnung oder als Text.
+* **Einheiten und Vorschau** (`eh3d-raster`, `src/preview.rs`): eine Länge kann `mm`, `mil` oder `in` tragen, der G-Code kann in Zoll geschrieben werden, und `preview` zeichnet die Durchgänge über das Kupfer als SVG-Zeichnung oder als Text.
 * **Alte Gerber-Ebenen** (`src/legacy.rs`): eine Ebene ohne Formatangabe (RS-274D, wie viele ältere Programme sie schreiben) wird gelesen, wenn ihre Aperturliste (`--apertures`, ein D-Code und seine Größe pro Zeile) zusammen mit ihrem Format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`) angegeben wird; sie wird als erweitertes Gerber neu geschrieben und läuft durch den normalen Leser. Getestet mit von Hand geschriebenen Ebenen, nicht mit Dateien anderer Programme.
 * **Lesen und Meldungen nach Code (Kommandozeile):** Dateien werden mit einem Größenlimit gelesen (`--max-bytes N`, standardmäßig 256 MiB), und Text ohne UTF-8 wird mit einer Warnung (`input-not-utf8`) als Latin-1 gelesen; die Meldungen des Gerber-Lesers erscheinen mit ihrem stabilen Code, und `--hide CODE[,CODE]` lässt diese Codes weg. Der Hinweis zu den leichteren Pfaden und der zu den Stegen des Schnitts erscheinen nur, wenn sie etwas geändert haben.
 
@@ -135,11 +135,9 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── bitmap.rs                                das Kupfer auf einem Raster
 │   ├── config.rs                                alle einstellbaren Werte aus einer Einstellungsdatei
-│   ├── contour.rs                               die Bahnen eines Durchgangs, verfolgt und vereinfacht
 │   ├── drc.rs                                   Entwurfsregeln: Breiten, Abstände und Ringe, mit Orten
 │   ├── drill.rs                                 Bohrungen und Platinenkontur lesen und schreiben
 │   ├── dxf.rs                                   die Durchgänge als DXF-Zeichnung
-│   ├── edt.rs                                   der genaue Abstand zum Kupfer
 │   ├── fiducial.rs                              Skalierung und Korrektur mit Referenzpunkten
 │   ├── filetype.rs                              welche Art Datei eine Eingabe ist
 │   ├── fill.rs                                  Linien, die Konturen füllen, aufs Kupfer beschnitten
@@ -156,8 +154,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               die Durchgänge als SVG oder Text
 │   ├── problems.rs                              Problemzonen: spitze Innenecken und Leiterbahnen zwischen Pads
 │   ├── tolerance.rs                             wo die Toleranz gilt: alle Spalten oder nur Pads
-│   ├── transform.rs                             beide Seiten, Nutzen und Passlöcher
-│   └── units.rs                                 mm, mil und Zoll
+│   └── transform.rs                             beide Seiten, Nutzen und Passlöcher
 ├── tests/
 │   ├── advanced.rs                              erzwungene Isolation, Korrektur, Maske, Einheiten, Vorschau
 │   ├── cli_reading.rs                           Tests zum Lesen von Dateien: Größenlimit, Text ohne UTF-8, Meldungen nach Code
@@ -221,11 +218,9 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── bitmap.rs                                das Kupfer auf einem Raster
 │   ├── config.rs                                alle einstellbaren Werte aus einer Einstellungsdatei
-│   ├── contour.rs                               die Bahnen eines Durchgangs, verfolgt und vereinfacht
 │   ├── drc.rs                                   Entwurfsregeln: Breiten, Abstände und Ringe, mit Orten
 │   ├── drill.rs                                 Bohrungen und Platinenkontur lesen und schreiben
 │   ├── dxf.rs                                   die Durchgänge als DXF-Zeichnung
-│   ├── edt.rs                                   der genaue Abstand zum Kupfer
 │   ├── fiducial.rs                              Skalierung und Korrektur mit Referenzpunkten
 │   ├── filetype.rs                              welche Art Datei eine Eingabe ist
 │   ├── fill.rs                                  Linien, die Konturen füllen, aufs Kupfer beschnitten
@@ -242,8 +237,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               die Durchgänge als SVG oder Text
 │   ├── problems.rs                              Problemzonen: spitze Innenecken und Leiterbahnen zwischen Pads
 │   ├── tolerance.rs                             wo die Toleranz gilt: alle Spalten oder nur Pads
-│   ├── transform.rs                             beide Seiten, Nutzen und Passlöcher
-│   └── units.rs                                 mm, mil und Zoll
+│   └── transform.rs                             beide Seiten, Nutzen und Passlöcher
 ├── tests/
 │   ├── advanced.rs                              erzwungene Isolation, Korrektur, Maske, Einheiten, Vorschau
 │   ├── cli_reading.rs                           Tests zum Lesen von Dateien: Größenlimit, Text ohne UTF-8, Meldungen nach Code

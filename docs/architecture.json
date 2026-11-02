@@ -41,8 +41,7 @@
         "exact distance to it"
       ],
       "code": [
-        "src/bitmap.rs::pub fn from_scene",
-        "src/edt.rs::pub fn squared_distance"
+        "src/bitmap.rs::pub fn from_scene"
       ]
     },
     {
@@ -58,7 +57,6 @@
         "src/isolate.rs::pub fn plan",
         "src/isolate.rs::pub fn plan_with_pads",
         "src/forced.rs::pub fn forced_passes",
-        "src/contour.rs::pub fn loops",
         "src/fill.rs::pub fn rubout_contours",
         "src/tolerance.rs::pub fn close_pieces_scoped"
       ]
