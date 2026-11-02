@@ -9,15 +9,7 @@ use crate::order::Cut;
 use eh3d_bungard_formats::{dxf, gerber, hpgl as plotter, ncd};
 use eh3d_gerberviewer::scene::Bounds;
 
-/// One hole: where, how wide and with which tool number.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Hole {
-    pub tool: u8,
-    pub x_mm: f64,
-    pub y_mm: f64,
-    /// 0 when the file does not say.
-    pub diameter_mm: f64,
-}
+pub use eh3d_cam::hole::Hole;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Drills {

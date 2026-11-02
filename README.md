@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 171 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 158 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.5` |
 | Maturity | Scaffolding |
-| Tests | 171 |
+| Tests | 158 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -49,7 +49,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 171 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 158 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🔴 | Planned: the egui window common to the suite; today there is only the command line. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -57,25 +57,25 @@ Each line is one part of this repository and the light says how far it is today.
 
 ## 🎯 Overview
 
-* **The copper on a grid** (`src/bitmap.rs`): pads (round, rectangular, obround), tracks and regions are drawn on cells of the size you choose; overlapping tracks and pads are one piece because a grid has no overlaps, so no special case is needed; a grid that would not fit in memory is refused.
+* **The copper on a grid** (`bitmap`): pads (round, rectangular, obround), tracks and regions are drawn on cells of the size you choose; overlapping tracks and pads are one piece because a grid has no overlaps, so no special case is needed; a grid that would not fit in memory is refused.
 * **The exact distance** (`eh3d-raster`): the distance from every cell to the nearest copper is worked out exactly (and tested against a brute force), and the path of a pass is the line where it equals the radius of the tool, traced as closed polylines and made lighter with a tolerance of half a cell; further passes go one stepover farther each.
-* **What the tool cannot do** (`src/isolate.rs`): where two separate pieces of copper are closer than the width of the tool, no path can go between them: `check` lists those places, and `isolate` does not write the G-code until they are looked at (or `--force`). The G-code (`src/gcode.rs`) lifts the tool between paths, goes down to the depth chosen and cuts the nearest path next.
+* **What the tool cannot do** (`isolate`): where two separate pieces of copper are closer than the width of the tool, no path can go between them: `check` lists those places, and `isolate` does not write the G-code until they are looked at (or `--force`). The G-code (`src/gcode.rs`) lifts the tool between paths, goes down to the depth chosen and cuts the nearest path next.
 * **HP-GL for the Bungard machines** (`src/hpgl.rs`): with an output file that ends in `.plt` the passes are written as an HP-GL plot file at 40 units to the millimetre, one pen for each pass, which is what the routing program of the Bungard machines reads.
-* **Several tools and leftover copper** (`src/isolate.rs`): a plan has up to four tools and the widest cuts first; where a wider tool has already cut along a path of a narrower one, that stretch is left out (the rest stays as open runs), and rings of a wider tool, each overlapping the one before, can clear the copper that is left beyond the passes; the G-code stops for a tool change when the width of the tool changes. With `around_pads_min_mm` above 0 the wider tools cut only the rings round pads at least that wide and the narrowest tool does the rest (tracks and small pads).
-* **Direction, start and order** (`src/order.rs`): the paths are traced with the copper on the right of the tool (climb milling with a spindle that turns clockwise); the settings can turn that round (conventional), force clockwise or counterclockwise, start each closed path at its nearest point, its lowest point or where it was traced, set the point the tool starts from and put the paths in the order they were traced, nearest first, or shortened further by turning stretches of the order round; `info` shows how many paths go each way and the travel through the air.
+* **Several tools and leftover copper** (`isolate`): a plan has up to four tools and the widest cuts first; where a wider tool has already cut along a path of a narrower one, that stretch is left out (the rest stays as open runs), and rings of a wider tool, each overlapping the one before, can clear the copper that is left beyond the passes; the G-code stops for a tool change when the width of the tool changes. With `around_pads_min_mm` above 0 the wider tools cut only the rings round pads at least that wide and the narrowest tool does the rest (tracks and small pads).
+* **Direction, start and order** (`order`): the paths are traced with the copper on the right of the tool (climb milling with a spindle that turns clockwise); the settings can turn that round (conventional), force clockwise or counterclockwise, start each closed path at its nearest point, its lowest point or where it was traced, set the point the tool starts from and put the paths in the order they were traced, nearest first, or shortened further by turning stretches of the order round; `info` shows how many paths go each way and the travel through the air.
 * **Holes and board outline** (`src/drill.rs`): drill files are read (Bungard files in mils with the reader of the Bungard formats, metric files with the reader of the suite) and written in whole mils; an outline is read from a Gerber outline layer, a DXF drawing or an HP-GL plot file, strokes drawn one by one are joined, and the path of the tool round the board and inside its cutouts is written as HP-GL or as a routing Excellon file.
-* **Both sides, panels and alignment holes** (`src/transform.rs`): the layer, the holes and the outline are turned over, turned by quarter turns and repeated on a panel together; alignment holes are put outside the board where the turned-over board finds them again (a third one on the line tells it from the same board turned half a turn).
-* **Design rules** (`src/drc.rs`): copper narrower than the rule, pieces of copper closer than the rule or than the tool is wide, and holes with less copper round them than the rule, each with its place in millimetres.
+* **Both sides, panels and alignment holes** (`transform`): the layer, the holes and the outline are turned over, turned by quarter turns and repeated on a panel together; alignment holes are put outside the board where the turned-over board finds them again (a third one on the line tells it from the same board turned half a turn).
+* **Design rules** (`drc`): copper narrower than the rule, pieces of copper closer than the rule or than the tool is wide, and holes with less copper round them than the rule, each with its place in millimetres.
 * **One settings file** (`src/config.rs`): every value that can be tuned is a setting with a default, read from a `key = value` file (`examples/isocam.cfg`) or given by the same name as an option of the command line.
-* **Forced isolation** (`src/forced.rs`): with `forced_isolation = yes` a path is also laid along the middle of every gap that the finest tool does not fit in, as long as the gap is not narrower than `forced_min_gap_mm`; each place is reported with its coordinates and its gap, and the gaps that are narrower are listed and left alone. It is off by default: then these places are only reported.
-* **Problem zones, tolerance and alignment distance** (`src/problems.rs`, `src/config.rs`): `check` also lists, as warnings that do not stop anything, the inner corners sharper than `problem_corner_angle_deg` (a round tool leaves copper in the tip of a notch; 60 degrees by default, 0 switches it off) and the tracks that run between two pads nearer to them than `problem_track_gap_factor` times the tool (1.5 by default, 0 switches it off); both criteria are settings, not fixed in the code. `conflict_tolerance_mm` (0 by default: no gap is accepted) accepts the gaps that are narrower than the tool by at most that much, in `check` and in `isolate`. The distance of the alignment holes from the board is `alignment_margin_mm` (5 mm by default; other programs of this kind put them 10 mm away, which is `alignment_margin_mm = 10`).
-* **Bridges, nets, hole patterns and area clearing** (`src/drill.rs`, `src/isolate.rs`, `src/transform.rs`, `src/problems.rs`, `src/legacy.rs`): `route` can leave bridges that hold the board in the sheet (`tab_count` for each closed path, 0 by default; `tab_width_mm` of material left; `tab_min_length_mm` between bridges): the cut stops half a bridge and half a tool short of the middle of each bridge. `isolate --net X,Y` isolates only the net that holds a point, with the tool `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` writes parallel lines of the tool `rubout_lines_tool_mm` (direction `rubout_lines_direction`) that clear an area. The alignment holes can be 2, 3 or 6, outside the board or, with `alignment_pattern = special`, in a pattern about its middle (`alignment_special_a_mm` apart for the pair, `alignment_special_b_mm` for the four more). With a conflict tolerance, `check` and `isolate` warn about the tracks and rectangular pads thinner than twice the tolerance plus `tolerance_warning_margin_mm`. The guess of the format of an old-style Gerber layer now uses the units the file states and the size of the board, and a list of apertures may give both sides in one cell (`60x40`).
-* **Tolerance for pads, filling by contours, kind of file, DXF and plotter pens** (`src/tolerance.rs`, `src/fill.rs`, `src/filetype.rs`, `src/dxf.rs`, `src/hpgl.rs`): `conflict_tolerance_scope = pads` (all by default, as before) keeps the conflict tolerance for the gaps that have a pad beside them, and the thin-copper warning then looks at pads only. `rubout-area OUT [LAYER.gtl] --contour FILE` (or `--area`) fills the closed paths of a file, even-odd so that an inner path is a hole, with back-and-forth lines of `rubout_lines_tool_mm`; with a layer the lines are cut to the copper, the whole tool on copper plus `rubout_fill_margin_mm`. A layer that is really an Excellon, HP-GL or DXF file (or a drill file that is a Gerber layer) is refused by name, and `kind FILE...` says what each file is. `isolate` and `rubout-area` write a DXF drawing for a `.dxf`. `drills IN OUT.plt` plots the holes with a pen for each drill (`hpgl_pen_map = 1:2, 3:1`; the tools it leaves out take the lowest free pens), and `hpgl_pen_speed_cm_s` (0 = the machine's own, the default) writes the pen speed into any plot. `hpgl_isocam_style` (on) writes a plot the way the original program did: a `PA` for each point and lines of about 75 columns ended with CR LF; off writes the compact form.
+* **Forced isolation** (`forced`): with `forced_isolation = yes` a path is also laid along the middle of every gap that the finest tool does not fit in, as long as the gap is not narrower than `forced_min_gap_mm`; each place is reported with its coordinates and its gap, and the gaps that are narrower are listed and left alone. It is off by default: then these places are only reported.
+* **Problem zones, tolerance and alignment distance** (`problems`, `src/config.rs`): `check` also lists, as warnings that do not stop anything, the inner corners sharper than `problem_corner_angle_deg` (a round tool leaves copper in the tip of a notch; 60 degrees by default, 0 switches it off) and the tracks that run between two pads nearer to them than `problem_track_gap_factor` times the tool (1.5 by default, 0 switches it off); both criteria are settings, not fixed in the code. `conflict_tolerance_mm` (0 by default: no gap is accepted) accepts the gaps that are narrower than the tool by at most that much, in `check` and in `isolate`. The distance of the alignment holes from the board is `alignment_margin_mm` (5 mm by default; other programs of this kind put them 10 mm away, which is `alignment_margin_mm = 10`).
+* **Bridges, nets, hole patterns and area clearing** (`src/drill.rs`, `isolate`, `transform`, `problems`, `legacy`): `route` can leave bridges that hold the board in the sheet (`tab_count` for each closed path, 0 by default; `tab_width_mm` of material left; `tab_min_length_mm` between bridges): the cut stops half a bridge and half a tool short of the middle of each bridge. `isolate --net X,Y` isolates only the net that holds a point, with the tool `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` writes parallel lines of the tool `rubout_lines_tool_mm` (direction `rubout_lines_direction`) that clear an area. The alignment holes can be 2, 3 or 6, outside the board or, with `alignment_pattern = special`, in a pattern about its middle (`alignment_special_a_mm` apart for the pair, `alignment_special_b_mm` for the four more). With a conflict tolerance, `check` and `isolate` warn about the tracks and rectangular pads thinner than twice the tolerance plus `tolerance_warning_margin_mm`. The guess of the format of an old-style Gerber layer now uses the units the file states and the size of the board, and a list of apertures may give both sides in one cell (`60x40`).
+* **Tolerance for pads, filling by contours, kind of file, DXF and plotter pens** (`tolerance`, `fill`, `src/filetype.rs`, `src/dxf.rs`, `src/hpgl.rs`): `conflict_tolerance_scope = pads` (all by default, as before) keeps the conflict tolerance for the gaps that have a pad beside them, and the thin-copper warning then looks at pads only. `rubout-area OUT [LAYER.gtl] --contour FILE` (or `--area`) fills the closed paths of a file, even-odd so that an inner path is a hole, with back-and-forth lines of `rubout_lines_tool_mm`; with a layer the lines are cut to the copper, the whole tool on copper plus `rubout_fill_margin_mm`. A layer that is really an Excellon, HP-GL or DXF file (or a drill file that is a Gerber layer) is refused by name, and `kind FILE...` says what each file is. `isolate` and `rubout-area` write a DXF drawing for a `.dxf`. `drills IN OUT.plt` plots the holes with a pen for each drill (`hpgl_pen_map = 1:2, 3:1`; the tools it leaves out take the lowest free pens), and `hpgl_pen_speed_cm_s` (0 = the machine's own, the default) writes the pen speed into any plot. `hpgl_isocam_style` (on) writes a plot the way the original program did: a `PA` for each point and lines of about 75 columns ended with CR LF; off writes the compact form.
 * **Two-sided boards and the plain drill file** (`src/hpgl.rs`, `src/drill.rs`, `src/filetype.rs`): `hpgl_shift_negative = no` keeps the coordinates of the board in a plot (negative ones included), so that a plot and a drill file share one origin; `isolate` with `plot_outline = yes` and `--outline FILE` puts the cut round the outline (the tool of `route_tool_mm`) first in the plot, on `hpgl_outline_pen`, with the isolation on `hpgl_isolation_pen`. `--mirror vertical` turns the holes over about the middle of the outline. `ncd_isocam_style = yes` writes a drill file as the Bungard programs do (`M48` and `%`, tools by number, a repeated coordinate left out, CR LF, `M00`) and `ncd_digits` fills the coordinates with zeros in front. A drill file with no `M48` line is known as Excellon.
-* **Lighter paths, scale and correction** (`src/optimize.rs`, `src/fiducial.rs`): spikes are taken out and points on a straight line (within `optimize_tolerance_mm`) become one move, on by default (0.01 mm and 0.02 mm, 0 switches them off); the work can be scaled about the centre of the board, and pairs of reference points relative to that centre (where a mark should be and where it was measured) give a similarity (two pairs) or an affine fit (three or more, least squares) that is applied to every path and hole; it is refused when the scale is far from 1 or a mark does not fit.
-* **Solder mask** (`src/mask.rs`): the openings are written as a Gerber layer, from the mask layer of the design or from the pads of the copper, each grown by `mask_margin_mm`; tracks stay covered.
+* **Lighter paths, scale and correction** (`optimize`, `fiducial`): spikes are taken out and points on a straight line (within `optimize_tolerance_mm`) become one move, on by default (0.01 mm and 0.02 mm, 0 switches them off); the work can be scaled about the centre of the board, and pairs of reference points relative to that centre (where a mark should be and where it was measured) give a similarity (two pairs) or an affine fit (three or more, least squares) that is applied to every path and hole; it is refused when the scale is far from 1 or a mark does not fit.
+* **Solder mask** (`mask`): the openings are written as a Gerber layer, from the mask layer of the design or from the pads of the copper, each grown by `mask_margin_mm`; tracks stay covered.
 * **Units and preview** (`eh3d-raster`, `src/preview.rs`): a length may carry `mm`, `mil` or `in`, the G-code can be written in inches, and `preview` draws the passes over the copper as an SVG drawing or as text.
-* **Old-style Gerber layers** (`src/legacy.rs`): a layer with no format statement (RS-274D, as many older programs write it) is read when its list of apertures is given (`--apertures`, one D code and its size per line) together with its format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); it is rewritten as extended Gerber and goes through the normal reader. Tested with hand-written layers, not with files from other programs.
+* **Old-style Gerber layers** (`legacy`): a layer with no format statement (RS-274D, as many older programs write it) is read when its list of apertures is given (`--apertures`, one D code and its size per line) together with its format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); it is rewritten as extended Gerber and goes through the normal reader. Tested with hand-written layers, not with files from other programs.
 * **Reading and notices by code (command line):** files are read with a size limit (`--max-bytes N`, 256 MiB by default) and text that is not UTF-8 is read as Latin-1 with a warning (`input-not-utf8`); the notices of the Gerber reader are shown with their stable code and `--hide CODE[,CODE]` leaves out those codes. The note about the lighter paths and the one about the bridges of the cut are printed only when they changed something.
 
 ## 🧩 Role in EH3D
@@ -133,28 +133,15 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
-│   ├── bitmap.rs                                the copper on a grid
 │   ├── config.rs                                every tunable value, from one settings file
-│   ├── drc.rs                                   design rules: widths, gaps and rings, with places
 │   ├── drill.rs                                 holes and board outline, read and written
 │   ├── dxf.rs                                   the passes as a DXF drawing
-│   ├── fiducial.rs                              scale and correction from reference points
 │   ├── filetype.rs                              what kind of file an input is
-│   ├── fill.rs                                  lines that fill contours, cut to the copper
-│   ├── forced.rs                                paths along the gaps the tool does not fit in
 │   ├── gcode.rs                                 the paths as G-code
 │   ├── hpgl.rs                                  the paths as an HP-GL plot file
-│   ├── isolate.rs                               tools, passes, leftover copper and narrow gaps
-│   ├── legacy.rs                                old-style Gerber layers: format and list of apertures
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
-│   ├── mask.rs                                  the openings of the solder mask
-│   ├── optimize.rs                              lighter paths: spikes and straight points
-│   ├── order.rs                                 direction, starting points and order of the cuts
-│   ├── preview.rs                               the passes drawn as SVG or text
-│   ├── problems.rs                              problem zones: sharp inner corners and tracks between pads
-│   ├── tolerance.rs                             where the tolerance applies: all gaps or only pads
-│   └── transform.rs                             both sides, panels and alignment holes
+│   └── preview.rs                               the passes drawn as SVG or text
 ├── tests/
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── cli_reading.rs                           tests of reading files: the size limit, text that is not UTF-8, notices by code
@@ -162,9 +149,7 @@ EH3D-ISOCAM/
 │   ├── isocam.rs                                tests of the library and the command line
 │   ├── kinds.rs                                 tolerance for pads, contour fills, file kinds, pens, DXF
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
-│   ├── legacy.rs                                tests of old-style Gerber layers and the command line
 │   ├── multi.rs                                 tests of tools, rubout, direction, order and settings
-│   ├── problems.rs                              tests of problem zones, the tolerance and the alignment holes
 │   └── readme.rs                                tests that run what the README and the run scripts promise
 ├── examples/
 │   ├── isocam.cfg                               every setting with its default, to copy and change
@@ -198,7 +183,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Testing
 
-The suite has 171 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 158 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -216,28 +201,15 @@ The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has i
 ```text
 EH3D-ISOCAM/
 ├── src/
-│   ├── bitmap.rs                                the copper on a grid
 │   ├── config.rs                                every tunable value, from one settings file
-│   ├── drc.rs                                   design rules: widths, gaps and rings, with places
 │   ├── drill.rs                                 holes and board outline, read and written
 │   ├── dxf.rs                                   the passes as a DXF drawing
-│   ├── fiducial.rs                              scale and correction from reference points
 │   ├── filetype.rs                              what kind of file an input is
-│   ├── fill.rs                                  lines that fill contours, cut to the copper
-│   ├── forced.rs                                paths along the gaps the tool does not fit in
 │   ├── gcode.rs                                 the paths as G-code
 │   ├── hpgl.rs                                  the paths as an HP-GL plot file
-│   ├── isolate.rs                               tools, passes, leftover copper and narrow gaps
-│   ├── legacy.rs                                old-style Gerber layers: format and list of apertures
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
-│   ├── mask.rs                                  the openings of the solder mask
-│   ├── optimize.rs                              lighter paths: spikes and straight points
-│   ├── order.rs                                 direction, starting points and order of the cuts
-│   ├── preview.rs                               the passes drawn as SVG or text
-│   ├── problems.rs                              problem zones: sharp inner corners and tracks between pads
-│   ├── tolerance.rs                             where the tolerance applies: all gaps or only pads
-│   └── transform.rs                             both sides, panels and alignment holes
+│   └── preview.rs                               the passes drawn as SVG or text
 ├── tests/
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── cli_reading.rs                           tests of reading files: the size limit, text that is not UTF-8, notices by code
@@ -245,9 +217,7 @@ EH3D-ISOCAM/
 │   ├── isocam.rs                                tests of the library and the command line
 │   ├── kinds.rs                                 tolerance for pads, contour fills, file kinds, pens, DXF
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
-│   ├── legacy.rs                                tests of old-style Gerber layers and the command line
 │   ├── multi.rs                                 tests of tools, rubout, direction, order and settings
-│   ├── problems.rs                              tests of problem zones, the tolerance and the alignment holes
 │   └── readme.rs                                tests that run what the README and the run scripts promise
 ├── examples/
 │   ├── isocam.cfg                               every setting with its default, to copy and change

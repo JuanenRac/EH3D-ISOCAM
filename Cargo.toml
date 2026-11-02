@@ -21,6 +21,8 @@ path = "src/main.rs"
 eh3d-parser-gerber = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d-parser-gerber" }
 # raster geometry: units of length, distance transform, contour lines
 eh3d-raster = { version = ">=0.0.3", path = "../EH3D-CORE-LIBS/crates/eh3d-raster" }
+# the pure CAM: the copper on a grid, isolation passes, checks, path order, fiducials, board transforms and old-style Gerber
+eh3d-cam = { version = ">=0.0.3", path = "../EH3D-CORE-LIBS/crates/eh3d-cam" }
 eh3d-gerberviewer ={ version = ">=0.0.1", path = "../EH3D-GERBERVIEWER" }
 eh3d-parser-excellon = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d-parser-excellon" }
 # the Bungard file formats: Excellon (mils), plotter files, board outlines (Gerber and DXF)

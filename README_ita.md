@@ -18,7 +18,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 171 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Non ha ancora una finestra, non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 158 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Non ha ancora una finestra, non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versione | `0.0.5` |
 | Maturità | Impalcatura |
-| Test | 171 |
+| Test | 158 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -49,7 +49,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 171 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 158 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🔴 | Previsto: la finestra egui comune alla suite; oggi esiste solo la riga di comando. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -57,25 +57,25 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 
 ## 🎯 Panoramica
 
-* **Il rame su una griglia** (`src/bitmap.rs`): pad (tondi, rettangolari, ovali), piste e regioni sono disegnati su celle della dimensione scelta; piste e pad sovrapposti sono un unico pezzo perché una griglia non ha sovrapposizioni, quindi non serve alcun caso speciale; una griglia che non starebbe in memoria è rifiutata.
+* **Il rame su una griglia** (`bitmap`): pad (tondi, rettangolari, ovali), piste e regioni sono disegnati su celle della dimensione scelta; piste e pad sovrapposti sono un unico pezzo perché una griglia non ha sovrapposizioni, quindi non serve alcun caso speciale; una griglia che non starebbe in memoria è rifiutata.
 * **La distanza esatta** (`eh3d-raster`): la distanza di ogni cella dal rame più vicino è calcolata esattamente (e provata contro la forza bruta) e il percorso di una passata è la linea dove vale il raggio dell'utensile, tracciata come poligonali chiuse e alleggerita con una tolleranza di mezza cella; le passate successive vanno una passata laterale più lontano ciascuna.
-* **Ciò che l'utensile non può fare** (`src/isolate.rs`): dove due pezzi di rame separati sono più vicini della larghezza dell'utensile nessun percorso può passare tra loro: `check` elenca quei punti e `isolate` non scrive il G-code finché non li si guarda (o `--force`). Il G-code (`src/gcode.rs`) solleva l'utensile tra i percorsi, scende alla profondità scelta e taglia poi il percorso più vicino.
+* **Ciò che l'utensile non può fare** (`isolate`): dove due pezzi di rame separati sono più vicini della larghezza dell'utensile nessun percorso può passare tra loro: `check` elenca quei punti e `isolate` non scrive il G-code finché non li si guarda (o `--force`). Il G-code (`src/gcode.rs`) solleva l'utensile tra i percorsi, scende alla profondità scelta e taglia poi il percorso più vicino.
 * **HP-GL per le macchine Bungard** (`src/hpgl.rs`): con un file di uscita che termina in `.plt` le passate sono scritte come file di tracciato HP-GL a 40 unità al millimetro, una penna per passata, ciò che legge il programma di fresatura delle macchine Bungard.
-* **Più utensili e rame residuo** (`src/isolate.rs`): un piano ha fino a quattro utensili, taglia per primo il più largo; dove un utensile più largo ha già tagliato lungo un percorso di uno più fine, quel tratto viene omesso (il resto resta come tratti aperti), e anelli di un utensile più largo, ciascuno sovrapposto al precedente, possono ripulire il rame rimasto oltre le passate; il G-code si ferma per il cambio utensile quando cambia la larghezza dell'utensile. Con `around_pads_min_mm` maggiore di 0, gli utensili più larghi tagliano solo gli anelli attorno ai pad larghi almeno così e l'utensile più sottile fa il resto (piste e pad piccoli).
-* **Verso, partenza e ordine** (`src/order.rs`): i percorsi sono tracciati con il rame alla destra dell'utensile (fresatura concorde con un mandrino che gira in senso orario); le impostazioni possono invertirlo (discorde), imporre orario o antiorario, far iniziare ogni percorso chiuso nel punto più vicino, nel punto più basso o dove è stato tracciato, fissare il punto da cui parte l'utensile e mettere i percorsi nell'ordine del tracciamento, il più vicino per primo o accorciato ancora girando tratti dell'ordine; `info` mostra quanti percorsi vanno in ogni verso e lo spostamento a vuoto.
+* **Più utensili e rame residuo** (`isolate`): un piano ha fino a quattro utensili, taglia per primo il più largo; dove un utensile più largo ha già tagliato lungo un percorso di uno più fine, quel tratto viene omesso (il resto resta come tratti aperti), e anelli di un utensile più largo, ciascuno sovrapposto al precedente, possono ripulire il rame rimasto oltre le passate; il G-code si ferma per il cambio utensile quando cambia la larghezza dell'utensile. Con `around_pads_min_mm` maggiore di 0, gli utensili più larghi tagliano solo gli anelli attorno ai pad larghi almeno così e l'utensile più sottile fa il resto (piste e pad piccoli).
+* **Verso, partenza e ordine** (`order`): i percorsi sono tracciati con il rame alla destra dell'utensile (fresatura concorde con un mandrino che gira in senso orario); le impostazioni possono invertirlo (discorde), imporre orario o antiorario, far iniziare ogni percorso chiuso nel punto più vicino, nel punto più basso o dove è stato tracciato, fissare il punto da cui parte l'utensile e mettere i percorsi nell'ordine del tracciamento, il più vicino per primo o accorciato ancora girando tratti dell'ordine; `info` mostra quanti percorsi vanno in ogni verso e lo spostamento a vuoto.
 * **Fori e contorno della scheda** (`src/drill.rs`): i file di foratura sono letti (quelli Bungard in millesimi di pollice con il lettore dei formati Bungard, quelli metrici con il lettore della suite) e scritti in millesimi interi; un contorno è letto da un livello Gerber di contorno, un disegno DXF o un file di tracciamento HP-GL, i tratti disegnati uno a uno vengono uniti, e il percorso dell'utensile attorno alla scheda e dentro i suoi ritagli è scritto come HP-GL o come file Excellon di fresatura.
-* **Due facce, pannelli e fori di allineamento** (`src/transform.rs`): il livello, i fori e il contorno vengono ribaltati, ruotati a quarti di giro e ripetuti su un pannello insieme; i fori di allineamento sono messi fuori dalla scheda dove la scheda ribaltata li ritrova (un terzo sull'asse la distingue dalla stessa scheda ruotata di mezzo giro).
-* **Regole di progetto** (`src/drc.rs`): rame più stretto della regola, pezzi di rame più vicini della regola o della larghezza dell'utensile, e fori con meno rame intorno della regola, ciascuno con la sua posizione in millimetri.
+* **Due facce, pannelli e fori di allineamento** (`transform`): il livello, i fori e il contorno vengono ribaltati, ruotati a quarti di giro e ripetuti su un pannello insieme; i fori di allineamento sono messi fuori dalla scheda dove la scheda ribaltata li ritrova (un terzo sull'asse la distingue dalla stessa scheda ruotata di mezzo giro).
+* **Regole di progetto** (`drc`): rame più stretto della regola, pezzi di rame più vicini della regola o della larghezza dell'utensile, e fori con meno rame intorno della regola, ciascuno con la sua posizione in millimetri.
 * **Un file di impostazioni** (`src/config.rs`): ogni valore regolabile è un'impostazione con un valore predefinito, letta da un file `chiave = valore` (`examples/isocam.cfg`) o data con lo stesso nome come opzione della riga di comando.
-* **Isolamento forzato** (`src/forced.rs`): con `forced_isolation = yes` viene tracciato anche un percorso a metà di ogni spazio in cui l'utensile più fine non entra, purché lo spazio non sia più stretto di `forced_min_gap_mm`; ogni punto è segnalato con le sue coordinate e il suo spazio, e gli spazi più stretti sono elencati e lasciati stare. È disattivato per impostazione predefinita: allora quei punti sono solo segnalati.
-* **Zone problematiche, tolleranza e distanza di allineamento** (`src/problems.rs`, `src/config.rs`): `check` elenca anche, come avvisi che non fermano nulla, gli angoli interni più acuti di `problem_corner_angle_deg` (un utensile tondo lascia rame nella punta di una tacca; 60 gradi di default, 0 lo disattiva) e le piste che passano tra due pad più vicini ad esse di `problem_track_gap_factor` volte l'utensile (1,5 di default, 0 lo disattiva); entrambi i criteri sono impostazioni, non fissati nel codice. `conflict_tolerance_mm` (0 di default: nessuno spazio viene accettato) accetta gli spazi più stretti dell'utensile al massimo di quella quantità, in `check` e in `isolate`. La distanza dei fori di allineamento dalla scheda è `alignment_margin_mm` (5 mm di default; altri programmi di questo tipo li mettono a 10 mm, cioè `alignment_margin_mm = 10`).
-* **Ponti, reti, schemi di fori e svuotamento di aree** (`src/drill.rs`, `src/isolate.rs`, `src/transform.rs`, `src/problems.rs`, `src/legacy.rs`): `route` può lasciare ponti che trattengono la scheda nella lastra (`tab_count` per ogni percorso chiuso, 0 per impostazione predefinita; `tab_width_mm` di materiale che resta; `tab_min_length_mm` tra i ponti): il taglio si ferma mezza larghezza di ponte e mezzo diametro di utensile prima del centro di ogni ponte. `isolate --net X,Y` isola solo la rete che contiene un punto, con l'utensile `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` scrive linee parallele dell'utensile `rubout_lines_tool_mm` (direzione `rubout_lines_direction`) che svuotano un'area. I fori di allineamento possono essere 2, 3 o 6, fuori dalla scheda o, con `alignment_pattern = special`, in uno schema attorno al suo centro (`alignment_special_a_mm` di distanza per la coppia, `alignment_special_b_mm` per gli altri quattro). Con una tolleranza sui conflitti, `check` e `isolate` avvisano delle piste e dei pad rettangolari più sottili del doppio della tolleranza più `tolerance_warning_margin_mm`. La stima del formato di un livello Gerber vecchio stile usa ora le unità dichiarate dal file e la dimensione della scheda, e un elenco di aperture può dare i due lati in una cella (`60x40`).
-* **Tolleranza solo per i pad, riempimento per contorni, tipo di file, DXF e penne del plotter** (`src/tolerance.rs`, `src/fill.rs`, `src/filetype.rs`, `src/dxf.rs`, `src/hpgl.rs`): `conflict_tolerance_scope = pads` (`all` per default, come prima) riserva la tolleranza di conflitto agli spazi che hanno un pad accanto, e l'avviso di rame sottile guarda allora solo i pad. `rubout-area OUT [LIVELLO.gtl] --contour FILE` (oppure `--area`) riempie i percorsi chiusi di un file, pari-dispari così che un percorso interno sia un foro, con linee avanti e indietro di `rubout_lines_tool_mm`; con un livello le linee sono tagliate al rame: tutto l'utensile sul rame più `rubout_fill_margin_mm`. Un livello che in realtà è un file Excellon, HP-GL o DXF (o un file di foratura che è un livello Gerber) viene rifiutato per nome, e `kind FILE...` dice cos'è ogni file. `isolate` e `rubout-area` scrivono un disegno DXF per un nome in `.dxf`. `drills INGRESSO USCITA.plt` traccia i fori con una penna per punta (`hpgl_pen_map = 1:2, 3:1`; le punte non elencate prendono le penne libere più basse), e `hpgl_pen_speed_cm_s` (0 = quella della macchina, predefinito) scrive la velocità della penna in ogni tracciato. `hpgl_isocam_style` (attivo) scrive il tracciato come il programma originale: un `PA` per ogni punto e righe di circa 75 colonne terminate da CR LF; disattivato scrive la forma compatta.
+* **Isolamento forzato** (`forced`): con `forced_isolation = yes` viene tracciato anche un percorso a metà di ogni spazio in cui l'utensile più fine non entra, purché lo spazio non sia più stretto di `forced_min_gap_mm`; ogni punto è segnalato con le sue coordinate e il suo spazio, e gli spazi più stretti sono elencati e lasciati stare. È disattivato per impostazione predefinita: allora quei punti sono solo segnalati.
+* **Zone problematiche, tolleranza e distanza di allineamento** (`problems`, `src/config.rs`): `check` elenca anche, come avvisi che non fermano nulla, gli angoli interni più acuti di `problem_corner_angle_deg` (un utensile tondo lascia rame nella punta di una tacca; 60 gradi di default, 0 lo disattiva) e le piste che passano tra due pad più vicini ad esse di `problem_track_gap_factor` volte l'utensile (1,5 di default, 0 lo disattiva); entrambi i criteri sono impostazioni, non fissati nel codice. `conflict_tolerance_mm` (0 di default: nessuno spazio viene accettato) accetta gli spazi più stretti dell'utensile al massimo di quella quantità, in `check` e in `isolate`. La distanza dei fori di allineamento dalla scheda è `alignment_margin_mm` (5 mm di default; altri programmi di questo tipo li mettono a 10 mm, cioè `alignment_margin_mm = 10`).
+* **Ponti, reti, schemi di fori e svuotamento di aree** (`src/drill.rs`, `isolate`, `transform`, `problems`, `legacy`): `route` può lasciare ponti che trattengono la scheda nella lastra (`tab_count` per ogni percorso chiuso, 0 per impostazione predefinita; `tab_width_mm` di materiale che resta; `tab_min_length_mm` tra i ponti): il taglio si ferma mezza larghezza di ponte e mezzo diametro di utensile prima del centro di ogni ponte. `isolate --net X,Y` isola solo la rete che contiene un punto, con l'utensile `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` scrive linee parallele dell'utensile `rubout_lines_tool_mm` (direzione `rubout_lines_direction`) che svuotano un'area. I fori di allineamento possono essere 2, 3 o 6, fuori dalla scheda o, con `alignment_pattern = special`, in uno schema attorno al suo centro (`alignment_special_a_mm` di distanza per la coppia, `alignment_special_b_mm` per gli altri quattro). Con una tolleranza sui conflitti, `check` e `isolate` avvisano delle piste e dei pad rettangolari più sottili del doppio della tolleranza più `tolerance_warning_margin_mm`. La stima del formato di un livello Gerber vecchio stile usa ora le unità dichiarate dal file e la dimensione della scheda, e un elenco di aperture può dare i due lati in una cella (`60x40`).
+* **Tolleranza solo per i pad, riempimento per contorni, tipo di file, DXF e penne del plotter** (`tolerance`, `fill`, `src/filetype.rs`, `src/dxf.rs`, `src/hpgl.rs`): `conflict_tolerance_scope = pads` (`all` per default, come prima) riserva la tolleranza di conflitto agli spazi che hanno un pad accanto, e l'avviso di rame sottile guarda allora solo i pad. `rubout-area OUT [LIVELLO.gtl] --contour FILE` (oppure `--area`) riempie i percorsi chiusi di un file, pari-dispari così che un percorso interno sia un foro, con linee avanti e indietro di `rubout_lines_tool_mm`; con un livello le linee sono tagliate al rame: tutto l'utensile sul rame più `rubout_fill_margin_mm`. Un livello che in realtà è un file Excellon, HP-GL o DXF (o un file di foratura che è un livello Gerber) viene rifiutato per nome, e `kind FILE...` dice cos'è ogni file. `isolate` e `rubout-area` scrivono un disegno DXF per un nome in `.dxf`. `drills INGRESSO USCITA.plt` traccia i fori con una penna per punta (`hpgl_pen_map = 1:2, 3:1`; le punte non elencate prendono le penne libere più basse), e `hpgl_pen_speed_cm_s` (0 = quella della macchina, predefinito) scrive la velocità della penna in ogni tracciato. `hpgl_isocam_style` (attivo) scrive il tracciato come il programma originale: un `PA` per ogni punto e righe di circa 75 colonne terminate da CR LF; disattivato scrive la forma compatta.
 * **Schede a doppia faccia e file di foratura semplice** (`src/hpgl.rs`, `src/drill.rs`, `src/filetype.rs`): `hpgl_shift_negative = no` mantiene nel tracciato le coordinate della scheda (anche quelle negative), così tracciato e file di foratura condividono l'origine; `isolate` con `plot_outline = yes` e `--outline FILE` mette per primo nel tracciato il taglio attorno al contorno (con l'utensile di `route_tool_mm`), sulla penna `hpgl_outline_pen`, con l'isolamento sulla penna `hpgl_isolation_pen`. `--mirror vertical` rovescia i fori rispetto al centro del contorno. `ncd_isocam_style = yes` scrive un file di foratura come i programmi Bungard (`M48` e `%`, utensili solo col numero, coordinata ripetuta omessa, CR LF, `M00`) e `ncd_digits` riempie le coordinate con zeri davanti. Un file di foratura senza riga `M48` è riconosciuto come Excellon.
-* **Percorsi più leggeri, scala e correzione** (`src/optimize.rs`, `src/fiducial.rs`): le punte sono tolte e i punti su una retta (entro `optimize_tolerance_mm`) diventano un solo movimento, attivo per impostazione predefinita (0,01 mm e 0,02 mm; con 0 si disattiva); il lavoro può essere scalato rispetto al centro della scheda, e coppie di punti di riferimento relative a quel centro (dove un segno dovrebbe essere e dove è stato misurato) danno una similitudine (due coppie) o un adattamento affine (tre o più, minimi quadrati) applicato a ogni percorso e a ogni foro; viene rifiutato se la scala è lontana da 1 o un segno non si adatta.
-* **Maschera di saldatura** (`src/mask.rs`): le aperture sono scritte come livello Gerber, dal livello maschera del progetto o dai pad del rame, ciascuna ingrandita di `mask_margin_mm`; le piste restano coperte.
+* **Percorsi più leggeri, scala e correzione** (`optimize`, `fiducial`): le punte sono tolte e i punti su una retta (entro `optimize_tolerance_mm`) diventano un solo movimento, attivo per impostazione predefinita (0,01 mm e 0,02 mm; con 0 si disattiva); il lavoro può essere scalato rispetto al centro della scheda, e coppie di punti di riferimento relative a quel centro (dove un segno dovrebbe essere e dove è stato misurato) danno una similitudine (due coppie) o un adattamento affine (tre o più, minimi quadrati) applicato a ogni percorso e a ogni foro; viene rifiutato se la scala è lontana da 1 o un segno non si adatta.
+* **Maschera di saldatura** (`mask`): le aperture sono scritte come livello Gerber, dal livello maschera del progetto o dai pad del rame, ciascuna ingrandita di `mask_margin_mm`; le piste restano coperte.
 * **Unità e anteprima** (`eh3d-raster`, `src/preview.rs`): una lunghezza può portare `mm`, `mil` o `in`, il G-code può essere scritto in pollici, e `preview` disegna le passate sul rame come disegno SVG o come testo.
-* **Livelli Gerber vecchio stile** (`src/legacy.rs`): un livello senza istruzione di formato (RS-274D, come lo scrivono molti programmi più vecchi) viene letto quando si indica il suo elenco di aperture (`--apertures`, un codice D e la sua dimensione per riga) insieme al suo formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); viene riscritto come Gerber esteso e passa dal lettore normale. Provato con livelli scritti a mano, non con file di altri programmi.
+* **Livelli Gerber vecchio stile** (`legacy`): un livello senza istruzione di formato (RS-274D, come lo scrivono molti programmi più vecchi) viene letto quando si indica il suo elenco di aperture (`--apertures`, un codice D e la sua dimensione per riga) insieme al suo formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); viene riscritto come Gerber esteso e passa dal lettore normale. Provato con livelli scritti a mano, non con file di altri programmi.
 * **Lettura e avvisi per codice (riga di comando):** i file sono letti con un limite di dimensione (`--max-bytes N`, 256 MiB di default) e il testo non UTF-8 viene letto come Latin-1 con un avviso (`input-not-utf8`); gli avvisi del lettore Gerber sono mostrati con il loro codice stabile e `--hide CODE[,CODE]` omette quei codici. La nota sui percorsi alleggeriti e quella sui ponti del taglio compaiono solo quando hanno cambiato qualcosa.
 
 ## 🧩 Ruolo in EH3D
@@ -133,28 +133,15 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
-│   ├── bitmap.rs                                il rame su una griglia
 │   ├── config.rs                                tutti i valori regolabili, da un file di impostazioni
-│   ├── drc.rs                                   regole di progetto: larghezze, distanze e anelli, con le posizioni
 │   ├── drill.rs                                 fori e contorno della scheda, letti e scritti
 │   ├── dxf.rs                                   le passate come disegno DXF
-│   ├── fiducial.rs                              scala e correzione con punti di riferimento
 │   ├── filetype.rs                              di che tipo è un file di ingresso
-│   ├── fill.rs                                  linee che riempiono i contorni, tagliate al rame
-│   ├── forced.rs                                percorsi negli spazi in cui l'utensile non entra
 │   ├── gcode.rs                                 i percorsi come G-code
 │   ├── hpgl.rs                                  i percorsi come file di tracciamento HP-GL
-│   ├── isolate.rs                               utensili, passate, rame residuo e fessure strette
-│   ├── legacy.rs                                livelli Gerber vecchio stile: formato ed elenco delle aperture
 │   ├── lib.rs                                   la libreria: ciò che usa ogni comando
 │   ├── main.rs                                  la riga di comando
-│   ├── mask.rs                                  le aperture della maschera di saldatura
-│   ├── optimize.rs                              percorsi più leggeri: punte e punti allineati
-│   ├── order.rs                                 verso, punti di partenza e ordine dei tagli
-│   ├── preview.rs                               le passate disegnate in SVG o testo
-│   ├── problems.rs                              zone problematiche: angoli interni acuti e piste tra pad
-│   ├── tolerance.rs                             dove vale la tolleranza: tutti gli spazi o solo i pad
-│   └── transform.rs                             doppia faccia, pannelli e fori di allineamento
+│   └── preview.rs                               le passate disegnate in SVG o testo
 ├── tests/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice
@@ -162,9 +149,7 @@ EH3D-ISOCAM/
 │   ├── isocam.rs                                test della libreria e della riga di comando
 │   ├── kinds.rs                                 tolleranza per pad, riempimenti, tipi di file, penne, DXF
 │   ├── layout.rs                                test di doppia faccia, pannelli, regole e riga di comando
-│   ├── legacy.rs                                test dei livelli Gerber vecchio stile e della riga di comando
 │   ├── multi.rs                                 test di utensili, rame residuo, verso, ordine e impostazioni
-│   ├── problems.rs                              test delle zone problematiche, della tolleranza e dei fori di allineamento
 │   └── readme.rs                                test che eseguono ciò che promettono il README e gli script run
 ├── examples/
 │   ├── isocam.cfg                               tutte le impostazioni con il valore predefinito, da copiare e modificare
@@ -198,7 +183,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Test
 
-La suite ha 171 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 158 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
@@ -216,28 +201,15 @@ La versione sta in `Cargo.toml` e in `eh3d.project.json`; ogni versione ha la su
 ```text
 EH3D-ISOCAM/
 ├── src/
-│   ├── bitmap.rs                                il rame su una griglia
 │   ├── config.rs                                tutti i valori regolabili, da un file di impostazioni
-│   ├── drc.rs                                   regole di progetto: larghezze, distanze e anelli, con le posizioni
 │   ├── drill.rs                                 fori e contorno della scheda, letti e scritti
 │   ├── dxf.rs                                   le passate come disegno DXF
-│   ├── fiducial.rs                              scala e correzione con punti di riferimento
 │   ├── filetype.rs                              di che tipo è un file di ingresso
-│   ├── fill.rs                                  linee che riempiono i contorni, tagliate al rame
-│   ├── forced.rs                                percorsi negli spazi in cui l'utensile non entra
 │   ├── gcode.rs                                 i percorsi come G-code
 │   ├── hpgl.rs                                  i percorsi come file di tracciamento HP-GL
-│   ├── isolate.rs                               utensili, passate, rame residuo e fessure strette
-│   ├── legacy.rs                                livelli Gerber vecchio stile: formato ed elenco delle aperture
 │   ├── lib.rs                                   la libreria: ciò che usa ogni comando
 │   ├── main.rs                                  la riga di comando
-│   ├── mask.rs                                  le aperture della maschera di saldatura
-│   ├── optimize.rs                              percorsi più leggeri: punte e punti allineati
-│   ├── order.rs                                 verso, punti di partenza e ordine dei tagli
-│   ├── preview.rs                               le passate disegnate in SVG o testo
-│   ├── problems.rs                              zone problematiche: angoli interni acuti e piste tra pad
-│   ├── tolerance.rs                             dove vale la tolleranza: tutti gli spazi o solo i pad
-│   └── transform.rs                             doppia faccia, pannelli e fori di allineamento
+│   └── preview.rs                               le passate disegnate in SVG o testo
 ├── tests/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice
@@ -245,9 +217,7 @@ EH3D-ISOCAM/
 │   ├── isocam.rs                                test della libreria e della riga di comando
 │   ├── kinds.rs                                 tolleranza per pad, riempimenti, tipi di file, penne, DXF
 │   ├── layout.rs                                test di doppia faccia, pannelli, regole e riga di comando
-│   ├── legacy.rs                                test dei livelli Gerber vecchio stile e della riga di comando
 │   ├── multi.rs                                 test di utensili, rame residuo, verso, ordine e impostazioni
-│   ├── problems.rs                              test delle zone problematiche, della tolleranza e dei fori di allineamento
 │   └── readme.rs                                test che eseguono ciò che promettono il README e gli script run
 ├── examples/
 │   ├── isocam.cfg                               tutte le impostazioni con il valore predefinito, da copiare e modificare

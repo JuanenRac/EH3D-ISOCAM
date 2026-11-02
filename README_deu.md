@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 171 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat noch kein Fenster, wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 158 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat noch kein Fenster, wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.5` |
 | Reifegrad | Gerüst |
-| Tests | 171 |
+| Tests | 158 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -49,7 +49,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Dateien und Anordnung | 🟡 | liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, setzt Passlöcher und prüft die Entwurfsregeln mit dem Ort jedes Befunds; auf einem Computer getestet, nicht mit Dateien anderer Programme und nicht auf einer Maschine. |
 | Erzwungene Isolation, Korrektur, Maske | 🟡 | erzwungene Pfade durch Lücken, in die das Werkzeug nicht passt, leichtere Bahnen, Skalierung und Korrektur mit Referenzpunkten, die Öffnungen der Lötstoppmaske, Einheiten und die Vorschau der Durchgänge; auf einem Computer mit erzeugten Lagen und beschädigten Eingaben getestet, nie mit echten Platinen und nie auf einer Maschine, und die Korrektur wurde nicht mit echten Kameramessungen verglichen. |
 | Kommandozeile | 🟡 | `eh3d-isocam` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 171 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
+| Tests | 🟡 | 158 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🔴 | Geplant: das egui-Fenster, das die Suite gemeinsam nutzt; heute gibt es nur die Kommandozeile. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -57,25 +57,25 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 
 ## 🎯 Überblick
 
-* **Das Kupfer auf einem Raster** (`src/bitmap.rs`): Pads (rund, rechteckig, oval), Leiterbahnen und Flächen werden auf Zellen der gewählten Größe gezeichnet; überlappende Bahnen und Pads sind ein Stück, weil ein Raster keine Überlappungen kennt, es braucht also keinen Sonderfall; ein Raster, das nicht in den Speicher passt, wird abgelehnt.
+* **Das Kupfer auf einem Raster** (`bitmap`): Pads (rund, rechteckig, oval), Leiterbahnen und Flächen werden auf Zellen der gewählten Größe gezeichnet; überlappende Bahnen und Pads sind ein Stück, weil ein Raster keine Überlappungen kennt, es braucht also keinen Sonderfall; ein Raster, das nicht in den Speicher passt, wird abgelehnt.
 * **Der exakte Abstand** (`eh3d-raster`): Der Abstand jeder Zelle zum nächsten Kupfer wird exakt berechnet (und gegen Brute Force getestet), und die Bahn eines Durchgangs ist die Linie, auf der er dem Werkzeugradius entspricht, als geschlossene Polylinien verfolgt und mit einer Toleranz von einer halben Zelle ausgedünnt; weitere Durchgänge liegen je eine Zustellung weiter außen.
-* **Was das Werkzeug nicht kann** (`src/isolate.rs`): Wo zwei getrennte Kupferstücke näher beieinander liegen als das Werkzeug breit ist, passt keine Bahn dazwischen: `check` listet diese Stellen, und `isolate` schreibt den G-Code erst, wenn man sie angesehen hat (oder `--force`). Der G-Code (`src/gcode.rs`) hebt das Werkzeug zwischen den Bahnen an, fährt auf die gewählte Tiefe und schneidet als Nächstes die nächstgelegene Bahn.
+* **Was das Werkzeug nicht kann** (`isolate`): Wo zwei getrennte Kupferstücke näher beieinander liegen als das Werkzeug breit ist, passt keine Bahn dazwischen: `check` listet diese Stellen, und `isolate` schreibt den G-Code erst, wenn man sie angesehen hat (oder `--force`). Der G-Code (`src/gcode.rs`) hebt das Werkzeug zwischen den Bahnen an, fährt auf die gewählte Tiefe und schneidet als Nächstes die nächstgelegene Bahn.
 * **HP-GL für die Bungard-Maschinen** (`src/hpgl.rs`): Bei einer Ausgabedatei mit der Endung `.plt` werden die Durchgänge als HP-GL-Plotdatei mit 40 Einheiten je Millimeter geschrieben, ein Stift je Durchgang; das liest das Fräsprogramm der Bungard-Maschinen.
-* **Mehrere Werkzeuge und Restkupfer** (`src/isolate.rs`): ein Plan hat bis zu vier Werkzeuge, das breiteste schneidet zuerst; wo ein breiteres Werkzeug schon entlang einer Bahn eines schmaleren geschnitten hat, entfällt dieses Stück (der Rest bleibt als offene Abschnitte), und Ringe eines breiteren Werkzeugs, die sich jeweils mit dem vorigen überlappen, können das Kupfer jenseits der Durchgänge abräumen; der G-Code hält zum Werkzeugwechsel an, wenn sich die Werkzeugbreite ändert. Ist `around_pads_min_mm` größer als 0, schneiden die breiteren Werkzeuge nur die Ringe um Pads mit mindestens dieser Breite, und das feinste Werkzeug übernimmt den Rest (Leiterbahnen und kleine Pads).
-* **Richtung, Start und Reihenfolge** (`src/order.rs`): die Bahnen werden mit dem Kupfer rechts vom Werkzeug gezeichnet (Gleichlauffräsen bei rechtsdrehender Spindel); die Einstellungen können das umkehren (Gegenlauf), im oder gegen den Uhrzeigersinn erzwingen, jede geschlossene Bahn an ihrem nächsten Punkt, ihrem tiefsten Punkt oder dort beginnen lassen, wo sie gezeichnet wurde, den Startpunkt des Werkzeugs festlegen und die Bahnen in der gezeichneten Reihenfolge, die nächste zuerst oder durch Umkehren von Abschnitten der Reihenfolge noch kürzer ordnen; `info` zeigt, wie viele Bahnen in welche Richtung laufen, und den Leerweg.
+* **Mehrere Werkzeuge und Restkupfer** (`isolate`): ein Plan hat bis zu vier Werkzeuge, das breiteste schneidet zuerst; wo ein breiteres Werkzeug schon entlang einer Bahn eines schmaleren geschnitten hat, entfällt dieses Stück (der Rest bleibt als offene Abschnitte), und Ringe eines breiteren Werkzeugs, die sich jeweils mit dem vorigen überlappen, können das Kupfer jenseits der Durchgänge abräumen; der G-Code hält zum Werkzeugwechsel an, wenn sich die Werkzeugbreite ändert. Ist `around_pads_min_mm` größer als 0, schneiden die breiteren Werkzeuge nur die Ringe um Pads mit mindestens dieser Breite, und das feinste Werkzeug übernimmt den Rest (Leiterbahnen und kleine Pads).
+* **Richtung, Start und Reihenfolge** (`order`): die Bahnen werden mit dem Kupfer rechts vom Werkzeug gezeichnet (Gleichlauffräsen bei rechtsdrehender Spindel); die Einstellungen können das umkehren (Gegenlauf), im oder gegen den Uhrzeigersinn erzwingen, jede geschlossene Bahn an ihrem nächsten Punkt, ihrem tiefsten Punkt oder dort beginnen lassen, wo sie gezeichnet wurde, den Startpunkt des Werkzeugs festlegen und die Bahnen in der gezeichneten Reihenfolge, die nächste zuerst oder durch Umkehren von Abschnitten der Reihenfolge noch kürzer ordnen; `info` zeigt, wie viele Bahnen in welche Richtung laufen, und den Leerweg.
 * **Bohrungen und Platinenkontur** (`src/drill.rs`): Bohrdateien werden gelesen (Bungard-Dateien in Mil mit dem Leser der Bungard-Formate, metrische mit dem Leser der Suite) und in ganzen Mil geschrieben; eine Kontur wird aus einer Gerber-Konturlage, einer DXF-Zeichnung oder einer HP-GL-Plotdatei gelesen, einzeln gezeichnete Striche werden verbunden, und die Bahn des Werkzeugs um die Platine und in ihren Ausschnitten wird als HP-GL oder als Excellon-Fräsdatei geschrieben.
-* **Beide Seiten, Nutzen und Passlöcher** (`src/transform.rs`): Lage, Bohrungen und Kontur werden zusammen gewendet, um Vierteldrehungen gedreht und auf einem Nutzen wiederholt; Passlöcher liegen außerhalb der Platine dort, wo die gewendete Platine sie wiederfindet (ein drittes auf der Achse unterscheidet sie von derselben, um eine halbe Drehung gedrehten Platine).
-* **Entwurfsregeln** (`src/drc.rs`): Kupfer schmaler als die Regel, Kupferstücke näher als die Regel oder als das Werkzeug breit ist, und Bohrungen mit weniger Kupfer ringsum als die Regel, jeweils mit ihrem Ort in Millimetern.
+* **Beide Seiten, Nutzen und Passlöcher** (`transform`): Lage, Bohrungen und Kontur werden zusammen gewendet, um Vierteldrehungen gedreht und auf einem Nutzen wiederholt; Passlöcher liegen außerhalb der Platine dort, wo die gewendete Platine sie wiederfindet (ein drittes auf der Achse unterscheidet sie von derselben, um eine halbe Drehung gedrehten Platine).
+* **Entwurfsregeln** (`drc`): Kupfer schmaler als die Regel, Kupferstücke näher als die Regel oder als das Werkzeug breit ist, und Bohrungen mit weniger Kupfer ringsum als die Regel, jeweils mit ihrem Ort in Millimetern.
 * **Eine Einstellungsdatei** (`src/config.rs`): jeder einstellbare Wert ist eine Einstellung mit Standardwert, gelesen aus einer `Schlüssel = Wert`-Datei (`examples/isocam.cfg`) oder unter demselben Namen als Option der Kommandozeile angegeben.
-* **Erzwungene Isolation** (`src/forced.rs`): mit `forced_isolation = yes` wird zusätzlich ein Pfad durch die Mitte jeder Lücke gelegt, in die das feinste Werkzeug nicht passt, solange die Lücke nicht schmaler als `forced_min_gap_mm` ist; jede Stelle wird mit Koordinaten und Lückenbreite gemeldet, schmalere Lücken werden aufgelistet und bleiben unberührt. Standardmäßig ist sie aus: Dann werden diese Stellen nur gemeldet.
-* **Problemzonen, Toleranz und Passlochabstand** (`src/problems.rs`, `src/config.rs`): `check` listet außerdem als Warnungen, die nichts anhalten, die Innenecken auf, die spitzer sind als `problem_corner_angle_deg` (ein rundes Werkzeug lässt in der Spitze einer Kerbe Kupfer stehen; standardmäßig 60 Grad, 0 schaltet es ab), und die Leiterbahnen, die zwischen zwei Pads verlaufen, die ihr näher sind als `problem_track_gap_factor` mal das Werkzeug (standardmäßig 1,5, 0 schaltet es ab); beide Kriterien sind Einstellungen und nicht im Code festgelegt. `conflict_tolerance_mm` (standardmäßig 0: keine Lücke wird akzeptiert) akzeptiert die Lücken, die höchstens um diesen Betrag schmaler sind als das Werkzeug, in `check` und in `isolate`. Der Abstand der Passlöcher zur Platine ist `alignment_margin_mm` (standardmäßig 5 mm; andere Programme dieser Art setzen sie 10 mm entfernt, also `alignment_margin_mm = 10`).
-* **Stege, Netze, Lochmuster und Flächenräumung** (`src/drill.rs`, `src/isolate.rs`, `src/transform.rs`, `src/problems.rs`, `src/legacy.rs`): `route` kann Stege stehen lassen, die die Platine im Nutzen halten (`tab_count` je geschlossenem Pfad, standardmäßig 0; `tab_width_mm` verbleibendes Material; `tab_min_length_mm` zwischen den Stegen): der Schnitt endet eine halbe Stegbreite und einen halben Werkzeugdurchmesser vor der Mitte jedes Stegs. `isolate --net X,Y` isoliert nur das Netz, das einen Punkt enthält, mit dem Werkzeug `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` schreibt parallele Linien des Werkzeugs `rubout_lines_tool_mm` (Richtung `rubout_lines_direction`), die eine Fläche räumen. Die Passlöcher können 2, 3 oder 6 sein, außerhalb der Platine oder mit `alignment_pattern = special` in einem Muster um ihre Mitte (`alignment_special_a_mm` Abstand beim Paar, `alignment_special_b_mm` für die vier weiteren). Mit einer Konflikttoleranz warnen `check` und `isolate` vor Leiterbahnen und rechteckigen Pads, die dünner sind als die doppelte Toleranz plus `tolerance_warning_margin_mm`. Die Schätzung des Formats einer alten Gerber-Ebene nutzt jetzt die Einheiten, die die Datei nennt, und die Größe der Platine, und eine Aperturliste darf beide Seiten in einer Zelle angeben (`60x40`).
-* **Toleranz nur für Pads, Füllen nach Konturen, Dateiart, DXF und Plotterstifte** (`src/tolerance.rs`, `src/fill.rs`, `src/filetype.rs`, `src/dxf.rs`, `src/hpgl.rs`): `conflict_tolerance_scope = pads` (Standard `all`, wie bisher) behält die Konfliktoleranz für Spalte mit einem Pad daneben, und die Warnung vor dünnem Kupfer prüft dann nur Pads. `rubout-area OUT [LAGE.gtl] --contour DATEI` (oder `--area`) füllt die geschlossenen Pfade einer Datei, gerade-ungerade, sodass ein innerer Pfad ein Loch ist, mit hin- und hergehenden Linien von `rubout_lines_tool_mm`; mit einer Lage werden die Linien aufs Kupfer beschnitten: das ganze Werkzeug auf Kupfer plus `rubout_fill_margin_mm`. Eine Lage, die in Wirklichkeit eine Excellon-, HP-GL- oder DXF-Datei ist (oder eine Bohrdatei, die eine Gerber-Lage ist), wird mit Namen abgelehnt, und `kind DATEI...` sagt, was jede Datei ist. `isolate` und `rubout-area` schreiben bei `.dxf` eine DXF-Zeichnung. `drills EIN AUS.plt` plottet die Bohrungen mit einem Stift je Bohrer (`hpgl_pen_map = 1:2, 3:1`; nicht genannte Bohrer erhalten die niedrigsten freien Stifte), und `hpgl_pen_speed_cm_s` (0 = die der Maschine, Standard) schreibt die Stiftgeschwindigkeit in jeden Plot. `hpgl_isocam_style` (an) schreibt den Plot wie das Originalprogramm: ein `PA` je Punkt und Zeilen von etwa 75 Spalten, mit CR LF beendet; aus schreibt die kompakte Form.
+* **Erzwungene Isolation** (`forced`): mit `forced_isolation = yes` wird zusätzlich ein Pfad durch die Mitte jeder Lücke gelegt, in die das feinste Werkzeug nicht passt, solange die Lücke nicht schmaler als `forced_min_gap_mm` ist; jede Stelle wird mit Koordinaten und Lückenbreite gemeldet, schmalere Lücken werden aufgelistet und bleiben unberührt. Standardmäßig ist sie aus: Dann werden diese Stellen nur gemeldet.
+* **Problemzonen, Toleranz und Passlochabstand** (`problems`, `src/config.rs`): `check` listet außerdem als Warnungen, die nichts anhalten, die Innenecken auf, die spitzer sind als `problem_corner_angle_deg` (ein rundes Werkzeug lässt in der Spitze einer Kerbe Kupfer stehen; standardmäßig 60 Grad, 0 schaltet es ab), und die Leiterbahnen, die zwischen zwei Pads verlaufen, die ihr näher sind als `problem_track_gap_factor` mal das Werkzeug (standardmäßig 1,5, 0 schaltet es ab); beide Kriterien sind Einstellungen und nicht im Code festgelegt. `conflict_tolerance_mm` (standardmäßig 0: keine Lücke wird akzeptiert) akzeptiert die Lücken, die höchstens um diesen Betrag schmaler sind als das Werkzeug, in `check` und in `isolate`. Der Abstand der Passlöcher zur Platine ist `alignment_margin_mm` (standardmäßig 5 mm; andere Programme dieser Art setzen sie 10 mm entfernt, also `alignment_margin_mm = 10`).
+* **Stege, Netze, Lochmuster und Flächenräumung** (`src/drill.rs`, `isolate`, `transform`, `problems`, `legacy`): `route` kann Stege stehen lassen, die die Platine im Nutzen halten (`tab_count` je geschlossenem Pfad, standardmäßig 0; `tab_width_mm` verbleibendes Material; `tab_min_length_mm` zwischen den Stegen): der Schnitt endet eine halbe Stegbreite und einen halben Werkzeugdurchmesser vor der Mitte jedes Stegs. `isolate --net X,Y` isoliert nur das Netz, das einen Punkt enthält, mit dem Werkzeug `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` schreibt parallele Linien des Werkzeugs `rubout_lines_tool_mm` (Richtung `rubout_lines_direction`), die eine Fläche räumen. Die Passlöcher können 2, 3 oder 6 sein, außerhalb der Platine oder mit `alignment_pattern = special` in einem Muster um ihre Mitte (`alignment_special_a_mm` Abstand beim Paar, `alignment_special_b_mm` für die vier weiteren). Mit einer Konflikttoleranz warnen `check` und `isolate` vor Leiterbahnen und rechteckigen Pads, die dünner sind als die doppelte Toleranz plus `tolerance_warning_margin_mm`. Die Schätzung des Formats einer alten Gerber-Ebene nutzt jetzt die Einheiten, die die Datei nennt, und die Größe der Platine, und eine Aperturliste darf beide Seiten in einer Zelle angeben (`60x40`).
+* **Toleranz nur für Pads, Füllen nach Konturen, Dateiart, DXF und Plotterstifte** (`tolerance`, `fill`, `src/filetype.rs`, `src/dxf.rs`, `src/hpgl.rs`): `conflict_tolerance_scope = pads` (Standard `all`, wie bisher) behält die Konfliktoleranz für Spalte mit einem Pad daneben, und die Warnung vor dünnem Kupfer prüft dann nur Pads. `rubout-area OUT [LAGE.gtl] --contour DATEI` (oder `--area`) füllt die geschlossenen Pfade einer Datei, gerade-ungerade, sodass ein innerer Pfad ein Loch ist, mit hin- und hergehenden Linien von `rubout_lines_tool_mm`; mit einer Lage werden die Linien aufs Kupfer beschnitten: das ganze Werkzeug auf Kupfer plus `rubout_fill_margin_mm`. Eine Lage, die in Wirklichkeit eine Excellon-, HP-GL- oder DXF-Datei ist (oder eine Bohrdatei, die eine Gerber-Lage ist), wird mit Namen abgelehnt, und `kind DATEI...` sagt, was jede Datei ist. `isolate` und `rubout-area` schreiben bei `.dxf` eine DXF-Zeichnung. `drills EIN AUS.plt` plottet die Bohrungen mit einem Stift je Bohrer (`hpgl_pen_map = 1:2, 3:1`; nicht genannte Bohrer erhalten die niedrigsten freien Stifte), und `hpgl_pen_speed_cm_s` (0 = die der Maschine, Standard) schreibt die Stiftgeschwindigkeit in jeden Plot. `hpgl_isocam_style` (an) schreibt den Plot wie das Originalprogramm: ein `PA` je Punkt und Zeilen von etwa 75 Spalten, mit CR LF beendet; aus schreibt die kompakte Form.
 * **Zweiseitige Platinen und die schlichte Bohrdatei** (`src/hpgl.rs`, `src/drill.rs`, `src/filetype.rs`): `hpgl_shift_negative = no` behält die Koordinaten der Platine im Plot bei (auch negative), sodass Plot und Bohrdatei denselben Ursprung haben; `isolate` mit `plot_outline = yes` und `--outline DATEI` setzt den Schnitt um die Kontur (mit dem Werkzeug von `route_tool_mm`) an den Anfang des Plots, auf den Stift `hpgl_outline_pen`, die Isolation auf den Stift `hpgl_isolation_pen`. `--mirror vertical` dreht die Bohrungen um die Mitte der Kontur um. `ncd_isocam_style = yes` schreibt eine Bohrdatei wie die Bungard-Programme (`M48` und `%`, Werkzeuge nur mit Nummer, wiederholte Koordinate weggelassen, CR LF, `M00`), und `ncd_digits` füllt die Koordinaten vorn mit Nullen auf. Eine Bohrdatei ohne `M48`-Zeile wird als Excellon erkannt.
-* **Leichtere Bahnen, Skalierung und Korrektur** (`src/optimize.rs`, `src/fiducial.rs`): Spitzen werden entfernt und Punkte auf einer Geraden (innerhalb von `optimize_tolerance_mm`) werden zu einer Bewegung, standardmäßig aktiv (0,01 mm und 0,02 mm; mit 0 abgeschaltet); die Arbeit lässt sich um die Mitte der Platine skalieren, und Paare von Referenzpunkten relativ zu dieser Mitte (wo eine Marke sein sollte und wo sie gemessen wurde) ergeben eine Ähnlichkeit (zwei Paare) oder eine affine Anpassung (drei oder mehr, kleinste Quadrate), die auf jede Bahn und jede Bohrung angewendet wird; abgelehnt wird sie, wenn der Maßstab weit von 1 abweicht oder eine Marke nicht passt.
-* **Lötstoppmaske** (`src/mask.rs`): die Öffnungen werden als Gerber-Lage geschrieben, aus der Maskenlage des Entwurfs oder aus den Pads des Kupfers, jede um `mask_margin_mm` vergrößert; Leiterbahnen bleiben bedeckt.
+* **Leichtere Bahnen, Skalierung und Korrektur** (`optimize`, `fiducial`): Spitzen werden entfernt und Punkte auf einer Geraden (innerhalb von `optimize_tolerance_mm`) werden zu einer Bewegung, standardmäßig aktiv (0,01 mm und 0,02 mm; mit 0 abgeschaltet); die Arbeit lässt sich um die Mitte der Platine skalieren, und Paare von Referenzpunkten relativ zu dieser Mitte (wo eine Marke sein sollte und wo sie gemessen wurde) ergeben eine Ähnlichkeit (zwei Paare) oder eine affine Anpassung (drei oder mehr, kleinste Quadrate), die auf jede Bahn und jede Bohrung angewendet wird; abgelehnt wird sie, wenn der Maßstab weit von 1 abweicht oder eine Marke nicht passt.
+* **Lötstoppmaske** (`mask`): die Öffnungen werden als Gerber-Lage geschrieben, aus der Maskenlage des Entwurfs oder aus den Pads des Kupfers, jede um `mask_margin_mm` vergrößert; Leiterbahnen bleiben bedeckt.
 * **Einheiten und Vorschau** (`eh3d-raster`, `src/preview.rs`): eine Länge kann `mm`, `mil` oder `in` tragen, der G-Code kann in Zoll geschrieben werden, und `preview` zeichnet die Durchgänge über das Kupfer als SVG-Zeichnung oder als Text.
-* **Alte Gerber-Ebenen** (`src/legacy.rs`): eine Ebene ohne Formatangabe (RS-274D, wie viele ältere Programme sie schreiben) wird gelesen, wenn ihre Aperturliste (`--apertures`, ein D-Code und seine Größe pro Zeile) zusammen mit ihrem Format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`) angegeben wird; sie wird als erweitertes Gerber neu geschrieben und läuft durch den normalen Leser. Getestet mit von Hand geschriebenen Ebenen, nicht mit Dateien anderer Programme.
+* **Alte Gerber-Ebenen** (`legacy`): eine Ebene ohne Formatangabe (RS-274D, wie viele ältere Programme sie schreiben) wird gelesen, wenn ihre Aperturliste (`--apertures`, ein D-Code und seine Größe pro Zeile) zusammen mit ihrem Format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`) angegeben wird; sie wird als erweitertes Gerber neu geschrieben und läuft durch den normalen Leser. Getestet mit von Hand geschriebenen Ebenen, nicht mit Dateien anderer Programme.
 * **Lesen und Meldungen nach Code (Kommandozeile):** Dateien werden mit einem Größenlimit gelesen (`--max-bytes N`, standardmäßig 256 MiB), und Text ohne UTF-8 wird mit einer Warnung (`input-not-utf8`) als Latin-1 gelesen; die Meldungen des Gerber-Lesers erscheinen mit ihrem stabilen Code, und `--hide CODE[,CODE]` lässt diese Codes weg. Der Hinweis zu den leichteren Pfaden und der zu den Stegen des Schnitts erscheinen nur, wenn sie etwas geändert haben.
 
 ## 🧩 Rolle in EH3D
@@ -133,28 +133,15 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
-│   ├── bitmap.rs                                das Kupfer auf einem Raster
 │   ├── config.rs                                alle einstellbaren Werte aus einer Einstellungsdatei
-│   ├── drc.rs                                   Entwurfsregeln: Breiten, Abstände und Ringe, mit Orten
 │   ├── drill.rs                                 Bohrungen und Platinenkontur lesen und schreiben
 │   ├── dxf.rs                                   die Durchgänge als DXF-Zeichnung
-│   ├── fiducial.rs                              Skalierung und Korrektur mit Referenzpunkten
 │   ├── filetype.rs                              welche Art Datei eine Eingabe ist
-│   ├── fill.rs                                  Linien, die Konturen füllen, aufs Kupfer beschnitten
-│   ├── forced.rs                                Pfade durch Lücken, in die das Werkzeug nicht passt
 │   ├── gcode.rs                                 die Bahnen als G-Code
 │   ├── hpgl.rs                                  die Bahnen als HP-GL-Plotdatei
-│   ├── isolate.rs                               Werkzeuge, Durchgänge, Restkupfer und enge Lücken
-│   ├── legacy.rs                                alte Gerber-Ebenen: Format und Aperturliste
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
-│   ├── mask.rs                                  die Öffnungen der Lötstoppmaske
-│   ├── optimize.rs                              leichtere Bahnen: Spitzen und gerade Punkte
-│   ├── order.rs                                 Richtung, Startpunkte und Reihenfolge der Schnitte
-│   ├── preview.rs                               die Durchgänge als SVG oder Text
-│   ├── problems.rs                              Problemzonen: spitze Innenecken und Leiterbahnen zwischen Pads
-│   ├── tolerance.rs                             wo die Toleranz gilt: alle Spalten oder nur Pads
-│   └── transform.rs                             beide Seiten, Nutzen und Passlöcher
+│   └── preview.rs                               die Durchgänge als SVG oder Text
 ├── tests/
 │   ├── advanced.rs                              erzwungene Isolation, Korrektur, Maske, Einheiten, Vorschau
 │   ├── cli_reading.rs                           Tests zum Lesen von Dateien: Größenlimit, Text ohne UTF-8, Meldungen nach Code
@@ -162,9 +149,7 @@ EH3D-ISOCAM/
 │   ├── isocam.rs                                Tests von Bibliothek und Kommandozeile
 │   ├── kinds.rs                                 Toleranz für Pads, Konturfüllung, Dateiarten, Stifte, DXF
 │   ├── layout.rs                                Tests zu beiden Seiten, Nutzen, Regeln und der Kommandozeile
-│   ├── legacy.rs                                Tests alter Gerber-Ebenen und der Kommandozeile
 │   ├── multi.rs                                 Tests zu Werkzeugen, Restkupfer, Richtung, Reihenfolge und Einstellungen
-│   ├── problems.rs                              Tests der Problemzonen, der Toleranz und der Passlöcher
 │   └── readme.rs                                Tests, die ausführen, was README und run-Skripte versprechen
 ├── examples/
 │   ├── isocam.cfg                               alle Einstellungen mit ihrem Standardwert, zum Kopieren und Ändern
@@ -198,7 +183,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Tests
 
-Die Suite hat 171 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 158 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -216,28 +201,15 @@ Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat i
 ```text
 EH3D-ISOCAM/
 ├── src/
-│   ├── bitmap.rs                                das Kupfer auf einem Raster
 │   ├── config.rs                                alle einstellbaren Werte aus einer Einstellungsdatei
-│   ├── drc.rs                                   Entwurfsregeln: Breiten, Abstände und Ringe, mit Orten
 │   ├── drill.rs                                 Bohrungen und Platinenkontur lesen und schreiben
 │   ├── dxf.rs                                   die Durchgänge als DXF-Zeichnung
-│   ├── fiducial.rs                              Skalierung und Korrektur mit Referenzpunkten
 │   ├── filetype.rs                              welche Art Datei eine Eingabe ist
-│   ├── fill.rs                                  Linien, die Konturen füllen, aufs Kupfer beschnitten
-│   ├── forced.rs                                Pfade durch Lücken, in die das Werkzeug nicht passt
 │   ├── gcode.rs                                 die Bahnen als G-Code
 │   ├── hpgl.rs                                  die Bahnen als HP-GL-Plotdatei
-│   ├── isolate.rs                               Werkzeuge, Durchgänge, Restkupfer und enge Lücken
-│   ├── legacy.rs                                alte Gerber-Ebenen: Format und Aperturliste
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
-│   ├── mask.rs                                  die Öffnungen der Lötstoppmaske
-│   ├── optimize.rs                              leichtere Bahnen: Spitzen und gerade Punkte
-│   ├── order.rs                                 Richtung, Startpunkte und Reihenfolge der Schnitte
-│   ├── preview.rs                               die Durchgänge als SVG oder Text
-│   ├── problems.rs                              Problemzonen: spitze Innenecken und Leiterbahnen zwischen Pads
-│   ├── tolerance.rs                             wo die Toleranz gilt: alle Spalten oder nur Pads
-│   └── transform.rs                             beide Seiten, Nutzen und Passlöcher
+│   └── preview.rs                               die Durchgänge als SVG oder Text
 ├── tests/
 │   ├── advanced.rs                              erzwungene Isolation, Korrektur, Maske, Einheiten, Vorschau
 │   ├── cli_reading.rs                           Tests zum Lesen von Dateien: Größenlimit, Text ohne UTF-8, Meldungen nach Code
@@ -245,9 +217,7 @@ EH3D-ISOCAM/
 │   ├── isocam.rs                                Tests von Bibliothek und Kommandozeile
 │   ├── kinds.rs                                 Toleranz für Pads, Konturfüllung, Dateiarten, Stifte, DXF
 │   ├── layout.rs                                Tests zu beiden Seiten, Nutzen, Regeln und der Kommandozeile
-│   ├── legacy.rs                                Tests alter Gerber-Ebenen und der Kommandozeile
 │   ├── multi.rs                                 Tests zu Werkzeugen, Restkupfer, Richtung, Reihenfolge und Einstellungen
-│   ├── problems.rs                              Tests der Problemzonen, der Toleranz und der Passlöcher
 │   └── readme.rs                                Tests, die ausführen, was README und run-Skripte versprechen
 ├── examples/
 │   ├── isocam.cfg                               alle Einstellungen mit ihrem Standardwert, zum Kopieren und Ändern

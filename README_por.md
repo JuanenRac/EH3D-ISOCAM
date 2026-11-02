@@ -18,7 +18,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 171 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Ainda não tem janela, não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 158 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Ainda não tem janela, não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versão | `0.0.5` |
 | Maturidade | Estrutura inicial |
-| Testes | 171 |
+| Testes | 158 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -49,7 +49,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ficheiros e disposição | 🟡 | lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, acrescenta furos de alinhamento e verifica as regras de projeto com a posição de cada achado; testado num computador, não com ficheiros escritos por outros programas nem numa máquina. |
 | Isolamento forçado, correção, máscara | 🟡 | percursos forçados nos espaços onde a ferramenta não cabe, percursos mais leves, escala e correção com pontos de referência, aberturas da máscara de soldadura, unidades e pré-visualização das passagens; testado num computador com camadas geradas e entradas danificadas, nunca com placas reais nem numa máquina, e a correção não foi comparada com medições reais de uma câmara. |
 | Linha de comandos | 🟡 | `eh3d-isocam` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 171 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 158 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🔴 | Previsto: a janela egui comum à suíte; hoje existe apenas a linha de comandos. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -57,25 +57,25 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 
 ## 🎯 Visão geral
 
-* **O cobre numa grelha** (`src/bitmap.rs`): pads (redondos, retangulares, ovais), pistas e regiões são desenhados em células do tamanho escolhido; pistas e pads sobrepostos são uma só peça porque uma grelha não tem sobreposições, por isso não é preciso nenhum caso especial; uma grelha que não coubesse na memória é recusada.
+* **O cobre numa grelha** (`bitmap`): pads (redondos, retangulares, ovais), pistas e regiões são desenhados em células do tamanho escolhido; pistas e pads sobrepostos são uma só peça porque uma grelha não tem sobreposições, por isso não é preciso nenhum caso especial; uma grelha que não coubesse na memória é recusada.
 * **A distância exata** (`eh3d-raster`): a distância de cada célula ao cobre mais próximo calcula-se exatamente (e testa-se contra força bruta), e a trajetória de uma passagem é a linha onde vale o raio da ferramenta, traçada como polilinhas fechadas e aliviada com uma tolerância de meia célula; as passagens seguintes vão cada uma um passo lateral mais longe.
-* **O que a ferramenta não consegue fazer** (`src/isolate.rs`): onde duas peças de cobre separadas estão mais perto do que a largura da ferramenta nenhuma trajetória passa entre elas: `check` lista esses sítios e `isolate` não escreve o G-code até serem vistos (ou `--force`). O G-code (`src/gcode.rs`) levanta a ferramenta entre trajetórias, desce à profundidade escolhida e corta a seguir a trajetória mais próxima.
+* **O que a ferramenta não consegue fazer** (`isolate`): onde duas peças de cobre separadas estão mais perto do que a largura da ferramenta nenhuma trajetória passa entre elas: `check` lista esses sítios e `isolate` não escreve o G-code até serem vistos (ou `--force`). O G-code (`src/gcode.rs`) levanta a ferramenta entre trajetórias, desce à profundidade escolhida e corta a seguir a trajetória mais próxima.
 * **HP-GL para as máquinas Bungard** (`src/hpgl.rs`): com um ficheiro de saída que acaba em `.plt` as passagens são escritas como ficheiro de traçado HP-GL a 40 unidades por milímetro, uma caneta por passagem, que é o que lê o programa de fresagem das máquinas Bungard.
-* **Várias ferramentas e cobre restante** (`src/isolate.rs`): um plano tem até quatro ferramentas e corta primeiro a mais larga; onde uma ferramenta mais larga já cortou ao longo de um percurso de outra mais fina, esse troço é omitido (o resto fica como troços abertos), e anéis de uma ferramenta mais larga, cada um sobreposto ao anterior, podem limpar o cobre que fica para além das passagens; o G-code pára para a troca de ferramenta quando a largura da ferramenta muda. Com `around_pads_min_mm` maior que 0, as ferramentas mais largas cortam apenas os anéis à volta de pads com pelo menos essa largura e a mais fina faz o resto (pistas e pads pequenos).
-* **Sentido, início e ordem** (`src/order.rs`): os percursos são traçados com o cobre à direita da ferramenta (fresagem em concordância com um fuso que gira no sentido horário); as definições podem invertê-lo (convencional), forçar horário ou anti-horário, começar cada percurso fechado no ponto mais próximo, no ponto mais baixo ou onde foi traçado, fixar o ponto de onde a ferramenta parte e ordenar os percursos pela ordem do traçado, o mais próximo primeiro ou encurtado ainda mais virando troços da ordem; `info` mostra quantos percursos vão em cada sentido e o deslocamento em vazio.
+* **Várias ferramentas e cobre restante** (`isolate`): um plano tem até quatro ferramentas e corta primeiro a mais larga; onde uma ferramenta mais larga já cortou ao longo de um percurso de outra mais fina, esse troço é omitido (o resto fica como troços abertos), e anéis de uma ferramenta mais larga, cada um sobreposto ao anterior, podem limpar o cobre que fica para além das passagens; o G-code pára para a troca de ferramenta quando a largura da ferramenta muda. Com `around_pads_min_mm` maior que 0, as ferramentas mais largas cortam apenas os anéis à volta de pads com pelo menos essa largura e a mais fina faz o resto (pistas e pads pequenos).
+* **Sentido, início e ordem** (`order`): os percursos são traçados com o cobre à direita da ferramenta (fresagem em concordância com um fuso que gira no sentido horário); as definições podem invertê-lo (convencional), forçar horário ou anti-horário, começar cada percurso fechado no ponto mais próximo, no ponto mais baixo ou onde foi traçado, fixar o ponto de onde a ferramenta parte e ordenar os percursos pela ordem do traçado, o mais próximo primeiro ou encurtado ainda mais virando troços da ordem; `info` mostra quantos percursos vão em cada sentido e o deslocamento em vazio.
 * **Furos e contorno da placa** (`src/drill.rs`): os ficheiros de furação são lidos (os da Bungard em milésimos de polegada com o leitor dos formatos Bungard, os métricos com o leitor da suite) e escritos em milésimos inteiros; um contorno é lido de uma camada Gerber de contorno, de um desenho DXF ou de um ficheiro de traçado HP-GL, os traços desenhados um a um são unidos, e o percurso da ferramenta à volta da placa e dentro dos seus recortes é escrito como HP-GL ou como ficheiro Excellon de fresagem.
-* **Duas faces, painéis e furos de alinhamento** (`src/transform.rs`): a camada, os furos e o contorno são virados, rodados em quartos de volta e repetidos num painel em conjunto; os furos de alinhamento ficam fora da placa onde a placa virada os volta a encontrar (um terceiro sobre o eixo distingue-a da mesma placa rodada meia volta).
-* **Regras de projeto** (`src/drc.rs`): cobre mais estreito do que a regra, peças de cobre mais próximas do que a regra ou do que a largura da ferramenta, e furos com menos cobre à volta do que a regra, cada um com a sua posição em milímetros.
+* **Duas faces, painéis e furos de alinhamento** (`transform`): a camada, os furos e o contorno são virados, rodados em quartos de volta e repetidos num painel em conjunto; os furos de alinhamento ficam fora da placa onde a placa virada os volta a encontrar (um terceiro sobre o eixo distingue-a da mesma placa rodada meia volta).
+* **Regras de projeto** (`drc`): cobre mais estreito do que a regra, peças de cobre mais próximas do que a regra ou do que a largura da ferramenta, e furos com menos cobre à volta do que a regra, cada um com a sua posição em milímetros.
 * **Um ficheiro de definições** (`src/config.rs`): cada valor que se pode afinar é uma definição com um valor por omissão, lida de um ficheiro `chave = valor` (`examples/isocam.cfg`) ou dada com o mesmo nome como opção da linha de comandos.
-* **Isolamento forçado** (`src/forced.rs`): com `forced_isolation = yes` é traçado também um percurso a meio de cada espaço em que a ferramenta mais fina não cabe, desde que o espaço não seja mais estreito do que `forced_min_gap_mm`; cada sítio é assinalado com as suas coordenadas e o seu espaço, e os espaços mais estreitos são listados e deixados como estão. Vem desativado: nesse caso esses sítios são apenas assinalados.
-* **Zonas problemáticas, tolerância e distância de alinhamento** (`src/problems.rs`, `src/config.rs`): o `check` também lista, como avisos que não param nada, os cantos internos mais agudos do que `problem_corner_angle_deg` (uma ferramenta redonda deixa cobre na ponta de um entalhe; 60 graus por omissão, 0 desativa) e as pistas que passam entre dois pads mais perto delas do que `problem_track_gap_factor` vezes a ferramenta (1,5 por omissão, 0 desativa); os dois critérios são definições, não estão fixos no código. O `conflict_tolerance_mm` (0 por omissão: nenhum espaço é aceite) aceita os espaços mais estreitos do que a ferramenta no máximo nessa quantidade, no `check` e no `isolate`. A distância dos furos de alinhamento à placa é `alignment_margin_mm` (5 mm por omissão; outros programas deste tipo põem-nos a 10 mm, ou seja `alignment_margin_mm = 10`).
-* **Pontes, redes, padrões de furos e limpeza de áreas** (`src/drill.rs`, `src/isolate.rs`, `src/transform.rs`, `src/problems.rs`, `src/legacy.rs`): `route` pode deixar pontes que seguram a placa na chapa (`tab_count` por cada percurso fechado, 0 por omissão; `tab_width_mm` de material que fica; `tab_min_length_mm` entre pontes): o corte pára meia largura de ponte e meio diâmetro de ferramenta antes do meio de cada ponte. `isolate --net X,Y` isola apenas a rede que contém um ponto, com a ferramenta `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` escreve linhas paralelas da ferramenta `rubout_lines_tool_mm` (direção `rubout_lines_direction`) que limpam uma área. Os furos de alinhamento podem ser 2, 3 ou 6, fora da placa ou, com `alignment_pattern = special`, num padrão em torno do seu centro (`alignment_special_a_mm` de distância no par, `alignment_special_b_mm` para os outros quatro). Com uma tolerância de conflitos, `check` e `isolate` avisam sobre as pistas e as ilhas retangulares mais finas do que o dobro da tolerância mais `tolerance_warning_margin_mm`. A estimativa do formato de uma camada Gerber antiga usa agora as unidades indicadas pelo ficheiro e o tamanho da placa, e uma lista de aberturas pode dar os dois lados numa célula (`60x40`).
-* **Tolerância só para pads, preenchimento por contornos, tipo de ficheiro, DXF e canetas do plotter** (`src/tolerance.rs`, `src/fill.rs`, `src/filetype.rs`, `src/dxf.rs`, `src/hpgl.rs`): `conflict_tolerance_scope = pads` (por defeito `all`, como antes) reserva a tolerância de conflito para os intervalos que têm um pad ao lado, e o aviso de cobre fino olha então só para os pads. `rubout-area OUT [CAMADA.gtl] --contour FICHEIRO` (ou `--area`) preenche os caminhos fechados de um ficheiro, par-ímpar para que um caminho interior seja um furo, com linhas de ida e volta de `rubout_lines_tool_mm`; com uma camada, as linhas são recortadas ao cobre: toda a ferramenta sobre cobre mais `rubout_fill_margin_mm`. Uma camada que na verdade é um ficheiro Excellon, HP-GL ou DXF (ou um ficheiro de furação que é uma camada Gerber) é recusada pelo nome, e `kind FICHEIRO...` diz o que é cada ficheiro. `isolate` e `rubout-area` escrevem um desenho DXF para um nome em `.dxf`. `drills ENTRADA SAÍDA.plt` traça os furos com uma caneta por broca (`hpgl_pen_map = 1:2, 3:1`; as brocas não indicadas ficam com as canetas livres mais baixas), e `hpgl_pen_speed_cm_s` (0 = a da máquina, por defeito) escreve a velocidade da caneta em qualquer traçado. `hpgl_isocam_style` (ativado) escreve o traçado como o programa original: um `PA` por cada ponto e linhas de cerca de 75 colunas terminadas em CR LF; desativado, escreve a forma compacta.
+* **Isolamento forçado** (`forced`): com `forced_isolation = yes` é traçado também um percurso a meio de cada espaço em que a ferramenta mais fina não cabe, desde que o espaço não seja mais estreito do que `forced_min_gap_mm`; cada sítio é assinalado com as suas coordenadas e o seu espaço, e os espaços mais estreitos são listados e deixados como estão. Vem desativado: nesse caso esses sítios são apenas assinalados.
+* **Zonas problemáticas, tolerância e distância de alinhamento** (`problems`, `src/config.rs`): o `check` também lista, como avisos que não param nada, os cantos internos mais agudos do que `problem_corner_angle_deg` (uma ferramenta redonda deixa cobre na ponta de um entalhe; 60 graus por omissão, 0 desativa) e as pistas que passam entre dois pads mais perto delas do que `problem_track_gap_factor` vezes a ferramenta (1,5 por omissão, 0 desativa); os dois critérios são definições, não estão fixos no código. O `conflict_tolerance_mm` (0 por omissão: nenhum espaço é aceite) aceita os espaços mais estreitos do que a ferramenta no máximo nessa quantidade, no `check` e no `isolate`. A distância dos furos de alinhamento à placa é `alignment_margin_mm` (5 mm por omissão; outros programas deste tipo põem-nos a 10 mm, ou seja `alignment_margin_mm = 10`).
+* **Pontes, redes, padrões de furos e limpeza de áreas** (`src/drill.rs`, `isolate`, `transform`, `problems`, `legacy`): `route` pode deixar pontes que seguram a placa na chapa (`tab_count` por cada percurso fechado, 0 por omissão; `tab_width_mm` de material que fica; `tab_min_length_mm` entre pontes): o corte pára meia largura de ponte e meio diâmetro de ferramenta antes do meio de cada ponte. `isolate --net X,Y` isola apenas a rede que contém um ponto, com a ferramenta `net_tool_mm`. `rubout-area OUT --area X0,Y0,X1,Y1` escreve linhas paralelas da ferramenta `rubout_lines_tool_mm` (direção `rubout_lines_direction`) que limpam uma área. Os furos de alinhamento podem ser 2, 3 ou 6, fora da placa ou, com `alignment_pattern = special`, num padrão em torno do seu centro (`alignment_special_a_mm` de distância no par, `alignment_special_b_mm` para os outros quatro). Com uma tolerância de conflitos, `check` e `isolate` avisam sobre as pistas e as ilhas retangulares mais finas do que o dobro da tolerância mais `tolerance_warning_margin_mm`. A estimativa do formato de uma camada Gerber antiga usa agora as unidades indicadas pelo ficheiro e o tamanho da placa, e uma lista de aberturas pode dar os dois lados numa célula (`60x40`).
+* **Tolerância só para pads, preenchimento por contornos, tipo de ficheiro, DXF e canetas do plotter** (`tolerance`, `fill`, `src/filetype.rs`, `src/dxf.rs`, `src/hpgl.rs`): `conflict_tolerance_scope = pads` (por defeito `all`, como antes) reserva a tolerância de conflito para os intervalos que têm um pad ao lado, e o aviso de cobre fino olha então só para os pads. `rubout-area OUT [CAMADA.gtl] --contour FICHEIRO` (ou `--area`) preenche os caminhos fechados de um ficheiro, par-ímpar para que um caminho interior seja um furo, com linhas de ida e volta de `rubout_lines_tool_mm`; com uma camada, as linhas são recortadas ao cobre: toda a ferramenta sobre cobre mais `rubout_fill_margin_mm`. Uma camada que na verdade é um ficheiro Excellon, HP-GL ou DXF (ou um ficheiro de furação que é uma camada Gerber) é recusada pelo nome, e `kind FICHEIRO...` diz o que é cada ficheiro. `isolate` e `rubout-area` escrevem um desenho DXF para um nome em `.dxf`. `drills ENTRADA SAÍDA.plt` traça os furos com uma caneta por broca (`hpgl_pen_map = 1:2, 3:1`; as brocas não indicadas ficam com as canetas livres mais baixas), e `hpgl_pen_speed_cm_s` (0 = a da máquina, por defeito) escreve a velocidade da caneta em qualquer traçado. `hpgl_isocam_style` (ativado) escreve o traçado como o programa original: um `PA` por cada ponto e linhas de cerca de 75 colunas terminadas em CR LF; desativado, escreve a forma compacta.
 * **Placas de duas faces e o ficheiro de furação simples** (`src/hpgl.rs`, `src/drill.rs`, `src/filetype.rs`): `hpgl_shift_negative = no` mantém no traçado as coordenadas da placa (também as negativas), de modo que o traçado e o ficheiro de furação partilham a mesma origem; `isolate` com `plot_outline = yes` e `--outline FICHEIRO` põe primeiro no traçado o corte à volta do contorno (com a fresa de `route_tool_mm`), na caneta `hpgl_outline_pen`, ficando o isolamento na caneta `hpgl_isolation_pen`. `--mirror vertical` vira os furos em torno do centro do contorno. `ncd_isocam_style = yes` escreve o ficheiro de furação como os programas Bungard (`M48` e `%`, ferramentas só pelo número, coordenada repetida omitida, CR LF, `M00`) e `ncd_digits` preenche as coordenadas com zeros à frente. Um ficheiro de furação sem linha `M48` é reconhecido como Excellon.
-* **Percursos mais leves, escala e correção** (`src/optimize.rs`, `src/fiducial.rs`): os picos são retirados e os pontos numa reta (dentro de `optimize_tolerance_mm`) passam a ser um só movimento, ativado por predefinição (0,01 mm e 0,02 mm; com 0 desativa-se); o trabalho pode ser escalado em relação ao centro da placa, e pares de pontos de referência relativos a esse centro (onde uma marca devia estar e onde foi medida) dão uma semelhança (dois pares) ou um ajuste afim (três ou mais, mínimos quadrados) aplicado a cada percurso e a cada furo; é recusado quando a escala se afasta muito de 1 ou uma marca não encaixa.
-* **Máscara de soldadura** (`src/mask.rs`): as aberturas são escritas como uma camada Gerber, a partir da camada de máscara do desenho ou dos pads do cobre, cada uma alargada de `mask_margin_mm`; as pistas ficam cobertas.
+* **Percursos mais leves, escala e correção** (`optimize`, `fiducial`): os picos são retirados e os pontos numa reta (dentro de `optimize_tolerance_mm`) passam a ser um só movimento, ativado por predefinição (0,01 mm e 0,02 mm; com 0 desativa-se); o trabalho pode ser escalado em relação ao centro da placa, e pares de pontos de referência relativos a esse centro (onde uma marca devia estar e onde foi medida) dão uma semelhança (dois pares) ou um ajuste afim (três ou mais, mínimos quadrados) aplicado a cada percurso e a cada furo; é recusado quando a escala se afasta muito de 1 ou uma marca não encaixa.
+* **Máscara de soldadura** (`mask`): as aberturas são escritas como uma camada Gerber, a partir da camada de máscara do desenho ou dos pads do cobre, cada uma alargada de `mask_margin_mm`; as pistas ficam cobertas.
 * **Unidades e pré-visualização** (`eh3d-raster`, `src/preview.rs`): um comprimento pode levar `mm`, `mil` ou `in`, o G-code pode ser escrito em polegadas, e `preview` desenha as passagens sobre o cobre como desenho SVG ou como texto.
-* **Camadas Gerber antigas** (`src/legacy.rs`): uma camada sem instrução de formato (RS-274D, como muitos programas antigos a escrevem) é lida quando se indica a sua lista de aberturas (`--apertures`, um código D e o seu tamanho por linha) juntamente com o seu formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); é reescrita como Gerber estendido e passa pelo leitor normal. Testado com camadas escritas à mão, não com ficheiros de outros programas.
+* **Camadas Gerber antigas** (`legacy`): uma camada sem instrução de formato (RS-274D, como muitos programas antigos a escrevem) é lida quando se indica a sua lista de aberturas (`--apertures`, um código D e o seu tamanho por linha) juntamente com o seu formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); é reescrita como Gerber estendido e passa pelo leitor normal. Testado com camadas escritas à mão, não com ficheiros de outros programas.
 * **Leitura e avisos por código (linha de comandos):** os ficheiros são lidos com um limite de tamanho (`--max-bytes N`, 256 MiB por omissão) e o texto que não é UTF-8 é lido como Latin-1 com um aviso (`input-not-utf8`); os avisos do leitor de Gerber são mostrados com o seu código estável e `--hide CODE[,CODE]` omite esses códigos. A nota sobre os trajetos mais leves e a das pontes do corte só são impressas quando mudaram alguma coisa.
 
 ## 🧩 Papel no EH3D
@@ -133,28 +133,15 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
-│   ├── bitmap.rs                                o cobre numa grelha
 │   ├── config.rs                                todos os valores ajustáveis, a partir de um ficheiro de definições
-│   ├── drc.rs                                   regras de projeto: larguras, distâncias e anéis, com as posições
 │   ├── drill.rs                                 furos e contorno da placa, lidos e escritos
 │   ├── dxf.rs                                   as passagens como desenho DXF
-│   ├── fiducial.rs                              escala e correção com pontos de referência
 │   ├── filetype.rs                              de que tipo é um ficheiro de entrada
-│   ├── fill.rs                                  linhas que preenchem contornos, recortadas ao cobre
-│   ├── forced.rs                                percursos nos espaços onde a ferramenta não cabe
 │   ├── gcode.rs                                 os percursos como G-code
 │   ├── hpgl.rs                                  os percursos como ficheiro de traçado HP-GL
-│   ├── isolate.rs                               ferramentas, passagens, cobre restante e folgas estreitas
-│   ├── legacy.rs                                camadas Gerber antigas: formato e lista de aberturas
 │   ├── lib.rs                                   a biblioteca: o que cada comando usa
 │   ├── main.rs                                  a linha de comandos
-│   ├── mask.rs                                  as aberturas da máscara de soldadura
-│   ├── optimize.rs                              percursos mais leves: picos e pontos em linha
-│   ├── order.rs                                 sentido, pontos de início e ordem dos cortes
-│   ├── preview.rs                               as passagens desenhadas em SVG ou texto
-│   ├── problems.rs                              zonas problemáticas: cantos internos agudos e pistas entre pads
-│   ├── tolerance.rs                             onde se aplica a tolerância: todos os intervalos ou só pads
-│   └── transform.rs                             dupla face, painéis e furos de alinhamento
+│   └── preview.rs                               as passagens desenhadas em SVG ou texto
 ├── tests/
 │   ├── advanced.rs                              isolamento forçado, correção, máscara, unidades, pré-visualização
 │   ├── cli_reading.rs                           testes de leitura de ficheiros: o limite de tamanho, texto que não é UTF-8, avisos por código
@@ -162,9 +149,7 @@ EH3D-ISOCAM/
 │   ├── isocam.rs                                testes da biblioteca e da linha de comandos
 │   ├── kinds.rs                                 tolerância para pads, preenchimentos, tipos de ficheiro, canetas, DXF
 │   ├── layout.rs                                testes de dupla face, painéis, regras e linha de comandos
-│   ├── legacy.rs                                testes das camadas Gerber antigas e da linha de comandos
 │   ├── multi.rs                                 testes de ferramentas, cobre restante, sentido, ordem e definições
-│   ├── problems.rs                              testes das zonas problemáticas, da tolerância e dos furos de alinhamento
 │   └── readme.rs                                testes que executam o que o README e os scripts run prometem
 ├── examples/
 │   ├── isocam.cfg                               todas as definições com o valor por omissão, para copiar e alterar
@@ -198,7 +183,7 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 
 ## 🧪 Testes
 
-O conjunto tem 171 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 158 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -216,28 +201,15 @@ A versão está em `Cargo.toml` e em `eh3d.project.json`; cada versão tem a sua
 ```text
 EH3D-ISOCAM/
 ├── src/
-│   ├── bitmap.rs                                o cobre numa grelha
 │   ├── config.rs                                todos os valores ajustáveis, a partir de um ficheiro de definições
-│   ├── drc.rs                                   regras de projeto: larguras, distâncias e anéis, com as posições
 │   ├── drill.rs                                 furos e contorno da placa, lidos e escritos
 │   ├── dxf.rs                                   as passagens como desenho DXF
-│   ├── fiducial.rs                              escala e correção com pontos de referência
 │   ├── filetype.rs                              de que tipo é um ficheiro de entrada
-│   ├── fill.rs                                  linhas que preenchem contornos, recortadas ao cobre
-│   ├── forced.rs                                percursos nos espaços onde a ferramenta não cabe
 │   ├── gcode.rs                                 os percursos como G-code
 │   ├── hpgl.rs                                  os percursos como ficheiro de traçado HP-GL
-│   ├── isolate.rs                               ferramentas, passagens, cobre restante e folgas estreitas
-│   ├── legacy.rs                                camadas Gerber antigas: formato e lista de aberturas
 │   ├── lib.rs                                   a biblioteca: o que cada comando usa
 │   ├── main.rs                                  a linha de comandos
-│   ├── mask.rs                                  as aberturas da máscara de soldadura
-│   ├── optimize.rs                              percursos mais leves: picos e pontos em linha
-│   ├── order.rs                                 sentido, pontos de início e ordem dos cortes
-│   ├── preview.rs                               as passagens desenhadas em SVG ou texto
-│   ├── problems.rs                              zonas problemáticas: cantos internos agudos e pistas entre pads
-│   ├── tolerance.rs                             onde se aplica a tolerância: todos os intervalos ou só pads
-│   └── transform.rs                             dupla face, painéis e furos de alinhamento
+│   └── preview.rs                               as passagens desenhadas em SVG ou texto
 ├── tests/
 │   ├── advanced.rs                              isolamento forçado, correção, máscara, unidades, pré-visualização
 │   ├── cli_reading.rs                           testes de leitura de ficheiros: o limite de tamanho, texto que não é UTF-8, avisos por código
@@ -245,9 +217,7 @@ EH3D-ISOCAM/
 │   ├── isocam.rs                                testes da biblioteca e da linha de comandos
 │   ├── kinds.rs                                 tolerância para pads, preenchimentos, tipos de ficheiro, canetas, DXF
 │   ├── layout.rs                                testes de dupla face, painéis, regras e linha de comandos
-│   ├── legacy.rs                                testes das camadas Gerber antigas e da linha de comandos
 │   ├── multi.rs                                 testes de ferramentas, cobre restante, sentido, ordem e definições
-│   ├── problems.rs                              testes das zonas problemáticas, da tolerância e dos furos de alinhamento
 │   └── readme.rs                                testes que executam o que o README e os scripts run prometem
 ├── examples/
 │   ├── isocam.cfg                               todas as definições com o valor por omissão, para copiar e alterar

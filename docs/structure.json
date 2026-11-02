@@ -27,19 +27,6 @@
       "accent": "a",
       "rows": [
         {
-          "name": "bitmap.rs",
-          "desc": {
-            "en": "the copper on a grid",
-            "es": "el cobre en una rejilla",
-            "de": "das Kupfer auf einem Raster",
-            "fr": "le cuivre sur une grille",
-            "it": "il rame su una griglia",
-            "ja": "グリッド上の銅",
-            "zh": "网格上的铜箔",
-            "pt": "o cobre numa grelha"
-          }
-        },
-        {
           "name": "config.rs",
           "desc": {
             "en": "every tunable value, from one settings file",
@@ -50,19 +37,6 @@
             "ja": "調整可能な値はすべて設定ファイルから",
             "zh": "所有可调值都来自一个设置文件",
             "pt": "todos os valores ajustáveis, a partir de um ficheiro de definições"
-          }
-        },
-        {
-          "name": "drc.rs",
-          "desc": {
-            "en": "design rules: widths, gaps and rings, with places",
-            "es": "reglas de diseño: anchos, separaciones y anillos, con su posición",
-            "de": "Entwurfsregeln: Breiten, Abstände und Ringe, mit Orten",
-            "fr": "règles de conception : largeurs, écarts et anneaux, avec les endroits",
-            "it": "regole di progetto: larghezze, distanze e anelli, con le posizioni",
-            "ja": "設計ルール：幅・間隔・リング（位置つき）",
-            "zh": "设计规则：线宽、间距和焊环，并给出位置",
-            "pt": "regras de projeto: larguras, distâncias e anéis, com as posições"
           }
         },
         {
@@ -92,19 +66,6 @@
           }
         },
         {
-          "name": "fiducial.rs",
-          "desc": {
-            "en": "scale and correction from reference points",
-            "es": "escala y corrección con puntos de referencia",
-            "de": "Skalierung und Korrektur mit Referenzpunkten",
-            "fr": "échelle et correction par points de référence",
-            "it": "scala e correzione con punti di riferimento",
-            "ja": "基準点によるスケールと補正",
-            "zh": "用参考点做缩放与补偿",
-            "pt": "escala e correção com pontos de referência"
-          }
-        },
-        {
           "name": "filetype.rs",
           "desc": {
             "en": "what kind of file an input is",
@@ -115,32 +76,6 @@
             "ja": "入力ファイルの種類の判別",
             "zh": "判断输入文件的类型",
             "pt": "de que tipo é um ficheiro de entrada"
-          }
-        },
-        {
-          "name": "fill.rs",
-          "desc": {
-            "en": "lines that fill contours, cut to the copper",
-            "es": "líneas que rellenan contornos, recortadas al cobre",
-            "de": "Linien, die Konturen füllen, aufs Kupfer beschnitten",
-            "fr": "lignes qui remplissent des contours, coupées au cuivre",
-            "it": "linee che riempiono i contorni, tagliate al rame",
-            "ja": "輪郭を埋める線（銅に合わせて切り取り）",
-            "zh": "填充轮廓的线条，按铜箔裁剪",
-            "pt": "linhas que preenchem contornos, recortadas ao cobre"
-          }
-        },
-        {
-          "name": "forced.rs",
-          "desc": {
-            "en": "paths along the gaps the tool does not fit in",
-            "es": "caminos por los huecos donde no cabe la herramienta",
-            "de": "Pfade durch Lücken, in die das Werkzeug nicht passt",
-            "fr": "trajets dans les espaces où l'outil ne passe pas",
-            "it": "percorsi negli spazi in cui l'utensile non entra",
-            "ja": "工具が入らない隙間に沿う経路",
-            "zh": "沿刀具放不进去的间隙的路径",
-            "pt": "percursos nos espaços onde a ferramenta não cabe"
           }
         },
         {
@@ -170,32 +105,6 @@
           }
         },
         {
-          "name": "isolate.rs",
-          "desc": {
-            "en": "tools, passes, leftover copper and narrow gaps",
-            "es": "herramientas, pasadas, cobre sobrante y huecos estrechos",
-            "de": "Werkzeuge, Durchgänge, Restkupfer und enge Lücken",
-            "fr": "outils, passes, cuivre restant et écarts étroits",
-            "it": "utensili, passate, rame residuo e fessure strette",
-            "ja": "工具・パス・残り銅・狭い隙間",
-            "zh": "刀具、走刀、残余铜箔和过窄的间隙",
-            "pt": "ferramentas, passagens, cobre restante e folgas estreitas"
-          }
-        },
-        {
-          "name": "legacy.rs",
-          "desc": {
-            "en": "old-style Gerber layers: format and list of apertures",
-            "es": "capas Gerber antiguas: formato y lista de aperturas",
-            "de": "alte Gerber-Ebenen: Format und Aperturliste",
-            "fr": "couches Gerber anciennes : format et liste d'ouvertures",
-            "it": "livelli Gerber vecchio stile: formato ed elenco delle aperture",
-            "ja": "旧形式のガーバーレイヤー：書式とアパーチャ一覧",
-            "zh": "旧式Gerber层：格式与光圈列表",
-            "pt": "camadas Gerber antigas: formato e lista de aberturas"
-          }
-        },
-        {
           "name": "lib.rs",
           "desc": {
             "en": "the library: what every command uses",
@@ -222,45 +131,6 @@
           }
         },
         {
-          "name": "mask.rs",
-          "desc": {
-            "en": "the openings of the solder mask",
-            "es": "las aberturas de la máscara de soldadura",
-            "de": "die Öffnungen der Lötstoppmaske",
-            "fr": "les ouvertures du masque de soudure",
-            "it": "le aperture della maschera di saldatura",
-            "ja": "ソルダーマスクの開口部",
-            "zh": "阻焊层的开窗",
-            "pt": "as aberturas da máscara de soldadura"
-          }
-        },
-        {
-          "name": "optimize.rs",
-          "desc": {
-            "en": "lighter paths: spikes and straight points",
-            "es": "trayectorias más ligeras: picos y puntos rectos",
-            "de": "leichtere Bahnen: Spitzen und gerade Punkte",
-            "fr": "trajets allégés : pointes et points alignés",
-            "it": "percorsi più leggeri: punte e punti allineati",
-            "ja": "軽い経路：スパイクと直線上の点",
-            "zh": "更轻的路径：尖刺与共线点",
-            "pt": "percursos mais leves: picos e pontos em linha"
-          }
-        },
-        {
-          "name": "order.rs",
-          "desc": {
-            "en": "direction, starting points and order of the cuts",
-            "es": "sentido, puntos de inicio y orden de los cortes",
-            "de": "Richtung, Startpunkte und Reihenfolge der Schnitte",
-            "fr": "sens, points de départ et ordre des coupes",
-            "it": "verso, punti di partenza e ordine dei tagli",
-            "ja": "切削の向き・開始点・順序",
-            "zh": "切削方向、起点和顺序",
-            "pt": "sentido, pontos de início e ordem dos cortes"
-          }
-        },
-        {
           "name": "preview.rs",
           "desc": {
             "en": "the passes drawn as SVG or text",
@@ -271,45 +141,6 @@
             "ja": "パスを SVG またはテキストで描画",
             "zh": "以 SVG 或文本绘制各遍路径",
             "pt": "as passagens desenhadas em SVG ou texto"
-          }
-        },
-        {
-          "name": "problems.rs",
-          "desc": {
-            "en": "problem zones: sharp inner corners and tracks between pads",
-            "es": "zonas problema: esquinas internas agudas y pistas entre pads",
-            "de": "Problemzonen: spitze Innenecken und Leiterbahnen zwischen Pads",
-            "fr": "zones à problème : coins intérieurs aigus et pistes entre pastilles",
-            "it": "zone problematiche: angoli interni acuti e piste tra pad",
-            "ja": "問題箇所：鋭い内角とパッド間のトラック",
-            "zh": "问题区域：尖锐的内角和焊盘之间的走线",
-            "pt": "zonas problemáticas: cantos internos agudos e pistas entre pads"
-          }
-        },
-        {
-          "name": "tolerance.rs",
-          "desc": {
-            "en": "where the tolerance applies: all gaps or only pads",
-            "es": "dónde se aplica la tolerancia: todos los huecos o solo pads",
-            "de": "wo die Toleranz gilt: alle Spalten oder nur Pads",
-            "fr": "où la tolérance s'applique : tous les espaces ou seulement les pastilles",
-            "it": "dove vale la tolleranza: tutti gli spazi o solo i pad",
-            "ja": "許容差の適用先：すべての隙間またはパッドのみ",
-            "zh": "容差适用范围：所有间隙或仅焊盘",
-            "pt": "onde se aplica a tolerância: todos os intervalos ou só pads"
-          }
-        },
-        {
-          "name": "transform.rs",
-          "desc": {
-            "en": "both sides, panels and alignment holes",
-            "es": "doble cara, paneles y agujeros de alineación",
-            "de": "beide Seiten, Nutzen und Passlöcher",
-            "fr": "double face, panneaux et trous d'alignement",
-            "it": "doppia faccia, pannelli e fori di allineamento",
-            "ja": "両面・パネル・位置合わせ穴",
-            "zh": "双面、拼板和对位孔",
-            "pt": "dupla face, painéis e furos de alinhamento"
           }
         }
       ]
@@ -398,19 +229,6 @@
           }
         },
         {
-          "name": "legacy.rs",
-          "desc": {
-            "en": "tests of old-style Gerber layers and the command line",
-            "es": "pruebas de las capas Gerber antiguas y la línea de comandos",
-            "de": "Tests alter Gerber-Ebenen und der Kommandozeile",
-            "fr": "tests des couches Gerber anciennes et de la ligne de commande",
-            "it": "test dei livelli Gerber vecchio stile e della riga di comando",
-            "ja": "旧形式のガーバーレイヤーとコマンドラインのテスト",
-            "zh": "旧式Gerber层和命令行的测试",
-            "pt": "testes das camadas Gerber antigas e da linha de comandos"
-          }
-        },
-        {
           "name": "multi.rs",
           "desc": {
             "en": "tests of tools, rubout, direction, order and settings",
@@ -421,19 +239,6 @@
             "ja": "工具・残り銅・向き・順序・設定のテスト",
             "zh": "刀具、残余铜箔、方向、顺序和设置的测试",
             "pt": "testes de ferramentas, cobre restante, sentido, ordem e definições"
-          }
-        },
-        {
-          "name": "problems.rs",
-          "desc": {
-            "en": "tests of problem zones, the tolerance and the alignment holes",
-            "es": "pruebas de zonas problema, la tolerancia y los agujeros de alineación",
-            "de": "Tests der Problemzonen, der Toleranz und der Passlöcher",
-            "fr": "tests des zones à problème, de la tolérance et des trous d'alignement",
-            "it": "test delle zone problematiche, della tolleranza e dei fori di allineamento",
-            "ja": "問題箇所・許容差・位置合わせ穴のテスト",
-            "zh": "问题区域、容差和对位孔的测试",
-            "pt": "testes das zonas problemáticas, da tolerância e dos furos de alinhamento"
           }
         },
         {

@@ -41,7 +41,7 @@
         "exact distance to it"
       ],
       "code": [
-        "src/bitmap.rs::pub fn from_scene"
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/bitmap.rs::pub fn from_scene"
       ]
     },
     {
@@ -54,11 +54,11 @@
         "forced paths, narrow gaps, fills"
       ],
       "code": [
-        "src/isolate.rs::pub fn plan",
-        "src/isolate.rs::pub fn plan_with_pads",
-        "src/forced.rs::pub fn forced_passes",
-        "src/fill.rs::pub fn rubout_contours",
-        "src/tolerance.rs::pub fn close_pieces_scoped"
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/isolate.rs::pub fn plan",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/isolate.rs::pub fn plan_with_pads",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/forced.rs::pub fn forced_passes",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/fill.rs::pub fn rubout_contours",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/tolerance.rs::pub fn close_pieces_scoped"
       ]
     },
     {
@@ -71,7 +71,7 @@
         "cuts, written as G-code or HP-GL"
       ],
       "code": [
-        "src/order.rs::pub fn arrange",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/order.rs::pub fn arrange",
         "src/gcode.rs::pub fn write_with",
         "src/hpgl.rs::pub fn write_with",
         "src/dxf.rs::pub fn write"
@@ -89,7 +89,7 @@
       "code": [
         "src/drill.rs::pub fn read_drills",
         "src/drill.rs::pub fn route_outline",
-        "src/transform.rs::pub fn lay_out",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/transform.rs::pub fn lay_out",
         "src/filetype.rs::pub fn detect"
       ]
     },
@@ -103,10 +103,10 @@
         "one settings file"
       ],
       "code": [
-        "src/drc.rs::pub fn check",
-        "src/problems.rs::pub fn problem_zones",
-        "src/problems.rs::pub fn problem_zones",
-        "src/problems.rs::pub fn problem_zones",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/drc.rs::pub fn check",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/problems.rs::pub fn problem_zones",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/problems.rs::pub fn problem_zones",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/problems.rs::pub fn problem_zones",
         "src/config.rs::pub struct Settings"
       ]
     },
@@ -120,9 +120,9 @@
         "solder mask, units, preview"
       ],
       "code": [
-        "src/optimize.rs::pub fn optimize_passes",
-        "src/fiducial.rs::pub fn fit",
-        "src/mask.rs::pub fn openings",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/optimize.rs::pub fn optimize_passes",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/fiducial.rs::pub fn fit",
+        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/mask.rs::pub fn openings",
         "src/preview.rs::pub fn svg"
       ]
     },

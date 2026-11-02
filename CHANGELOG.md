@@ -3,6 +3,8 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+
+- **The pure CAM comes from the shared `eh3d-cam` crate:** the copper on a grid, the passes, the checks, the order and the shortening of paths, the fiducials, the board transforms, the solder mask openings and old-style Gerber moved to the shared libraries and are re-exported with the same public paths, so the library and the command line do not change.
 - **Units, distance transform and contour lines come from `eh3d-raster`:** the three modules moved to the shared library of the suite; `eh3d_isocam::units`, `edt` and `contour` still work as before.
 - **The CI builds against the tag of each sibling:** the sibling repositories are read from `depends_on` of the manifest (the ones they need in turn included) and checked out at the tag the repository is built from, so a build does not move when a sibling changes; a separate job, `Siblings at main`, builds against the main branch of every sibling to show a break before the sibling is tagged and does not hold a merge. The manifest now names its three siblings in `depends_on`.
 

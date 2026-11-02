@@ -7,9 +7,26 @@ name = "eh3d-bungard-formats"
 version = "0.0.1"
 
 [[package]]
-name = "eh3d-gerberviewer"
-version = "0.0.1"
+name = "eh3d-cam"
+version = "0.0.3"
 dependencies = [
+ "eh3d-geometry",
+ "eh3d-raster",
+]
+
+[[package]]
+name = "eh3d-geometry"
+version = "0.0.3"
+dependencies = [
+ "eh3d-parser-excellon",
+ "eh3d-parser-gerber",
+]
+
+[[package]]
+name = "eh3d-gerberviewer"
+version = "0.0.2"
+dependencies = [
+ "eh3d-geometry",
  "eh3d-parser-excellon",
  "eh3d-parser-gerber",
 ]
@@ -19,6 +36,7 @@ name = "eh3d-isocam"
 version = "0.0.5"
 dependencies = [
  "eh3d-bungard-formats",
+ "eh3d-cam",
  "eh3d-gerberviewer",
  "eh3d-parser-excellon",
  "eh3d-parser-gerber",
