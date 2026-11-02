@@ -41,7 +41,7 @@
         "exact distance to it"
       ],
       "code": [
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/bitmap.rs::pub fn from_scene"
+        "src/lib.rs::pub use eh3d_cam::{"
       ]
     },
     {
@@ -54,11 +54,7 @@
         "forced paths, narrow gaps, fills"
       ],
       "code": [
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/isolate.rs::pub fn plan",
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/isolate.rs::pub fn plan_with_pads",
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/forced.rs::pub fn forced_passes",
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/fill.rs::pub fn rubout_contours",
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/tolerance.rs::pub fn close_pieces_scoped"
+        "src/lib.rs::pub use eh3d_cam::{"
       ]
     },
     {
@@ -71,7 +67,7 @@
         "cuts, written as G-code or HP-GL"
       ],
       "code": [
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/order.rs::pub fn arrange",
+        "src/lib.rs::pub use eh3d_cam::{",
         "src/gcode.rs::pub fn write_with",
         "src/hpgl.rs::pub fn write_with",
         "src/dxf.rs::pub fn write"
@@ -89,7 +85,7 @@
       "code": [
         "src/drill.rs::pub fn read_drills",
         "src/drill.rs::pub fn route_outline",
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/transform.rs::pub fn lay_out",
+        "src/lib.rs::pub use eh3d_cam::{",
         "src/filetype.rs::pub fn detect"
       ]
     },
@@ -103,10 +99,7 @@
         "one settings file"
       ],
       "code": [
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/drc.rs::pub fn check",
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/problems.rs::pub fn problem_zones",
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/problems.rs::pub fn problem_zones",
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/problems.rs::pub fn problem_zones",
+        "src/lib.rs::pub use eh3d_cam::{",
         "src/config.rs::pub struct Settings"
       ]
     },
@@ -120,9 +113,7 @@
         "solder mask, units, preview"
       ],
       "code": [
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/optimize.rs::pub fn optimize_passes",
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/fiducial.rs::pub fn fit",
-        "../EH3D-CORE-LIBS/crates/eh3d-cam/src/mask.rs::pub fn openings",
+        "src/lib.rs::pub use eh3d_cam::{",
         "src/preview.rs::pub fn svg"
       ]
     },
