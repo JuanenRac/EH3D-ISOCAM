@@ -25,6 +25,7 @@ use eh3d_isocam::problems::{problem_zones, thin_for_tolerance_in};
 use eh3d_isocam::tolerance::{close_pieces_scoped, ToleranceScope};
 use eh3d_isocam::transform::{alignment_pattern, lay_out, Axis, Board};
 use eh3d_isocam::units::{parse_length, Unit};
+use eh3d_parser_gerber::{codes, parse_bytes_with, InputError, InputLimits, Severity};
 use std::env;
 use std::fs;
 use std::process::ExitCode;
@@ -50,7 +51,8 @@ with the layer, --align adds the holes that hold the board when it is turned ove
 An old-style Gerber layer (no format statement) needs --apertures FILE, the list of its apertures (one D code and its size per line), and the format it is written in
 (--gerber-format 2.3, --gerber-zeros leading|trailing, --gerber-units inch|mm, --aperture-units mil|mm|inch, --aperture-size-column 1).
 isolate refuses to write when the tool does not fit between pieces of copper (run check to see where) unless --force is given; with --forced-isolation yes it lays a path along
-every such gap that is not narrower than --forced-min-gap-mm and refuses only for the narrower ones. --optimize-tolerance-mm and --spike-max-mm make the paths lighter;
+every such gap that is not narrower than --forced-min-gap-mm and refuses only for the narrower ones. Files are read with a size limit (--max-bytes N, 268435456 by default); text that
+is not UTF-8 is read as Latin-1 with a warning, and the notices of the Gerber reader are shown with their code: --hide CODE[,CODE] leaves out the notices of those codes. --optimize-tolerance-mm and --spike-max-mm make the paths lighter;
 --scale-x/--scale-y (about the centre of the board) and --fiducial \"DESIGN_X,DESIGN_Y,MEASURED_X,MEASURED_Y\" (two or more times) scale and correct the work for a stretched or turned board.
 isolate --net X,Y isolates only the net that holds the point (up to half a millimetre from its copper) with the tool of net_tool_mm. route puts bridges on the cut with tab_count,
 tab_width_mm and tab_min_length_mm. With a conflict tolerance, check and isolate warn about the tracks and pads that are thin for it (tolerance_warning_margin_mm). The alignment
@@ -78,6 +80,10 @@ struct Cli {
     net: Option<(f64, f64)>,
     /// The area to clear with lines (`--area X0,Y0,X1,Y1`).
     area: Option<(f64, f64, f64, f64)>,
+    /// The largest file that is read, in bytes (`--max-bytes N`).
+    max_bytes: usize,
+    /// The codes of the notices of the Gerber reader that are not shown (`--hide CODE,CODE`).
+    hide: Vec<String>,
 }
 
 /// Numbers separated by commas, each one a length that may carry its unit.
@@ -107,6 +113,8 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
         contour: None,
         net: None,
         area: None,
+        max_bytes: InputLimits::default().max_bytes,
+        hide: Vec::new(),
     };
     // the configuration file first, so that the options on the command line win over it
     if let Some(i) = args.iter().position(|a| a == "--config") {
@@ -141,6 +149,22 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
                     _ => cli.mask_layer = Some(v),
                 }
             }
+            "--max-bytes" => {
+                let v = it.next().ok_or_else(|| format!("{a} needs a value"))?;
+                cli.max_bytes = v
+                    .trim()
+                    .parse::<usize>()
+                    .map_err(|_| format!("--max-bytes '{v}' is not a whole number"))?;
+            }
+            "--hide" => {
+                let v = it.next().ok_or_else(|| format!("{a} needs a value"))?;
+                for c in v.split(',').map(str::trim).filter(|c| !c.is_empty()) {
+                    if !codes::ALL.contains(&c) {
+                        return Err(format!("--hide: '{c}' is not a code of the reader"));
+                    }
+                    cli.hide.push(c.to_string());
+                }
+            }
             "--net" | "--area" => {
                 let v = it.next().ok_or_else(|| format!("{a} needs a value"))?;
                 let unit = cli.settings.input_units;
@@ -163,24 +187,65 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
     Ok(cli)
 }
 
-fn read(path: &str) -> Result<String, String> {
+/// The text of a file, read the way the readers of the suite read bytes: a file over the size limit is refused, UTF-8 (with or without a byte order mark) is taken as it is, and
+/// anything else is read as Latin-1 with a warning that carries the stable code of the reader.
+fn read(cli: &Cli, path: &str) -> Result<String, String> {
     let bytes = fs::read(path).map_err(|e| format!("{path}: {e}"))?;
-    Ok(String::from_utf8_lossy(&bytes).into_owned())
+    if bytes.len() > cli.max_bytes {
+        let e = InputError::TooLarge {
+            size: bytes.len(),
+            limit: cli.max_bytes,
+        };
+        return Err(format!("{path}: {e}"));
+    }
+    match String::from_utf8(bytes) {
+        Ok(text) => Ok(text
+            .strip_prefix('\u{feff}')
+            .map(str::to_string)
+            .unwrap_or(text)),
+        Err(e) => {
+            if !cli.hide.iter().any(|c| c == codes::INPUT_NOT_UTF8) {
+                eprintln!(
+                    "warning: {path}: the text is not UTF-8 and was read as Latin-1 [{}]",
+                    codes::INPUT_NOT_UTF8
+                );
+            }
+            Ok(e.into_bytes().iter().map(|&b| char::from(b)).collect())
+        }
+    }
 }
 
 /// A Gerber layer read from a file: extended Gerber as it is, an old-style layer with the format and the list of apertures of the settings.
 fn read_layer(cli: &Cli, path: &str) -> Result<eh3d_parser_gerber::GerberFile, String> {
-    let text = read(path)?;
+    let text = read(cli, path)?;
     filetype::expect_gerber(path, filetype::detect(&text))?;
     let list = match &cli.apertures {
-        Some(f) => Some(read(f)?),
+        Some(f) => Some(read(cli, f)?),
         None => None,
     };
     let text = cli
         .settings
         .gerber_text(&text, list.as_deref())
         .map_err(|e| format!("{path}: {e}"))?;
-    Ok(eh3d_parser_gerber::parse(&text))
+    let limits = InputLimits {
+        max_bytes: cli.max_bytes,
+    };
+    let file = parse_bytes_with(text.as_bytes(), &limits).map_err(|e| format!("{path}: {e}"))?;
+    // what the reader says, by its stable code: a notice can be hidden with --hide
+    for d in &file.diagnostics {
+        if d.severity != Severity::Info && !cli.hide.iter().any(|c| c.as_str() == d.code) {
+            let kind = if d.severity == Severity::Error {
+                "error"
+            } else {
+                "warning"
+            };
+            eprintln!(
+                "{kind}: {path}: line {}: {} [{}]",
+                d.line, d.message, d.code
+            );
+        }
+    }
+    Ok(file)
 }
 
 fn arg<'a>(cli: &'a Cli, i: usize, what: &str) -> Result<&'a str, String> {
@@ -213,7 +278,7 @@ fn load_board(
         }
     }
     if let Some(d) = &cli.drills {
-        let text = read(d)?;
+        let text = read(cli, d)?;
         filetype::expect_drills(d, filetype::detect(&text))?;
         let drills = read_drills(&text).map_err(|e| format!("{d}: {e}"))?;
         for n in &drills.notes {
@@ -222,7 +287,7 @@ fn load_board(
         board.holes = drills.holes;
     }
     if let Some(o) = &cli.outline {
-        let outline = read_outline(o, &read(o)?).map_err(|e| format!("{o}: {e}"))?;
+        let outline = read_outline(o, &read(cli, o)?).map_err(|e| format!("{o}: {e}"))?;
         if !outline.open.is_empty() {
             eprintln!(
                 "note: {o}: {} runs of the outline do not close and are left out",
@@ -382,10 +447,13 @@ fn build_passes(
     let o = s.optimize();
     if !o.is_off() {
         let st = optimize_passes(&mut passes, &o)?;
-        eprintln!(
-            "note: the paths have {} points instead of {} ({} spikes taken out, {} paths dropped)",
-            st.points_after, st.points_before, st.spikes, st.dropped_paths
-        );
+        // nothing to say when the paths came out as they went in
+        if st.points_after != st.points_before || st.spikes > 0 || st.dropped_paths > 0 {
+            eprintln!(
+                "note: the paths have {} points instead of {} ({} spikes taken out, {} paths dropped)",
+                st.points_after, st.points_before, st.spikes, st.dropped_paths
+            );
+        }
     }
     if moved {
         let (t, fit) = s.transform(centre)?;
@@ -440,7 +508,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 return Err("kind needs a file".into());
             }
             for f in &cli.positional {
-                println!("{f}: {}", filetype::detect(&read(f)?).name());
+                println!("{f}: {}", filetype::detect(&read(&cli, f)?).name());
             }
             Ok(())
         }
@@ -616,7 +684,8 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 let contours =
                     match (&cli.contour, cli.area) {
                         (Some(f), _) => {
-                            let o = read_outline(f, &read(f)?).map_err(|e| format!("{f}: {e}"))?;
+                            let o = read_outline(f, &read(&cli, f)?)
+                                .map_err(|e| format!("{f}: {e}"))?;
                             o.closed
                         }
                         (None, Some((x0, y0, x1, y1))) => {
@@ -797,12 +866,14 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                         min_length_mm: s.tab_min_length_mm,
                     },
                 )?;
-                eprintln!(
-                    "note: {} bridges of {} on {} paths",
-                    r.bridges,
-                    len(&cli, s.tab_width_mm),
-                    r.paths_cut
-                );
+                if r.bridges > 0 {
+                    eprintln!(
+                        "note: {} bridges of {} on {} paths",
+                        r.bridges,
+                        len(&cli, s.tab_width_mm),
+                        r.paths_cut
+                    );
+                }
                 if r.paths_left_closed > 0 {
                     eprintln!(
                         "warning: {} paths are too short for a bridge ({} between bridges) and are cut right round: the piece will not be held",
