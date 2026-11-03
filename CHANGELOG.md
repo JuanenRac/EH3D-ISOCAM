@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **Shared checks updated:** the validator also compares the badge and the Version row of the README with the manifest, fails when one of its checks cannot run, and the CHANGELOG step of the workflow reads the base branch from the environment.
 - **Limited reading and arc tolerance:** files are read with the size limit of the reader before they are loaded (`max_input_mb`, 64 MiB by default, refusal in eight languages) and `arc_tolerance_mm` sets how closely arcs are followed.
 - **One shift for the plots of a board:** with the shift on, the isolation plot and the hole plot are moved by the same amount (the box of the board less `hpgl_margin_mm`), so they no longer end up a fraction of a millimetre apart.
 - **Spindle wait:** `spindle_wait_s` writes a `G4` wait after each spindle start in the G-code.
