@@ -489,7 +489,7 @@ fn copper_that_is_not_drawn_is_not_isolated_unless_forced() {
     let layer = tmp("isocam_macro.gtl");
     std::fs::write(
         &layer,
-        "%FSLAX24Y24*%\n%MOMM*%\n%AMRR*1,1,1.6,0,0*%\n%ADD10C,0.3*%\n%ADD13RR*%\nD10*\nX20000Y20000D02*\nX200000Y20000D01*\nD13*\nX100000Y100000D03*\nM02*\n",
+        "%FSLAX24Y24*%\n%MOMM*%\n%AMRR*6,0,0,1.6,0.1,0.05,2,0.1,2,0*%\n%ADD10C,0.3*%\n%ADD13RR*%\nD10*\nX20000Y20000D02*\nX200000Y20000D01*\nD13*\nX100000Y100000D03*\nM02*\n",
     )
     .unwrap();
     let out = tmp("isocam_macro.nc");
@@ -497,6 +497,19 @@ fn copper_that_is_not_drawn_is_not_isolated_unless_forced() {
     assert!(!ok && err.contains("not drawn"), "{err}");
     let (ok, _, err) = run(&["isolate", &layer, &out, "--force"]);
     assert!(ok, "{err}");
+}
+
+#[test]
+fn a_macro_pad_made_of_circles_is_drawn_and_isolated_without_force() {
+    let layer = tmp("isocam_macro_drawn.gtl");
+    std::fs::write(
+        &layer,
+        "%FSLAX24Y24*%\n%MOMM*%\n%AMRR*1,1,1.6,0,0*%\n%ADD10C,0.3*%\n%ADD13RR*%\nD10*\nX20000Y20000D02*\nX200000Y20000D01*\nD13*\nX100000Y100000D03*\nM02*\n",
+    )
+    .unwrap();
+    let out = tmp("isocam_macro_drawn.nc");
+    let (ok, _, err) = run(&["isolate", &layer, &out]);
+    assert!(ok && !err.contains("not drawn"), "{err}");
 }
 
 #[test]
