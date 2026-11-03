@@ -39,12 +39,15 @@ pub fn write_with(passes: &[Pass], order: &Order, pens: PenBy) -> Result<String,
 }
 
 /// How a plot differs from the usual one.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct PlotOptions {
     /// Keep the coordinates as they are, negative ones included, instead of moving the plot so that none is negative.
     pub keep_negative: bool,
     /// The pen of each pass, by position; 0 (or no entry) takes the usual pen.
     pub pen_of_pass: Vec<usize>,
+    /// The smallest X and Y the whole job reaches, the same for every plot of the job (the isolation and the holes), so that the shift of one plot is the shift of the others;
+    /// `None` takes the smallest coordinate of this plot.
+    pub origin: Option<(f64, f64)>,
 }
 
 /// The passes as HP-GL with the paths in the order of `order`, the pens of `pens` and the changes of `opts`.
@@ -82,6 +85,7 @@ pub fn write_opts(
             min_y = min_y.min(q.1);
         }
     }
+    let (min_x, min_y) = opts.origin.unwrap_or((min_x, min_y));
     let (dx, dy) = if opts.keep_negative {
         (0.0, 0.0)
     } else {
@@ -275,6 +279,16 @@ pub fn write_holes_opts(
     map: &[(u8, u8)],
     keep_negative: bool,
 ) -> Result<String, String> {
+    write_holes_at(holes, map, keep_negative, None)
+}
+
+/// The same, moved by the common `origin` of the job (see `PlotOptions::origin`) instead of by the smallest coordinate of the holes.
+pub fn write_holes_at(
+    holes: &[Hole],
+    map: &[(u8, u8)],
+    keep_negative: bool,
+    origin: Option<(f64, f64)>,
+) -> Result<String, String> {
     if holes.is_empty() {
         return Err("there are no holes to write".into());
     }
@@ -288,6 +302,7 @@ pub fn write_holes_opts(
     let pens = pens_for(&tools, map)?;
     let min_x = holes.iter().map(|h| h.x_mm).fold(f64::INFINITY, f64::min);
     let min_y = holes.iter().map(|h| h.y_mm).fold(f64::INFINITY, f64::min);
+    let (min_x, min_y) = origin.unwrap_or((min_x, min_y));
     let (dx, dy) = if keep_negative {
         (0.0, 0.0)
     } else {

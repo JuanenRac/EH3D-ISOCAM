@@ -16,6 +16,8 @@ pub struct Job {
     pub feed_mm_min: f64,
     pub plunge_mm_min: f64,
     pub spindle_rpm: f64,
+    /// Seconds to wait (`G4`) after each `M3` for the spindle to reach its speed; 0 writes no wait.
+    pub spindle_wait_s: f64,
 }
 
 impl Default for Job {
@@ -27,6 +29,7 @@ impl Default for Job {
             feed_mm_min: 300.0,
             plunge_mm_min: 60.0,
             spindle_rpm: 24000.0,
+            spindle_wait_s: 0.0,
         }
     }
 }
@@ -50,7 +53,8 @@ impl Job {
         range("depth_mm", self.depth_mm, 0.005, 2.0)?;
         range("feed_mm_min", self.feed_mm_min, 1.0, 10_000.0)?;
         range("plunge_mm_min", self.plunge_mm_min, 1.0, 5_000.0)?;
-        range("spindle_rpm", self.spindle_rpm, 1000.0, 200_000.0)
+        range("spindle_rpm", self.spindle_rpm, 1000.0, 200_000.0)?;
+        range("spindle_wait_s", self.spindle_wait_s, 0.0, 60.0)
     }
 }
 
@@ -116,8 +120,14 @@ pub fn write_in(passes: &[Pass], job: &Job, order: &Order, unit: Unit) -> Result
     if !(order.start.0.is_finite() && order.start.1.is_finite()) {
         return Err("the starting point of the tool is not a number".into());
     }
+    // the spindle needs time to reach its speed before the tool goes down (some controllers do not wait after M3)
+    let wait = if job.spindle_wait_s > 0.0 {
+        format!("G4 P{}\n", n(job.spindle_wait_s))
+    } else {
+        String::new()
+    };
     let mut g = format!(
-        "{}\nG90\nG0 Z{}\nM3 S{}\n",
+        "{}\nG90\nG0 Z{}\nM3 S{}\n{wait}",
         if unit == Unit::Inch { "G20" } else { "G21" },
         nn(c(job.safe_z_mm), unit),
         n(job.spindle_rpm)
@@ -132,7 +142,7 @@ pub fn write_in(passes: &[Pass], job: &Job, order: &Order, unit: Unit) -> Result
         if pass.diameter_mm > 0.0 {
             if tool.is_some_and(|t| (t - pass.diameter_mm).abs() > 1e-9) {
                 g.push_str(&format!(
-                    "M5\nG0 Z{}\n(change to a tool of {} {}; set the Z zero again with the new tool before pressing start)\nM0\nM3 S{}\nG0 Z{}\n",
+                    "M5\nG0 Z{}\n(change to a tool of {} {}; set the Z zero again with the new tool before pressing start)\nM0\nM3 S{}\n{wait}G0 Z{}\n",
                     nn(c(job.tool_change_z_mm), unit),
                     nn(c(pass.diameter_mm), unit),
                     if unit == Unit::Inch { "in" } else { "mm" },

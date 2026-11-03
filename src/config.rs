@@ -132,6 +132,10 @@ pub struct Settings {
     pub hpgl_isocam_style: bool,
     /// Move a plot so that no coordinate is negative (the usual way); off keeps the coordinates of the board, negative ones included, so that a plot and a drill file share one origin.
     pub hpgl_shift_negative: bool,
+    /// With `hpgl_shift_negative`, the plot is moved by the box of the board minus this margin, the same for every plot of a job, so that the isolation and the holes stay aligned; the margin covers the reach of the tool outside the board.
+    pub hpgl_margin_mm: f64,
+    /// Seconds to wait after the spindle is started (`G4`) before the tool goes down; 0 writes no wait.
+    pub spindle_wait_s: f64,
     /// Put the cut round the outline (`--outline`) first in a plot of `isolate`.
     pub plot_outline: bool,
     /// The pen of the cut round the outline when it is in the plot; 0 takes the first pen after those of the passes.
@@ -226,6 +230,8 @@ impl Default for Settings {
             hpgl_pen_speed_cm_s: 0.0,
             hpgl_isocam_style: true,
             hpgl_shift_negative: true,
+            hpgl_margin_mm: 1.0,
+            spindle_wait_s: 2.0,
             plot_outline: false,
             hpgl_outline_pen: 0,
             hpgl_isolation_pen: 0,
@@ -415,6 +421,8 @@ impl Settings {
             "hpgl_pen_speed_cm_s" => self.hpgl_pen_speed_cm_s = num(key, v)?,
             "hpgl_isocam_style" => self.hpgl_isocam_style = flag(key, v)?,
             "hpgl_shift_negative" => self.hpgl_shift_negative = flag(key, v)?,
+            "hpgl_margin_mm" => self.hpgl_margin_mm = num(key, v)?,
+            "spindle_wait_s" => self.spindle_wait_s = num(key, v)?,
             "plot_outline" => self.plot_outline = flag(key, v)?,
             "hpgl_outline_pen" => self.hpgl_outline_pen = pen(key, v)?,
             "hpgl_isolation_pen" => self.hpgl_isolation_pen = pen(key, v)?,
@@ -513,6 +521,8 @@ hpgl_outline_pen = {}
 hpgl_isolation_pen = {}
 ncd_isocam_style = {}
 ncd_digits = {}
+hpgl_margin_mm = {}
+spindle_wait_s = {}
 ",
             self.conflict_tolerance_scope.name(),
             self.rubout_fill_margin_mm,
@@ -524,7 +534,9 @@ ncd_digits = {}
             self.hpgl_outline_pen,
             self.hpgl_isolation_pen,
             self.ncd_isocam_style,
-            self.ncd_digits
+            self.ncd_digits,
+            self.hpgl_margin_mm,
+            self.spindle_wait_s
         ));
         for p in &self.fiducials {
             extra.push_str(&format!(
@@ -704,6 +716,8 @@ ncd_digits = {}
             return Err("a panel has at most 100 boards".into());
         }
         range("mask_margin_mm", self.mask_margin_mm, -1.0, 1.0)?;
+        range("hpgl_margin_mm", self.hpgl_margin_mm, 0.0, 50.0)?;
+        range("spindle_wait_s", self.spindle_wait_s, 0.0, 60.0)?;
         range("scale_x", self.scale_x, 0.5, 2.0)?;
         range("scale_y", self.scale_y, 0.5, 2.0)?;
         range(
@@ -824,6 +838,7 @@ ncd_digits = {}
             feed_mm_min: self.feed_mm_min,
             plunge_mm_min: self.plunge_mm_min,
             spindle_rpm: self.spindle_rpm,
+            spindle_wait_s: self.spindle_wait_s,
         }
     }
 

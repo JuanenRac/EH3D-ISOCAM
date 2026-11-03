@@ -15,7 +15,7 @@ use eh3d_isocam::filetype;
 use eh3d_isocam::fill::{rubout_contours, Fill};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::gcode::write_in;
-use eh3d_isocam::hpgl::{set_pen_speed, write_holes_opts, write_opts, PenBy, PlotOptions};
+use eh3d_isocam::hpgl::{set_pen_speed, write_holes_at, write_opts, PenBy, PlotOptions};
 use eh3d_isocam::isolate::{net_scene, plan_with_pads, rubout_lines, Pass};
 use eh3d_isocam::mask;
 use eh3d_isocam::optimize::optimize_passes;
@@ -329,10 +329,21 @@ fn plot(cli: &Cli, text: Result<String, String>) -> Result<String, String> {
 }
 
 /// How a plot is written, from the settings.
-fn plot_options(cli: &Cli) -> PlotOptions {
+fn plot_options(cli: &Cli, whole: &eh3d_gerberviewer::scene::Bounds) -> PlotOptions {
     PlotOptions {
         keep_negative: !cli.settings.hpgl_shift_negative,
         pen_of_pass: Vec::new(),
+        origin: plot_origin(cli, whole),
+    }
+}
+
+/// The smallest X and Y of a job for the plots: the box of the board less the margin, the same for the isolation and for the holes of one board.
+fn plot_origin(cli: &Cli, whole: &eh3d_gerberviewer::scene::Bounds) -> Option<(f64, f64)> {
+    let m = cli.settings.hpgl_margin_mm;
+    if whole.min_x.is_finite() && whole.min_y.is_finite() {
+        Some((whole.min_x - m, whole.min_y - m))
+    } else {
+        None
     }
 }
 
@@ -612,7 +623,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     PenBy::Pass
                 };
                 let mut all = passes.clone();
-                let mut opts = plot_options(&cli);
+                let mut opts = plot_options(&cli, &whole);
                 if s.plot_outline {
                     if board.outline.is_empty() {
                         return Err(
@@ -730,7 +741,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                         std::slice::from_ref(&pass),
                         &order,
                         PenBy::Pass,
-                        &plot_options(&cli),
+                        &plot_options(&cli, &eh3d_gerberviewer::scene::Bounds::empty()),
                     ),
                 )?
             } else if is_dxf(out) {
@@ -825,7 +836,12 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let text = if is_plot(out) {
                 plot(
                     &cli,
-                    write_holes_opts(&holes, &s.hpgl_pen_map, !s.hpgl_shift_negative),
+                    write_holes_at(
+                        &holes,
+                        &s.hpgl_pen_map,
+                        !s.hpgl_shift_negative,
+                        plot_origin(&cli, &whole),
+                    ),
                 )?
             } else {
                 write_drills_as(
@@ -896,7 +912,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                         std::slice::from_ref(&pass),
                         &order,
                         PenBy::Pass,
-                        &plot_options(&cli),
+                        &plot_options(&cli, &whole),
                     ),
                 )?
             } else {

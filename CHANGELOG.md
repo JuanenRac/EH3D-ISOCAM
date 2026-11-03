@@ -3,6 +3,8 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **One shift for the plots of a board:** with the shift on, the isolation plot and the hole plot are moved by the same amount (the box of the board less `hpgl_margin_mm`), so they no longer end up a fraction of a millimetre apart.
+- **Spindle wait:** `spindle_wait_s` writes a `G4` wait after each spindle start in the G-code.
 - **The workflows are hardened:** every action is pinned by its commit with its version in a comment, and the checkouts keep no credentials.
 
 ## [0.0.7] - CI hardening and shared validator

@@ -4,7 +4,8 @@
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::drill::{read_drills, write_drills_as, DrillStyle, Hole};
 use eh3d_isocam::filetype::{detect, FileKind};
-use eh3d_isocam::hpgl::{write_opts, PenBy, PlotOptions};
+use eh3d_isocam::gcode::{write_with, Job};
+use eh3d_isocam::hpgl::{write_holes_at, write_holes_opts, write_opts, PenBy, PlotOptions};
 use eh3d_isocam::isolate::Pass;
 use eh3d_isocam::order::Order;
 use eh3d_isocam::transform::{lay_out, Axis, Board, Layout};
@@ -46,6 +47,7 @@ fn a_plot_keeps_its_negative_coordinates_when_asked() {
         &PlotOptions {
             keep_negative: true,
             pen_of_pass: Vec::new(),
+            origin: None,
         },
     )
     .unwrap();
@@ -64,6 +66,7 @@ fn the_pen_of_a_pass_can_be_chosen() {
         &PlotOptions {
             keep_negative: false,
             pen_of_pass: vec![1, 4],
+            origin: None,
         },
     )
     .unwrap();
@@ -311,4 +314,69 @@ fn drills_can_be_turned_over_and_written_plain_from_the_command_line() {
         text,
         "M48\r\n%\r\nT1\r\nX02017Y00104\r\nY00504\r\nT2\r\nX01799Y00445\r\nM00\r\n"
     );
+}
+
+#[test]
+fn the_isolation_plot_and_the_hole_plot_of_one_job_share_one_shift() {
+    // the copper starts at 0 and the tool reaches 0.1 mm beyond it: the paths start at -0.1 and the holes at 0
+    let p = pass(vec![vec![(-0.1, -0.1), (5.0, -0.1), (5.0, 3.0)]]);
+    let holes = vec![Hole {
+        tool: 1,
+        x_mm: 0.0,
+        y_mm: 0.0,
+        diameter_mm: 0.8,
+    }];
+    // each plot on its own moves by its own minimum: the hole stays at 0 and the path goes to 0, 0.1 mm apart
+    let alone = write_holes_opts(&holes, &[], false).unwrap();
+    assert!(alone.contains("PU0,0;PD;"), "{alone}");
+    // with the origin of the job both move by the same amount
+    let origin = Some((-1.0, -1.0));
+    let iso = write_opts(
+        std::slice::from_ref(&p),
+        &Order::default(),
+        PenBy::Pass,
+        &PlotOptions {
+            origin,
+            ..PlotOptions::default()
+        },
+    )
+    .unwrap();
+    let drl = write_holes_at(&holes, &[], false, origin).unwrap();
+    // 1 mm = 40 plotter units: the hole is at (40,40) and the path starts 0.1 mm (4 units) before it
+    assert!(drl.contains("PU40,40;PD;"), "{drl}");
+    assert!(iso.contains("PU36,36;"), "{iso}");
+}
+
+#[test]
+fn the_spindle_waits_after_every_start_when_the_settings_say_so() {
+    let p = pass(vec![vec![(0.0, 0.0), (5.0, 0.0), (5.0, 3.0)]]);
+    let none = write_with(std::slice::from_ref(&p), &Job::default(), &Order::default()).unwrap();
+    assert!(!none.contains("G4"), "{none}");
+    let job = Job {
+        spindle_wait_s: 2.0,
+        ..Job::default()
+    };
+    let g = write_with(std::slice::from_ref(&p), &job, &Order::default()).unwrap();
+    assert!(g.contains("M3 S24000\nG4 P2\n"), "{g}");
+    assert!(write_with(
+        std::slice::from_ref(&p),
+        &Job {
+            spindle_wait_s: -1.0,
+            ..Job::default()
+        },
+        &Order::default()
+    )
+    .is_err());
+    let s = Settings::parse(
+        "spindle_wait_s = 3
+hpgl_margin_mm = 0.5
+",
+    )
+    .unwrap();
+    assert_eq!(
+        (s.spindle_wait_s, s.hpgl_margin_mm, s.job().spindle_wait_s),
+        (3.0, 0.5, 3.0)
+    );
+    assert_eq!(Settings::parse(&s.to_text()).unwrap(), s);
+    assert_eq!(Settings::default().spindle_wait_s, 2.0);
 }
