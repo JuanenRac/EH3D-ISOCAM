@@ -2,7 +2,7 @@
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D). GPL-3.0-or-later.
 #![forbid(unsafe_code)]
 
-use eh3d_gerberviewer::scene::from_gerber;
+use eh3d_gerberviewer::scene::{from_gerber_with, SceneOptions};
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::drc;
 use eh3d_isocam::drill::{
@@ -25,7 +25,9 @@ use eh3d_isocam::problems::{problem_zones, thin_for_tolerance_in};
 use eh3d_isocam::tolerance::{close_pieces_scoped, ToleranceScope};
 use eh3d_isocam::transform::{alignment_pattern, lay_out, Axis, Board};
 use eh3d_isocam::units::{parse_length, Unit};
-use eh3d_parser_gerber::{codes, parse_bytes_with, InputError, InputLimits, Severity};
+use eh3d_parser_gerber::{
+    codes, parse_bytes_with, read_file_limited, InputError, InputLimits, ReadError, Severity,
+};
 use std::env;
 use std::fs;
 use std::process::ExitCode;
@@ -123,6 +125,7 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
             .ok_or_else(|| "--config needs a file".to_string())?;
         let text = fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
         cli.settings = Settings::parse(&text).map_err(|e| format!("{file}: {e}"))?;
+        cli.max_bytes = (cli.settings.max_input_mb * 1_048_576.0) as usize;
     }
     // the unit of the bare numbers counts wherever it is on the line
     if let Some(i) = args.iter().position(|a| a == "--input-units") {
@@ -187,17 +190,67 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
     Ok(cli)
 }
 
+/// The language of the person from the variables of the system (`en`, `es`, `de`, `fr`, `it`, `ja`, `zh`, `pt`); English when it is none of them.
+fn language() -> &'static str {
+    for var in ["LC_ALL", "LC_MESSAGES", "LANG"] {
+        if let Ok(v) = env::var(var) {
+            if v.is_empty() {
+                continue;
+            }
+            let code = v.chars().take(2).collect::<String>().to_ascii_lowercase();
+            return ["es", "de", "fr", "it", "ja", "zh", "pt"]
+                .into_iter()
+                .find(|l| *l == code)
+                .unwrap_or("en");
+        }
+    }
+    "en"
+}
+
+/// The message of a file that is over the size limit, in the language of the person.
+fn too_large(size: usize, limit: usize) -> String {
+    let human = |n: usize| {
+        if n >= 1_048_576 {
+            format!("{} MiB", n / 1_048_576)
+        } else {
+            format!("{n} bytes")
+        }
+    };
+    let (s, l) = (human(size), human(limit));
+    match language() {
+        "es" => format!("el fichero supera el límite ({s} frente a {l}); suba max_input_mb en el fichero de configuración (o --max-bytes) si es correcto"),
+        "de" => format!("die Datei überschreitet die Grenze ({s} gegenüber {l}); max_input_mb in der Konfigurationsdatei (oder --max-bytes) erhöhen, wenn das richtig ist"),
+        "fr" => format!("le fichier dépasse la limite ({s} contre {l}) ; augmentez max_input_mb dans le fichier de configuration (ou --max-bytes) si c'est voulu"),
+        "it" => format!("il file supera il limite ({s} contro {l}); aumentare max_input_mb nel file di configurazione (o --max-bytes) se è corretto"),
+        "ja" => format!("ファイルが上限を超えています（{s}、上限 {l}）。正しい場合は設定ファイルの max_input_mb（または --max-bytes）を増やしてください"),
+        "zh" => format!("文件超过上限（{s}，上限 {l}）；如无误，请在配置文件中调高 max_input_mb（或使用 --max-bytes）"),
+        "pt" => format!("o ficheiro excede o limite ({s} contra {l}); aumente max_input_mb no ficheiro de configuração (ou --max-bytes) se estiver correto"),
+        _ => format!("the file is above the limit ({s} against {l}); raise max_input_mb in the configuration file (or --max-bytes) if that is right"),
+    }
+}
+
+/// The shapes of a Gerber layer, with the arc tolerance of the settings.
+fn scene_of(cli: &Cli, file: &eh3d_parser_gerber::GerberFile) -> eh3d_gerberviewer::scene::Scene {
+    from_gerber_with(
+        file,
+        &SceneOptions {
+            arc_tolerance_mm: cli.settings.arc_tolerance_mm,
+        },
+    )
+}
+
 /// The text of a file, read the way the readers of the suite read bytes: a file over the size limit is refused, UTF-8 (with or without a byte order mark) is taken as it is, and
 /// anything else is read as Latin-1 with a warning that carries the stable code of the reader.
 fn read(cli: &Cli, path: &str) -> Result<String, String> {
-    let bytes = fs::read(path).map_err(|e| format!("{path}: {e}"))?;
-    if bytes.len() > cli.max_bytes {
-        let e = InputError::TooLarge {
-            size: bytes.len(),
-            limit: cli.max_bytes,
-        };
-        return Err(format!("{path}: {e}"));
-    }
+    let limits = InputLimits {
+        max_bytes: cli.max_bytes,
+    };
+    let bytes = read_file_limited(std::path::Path::new(path), &limits).map_err(|e| match e {
+        ReadError::TooLarge(InputError::TooLarge { size, limit }) => {
+            format!("{path}: {}", too_large(size, limit))
+        }
+        other => format!("{path}: {other}"),
+    })?;
     match String::from_utf8(bytes) {
         Ok(text) => Ok(text
             .strip_prefix('\u{feff}')
@@ -272,7 +325,7 @@ fn load_board(
 ) -> Result<(Board, eh3d_gerberviewer::scene::Bounds), String> {
     let mut board = Board::default();
     if let Some(l) = layer {
-        board.scene = from_gerber(&read_layer(cli, l)?);
+        board.scene = scene_of(cli, &read_layer(cli, l)?);
         for n in &board.scene.notes {
             eprintln!("note: {n}");
         }
@@ -708,7 +761,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                         ),
                     };
                 let copper = match layer {
-                    Some(l) => Some(from_gerber(&read_layer(&cli, l)?)),
+                    Some(l) => Some(scene_of(&cli, &read_layer(&cli, l)?)),
                     None => None,
                 };
                 rubout_contours(
@@ -765,9 +818,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         "mask" => {
             let layer = arg(&cli, 0, "mask needs a copper layer")?;
             let out = arg(&cli, 1, "mask needs an output file")?;
-            let copper = from_gerber(&read_layer(&cli, layer)?);
+            let copper = scene_of(&cli, &read_layer(&cli, layer)?);
             let mask_scene = match &cli.mask_layer {
-                Some(m) => Some(from_gerber(&read_layer(&cli, m)?)),
+                Some(m) => Some(scene_of(&cli, &read_layer(&cli, m)?)),
                 None => None,
             };
             let open = mask::openings(&copper, mask_scene.as_ref(), s.mask_margin_mm)?;

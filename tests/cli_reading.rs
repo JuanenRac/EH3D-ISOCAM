@@ -96,3 +96,74 @@ fn the_note_about_the_lighter_paths_is_printed_only_when_they_changed() {
     assert!(err.contains("points instead of"), "{err}");
     let _ = fs::remove_dir_all(&dir);
 }
+
+fn run_in(lang: &str, args: &[&str]) -> (bool, String, String) {
+    let out = Command::new(env!("CARGO_BIN_EXE_eh3d-isocam"))
+        .args(args)
+        .env("LC_ALL", lang)
+        .output()
+        .expect("the program runs");
+    (
+        out.status.success(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+#[test]
+fn the_size_limit_comes_from_the_configuration_file_and_the_refusal_is_in_the_language_of_the_person(
+) {
+    let dir = folder("limit_cfg");
+    let file = dir.join("big.gtl");
+    // a layer a little over 1 MiB: comments, then the board
+    let mut text = String::new();
+    while text.len() < 1_100_000 {
+        text.push_str("G04 padding padding padding padding padding padding*\n");
+    }
+    text.push_str(BOARD);
+    fs::write(&file, text).unwrap();
+    let cfg = dir.join("isocam.cfg");
+    fs::write(&cfg, "max_input_mb = 1\n").unwrap();
+    let (f, c) = (file.to_str().unwrap(), cfg.to_str().unwrap());
+    let (ok, _, err) = run_in("en", &["info", f, "--config", c]);
+    assert!(
+        !ok && err.contains("above the limit") && err.contains("max_input_mb"),
+        "{err}"
+    );
+    for (lang, word) in [
+        ("es", "supera el límite"),
+        ("de", "überschreitet die Grenze"),
+        ("fr", "dépasse la limite"),
+        ("it", "supera il limite"),
+        ("ja", "上限を超えています"),
+        ("zh", "文件超过上限"),
+        ("pt", "excede o limite"),
+    ] {
+        let (ok, _, err) = run_in(lang, &["info", f, "--config", c]);
+        assert!(!ok && err.contains(word), "{lang}: {err}");
+    }
+    // the same file passes with the default limit, and --max-bytes wins over the configuration file
+    let (ok, _, err) = run_in("en", &["info", f]);
+    assert!(ok, "{err}");
+    let (ok, _, err) = run_in("en", &["info", f, "--config", c, "--max-bytes", "5000000"]);
+    assert!(ok, "{err}");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_size_limit_and_the_arc_tolerance_of_the_settings_are_checked() {
+    use eh3d_isocam::config::Settings;
+    let s = Settings::parse("max_input_mb = 8\narc_tolerance_mm = 0.002\n").unwrap();
+    assert_eq!((s.max_input_mb, s.arc_tolerance_mm), (8.0, 0.002));
+    assert_eq!(Settings::parse(&s.to_text()).unwrap(), s);
+    let d = Settings::default();
+    assert_eq!((d.max_input_mb, d.arc_tolerance_mm), (64.0, 0.005));
+    for bad in [
+        "max_input_mb = 0\n",
+        "max_input_mb = 100000\n",
+        "arc_tolerance_mm = 0\n",
+        "arc_tolerance_mm = 5\n",
+    ] {
+        assert!(Settings::parse(bad).is_err(), "{bad}");
+    }
+}

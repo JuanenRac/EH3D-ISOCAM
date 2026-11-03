@@ -76,7 +76,7 @@
 * **阻焊层**（`mask`）：开窗写成 Gerber 层，来自设计的阻焊层或铜箔的焊盘，每个按 `mask_margin_mm` 外扩；走线保持被覆盖。
 * **单位与预览**（`eh3d-raster`、`src/preview.rs`）：长度可以带 `mm`、`mil` 或 `in`，G 代码可以按英寸写出，`preview` 把各遍加工路径画在铜箔上，输出为 SVG 图或文本。
 * **旧式Gerber层**（`legacy`）：没有格式语句的层（许多旧程序写出的RS-274D），在给出光圈列表（`--apertures`，每行一个D码及其尺寸）和格式（`--gerber-format 2.3`、`--gerber-zeros`、`--gerber-units`）后即可读取；它会被改写为扩展Gerber，再交给普通读取器。已用手写的层测试，未用其他程序生成的文件测试。
-* **读取与按代码的提示（命令行）：** 文件带大小限制读取（`--max-bytes N`，默认 256 MiB），非 UTF-8 文本按 Latin-1 读取并给出警告（`input-not-utf8`）；Gerber 读取器的提示连同稳定代码一起显示，`--hide CODE[,CODE]` 可省略这些代码。关于简化路径的说明和关于切割桥的说明，只在确实改变了内容时才输出。
+* **读取与按代码的提示（命令行）：** 文件带大小限制读取（`--max-bytes N` or `max_input_mb`，默认 64 MiB），非 UTF-8 文本按 Latin-1 读取并给出警告（`input-not-utf8`）；Gerber 读取器的提示连同稳定代码一起显示，`--hide CODE[,CODE]` 可省略这些代码。关于简化路径的说明和关于切割桥的说明，只在确实改变了内容时才输出。 `arc_tolerance_mm` 设定图层圆弧的跟随精度。
 
 ## 🧩 在 EH3D 中的角色
 
