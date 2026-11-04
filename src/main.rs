@@ -171,6 +171,26 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
                     _ => return Err(format!("--units '{v}' is not mm or inch")),
                 });
             }
+            "--fiducials-csv" => {
+                // the pairs of marks, one row each: design x, design y, measured x, measured y (a header row and lines that start with # are left out)
+                let file = it.next().ok_or_else(|| format!("{a} needs a file"))?;
+                let text = read(&cli, &file)?;
+                for line in text.lines().map(str::trim) {
+                    let first = line
+                        .split(|c: char| c == ',' || c == ';' || c.is_whitespace())
+                        .find(|t| !t.is_empty());
+                    let numeric = first.is_some_and(|t| {
+                        t.trim_start_matches(['+', '-', '.'])
+                            .starts_with(|c: char| c.is_ascii_digit())
+                    });
+                    if line.is_empty() || line.starts_with('#') || !numeric {
+                        continue;
+                    }
+                    cli.settings
+                        .set("fiducial", line)
+                        .map_err(|e| format!("{file}: {e}"))?;
+                }
+            }
             "--hide" => {
                 let v = it.next().ok_or_else(|| format!("{a} needs a value"))?;
                 for c in v.split(',').map(str::trim).filter(|c| !c.is_empty()) {

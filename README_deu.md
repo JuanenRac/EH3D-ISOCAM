@@ -99,6 +99,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Jeder abgestimmte Wert ist eine Einstellung:** nichts, was jemand ändern möchte, steckt fest im Code; ein schlechter Wert ist ein Fehler mit Zeilenangabe.
 * **Einheiten nach Wahl:** Längen in einer Einstellungsdatei oder auf der Kommandozeile können in Millimetern, Mil oder Zoll geschrieben werden; der G-Code kann in Zoll geschrieben werden und der Bildschirm kann Mil anzeigen.
 * **Sicherere Dateien:** der G-Code beginnt mit dem Standardkopf (Erzeuger, Einheiten, Quelldatei mit ihrem SHA-256), eine Ausgabe, die zugleich Eingabe des Laufs ist, wird abgelehnt, ein Plot mit einer Koordinate über 32767 Einheiten wird abgelehnt, `--units mm|inch` gibt die Einheiten einer Bohrdatei an, die sie nicht nennt (eine Datei mit winzigen Löchern und ohne Einheiten wird ohne die Angabe abgelehnt), und die Kontur aus einzelnen Strichen wird mit einem Index verbunden, sodass fünfzigtausend Segmente nur Augenblicke brauchen.
+* **Marken aus einer Tabelle:** `--fiducials-csv DATEI` liest die Markenpaare (Entwurf x, Entwurf y, gemessen x, gemessen y; eine Kopfzeile und Zeilen, die mit `#` beginnen, werden übergangen), sodass die Ausgabe von `eh3d-vision align --isocam-args` unverändert verwendet werden kann.
 
 ## 🔒 Sicherheit und Schutz
 

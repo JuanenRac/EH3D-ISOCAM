@@ -99,6 +99,7 @@ Como as partes deste repositório se encaixam: quem o usa, o que contém e de qu
 * **Cada valor afinado é uma definição:** nada do que uma pessoa possa querer mudar está escondido no código; um valor mau é um erro com a sua linha.
 * **Unidades à escolha:** os comprimentos de um ficheiro de definições ou da linha de comandos podem ser escritos em milímetros, mils ou polegadas; o G-code pode ser escrito em polegadas e o ecrã pode mostrar mils.
 * **Ficheiros mais seguros:** o G-code começa com o cabeçalho padrão (gerador, unidades, ficheiro de origem com o seu SHA-256), recusa-se uma saída que também é uma entrada da execução, recusa-se um traçado com uma coordenada além de 32767 unidades, `--units mm|inch` dá as unidades de um ficheiro de furação que não as diz (um ficheiro com furos minúsculos e sem unidades é recusado sem isso) e o contorno de traços soltos junta-se com um índice, de modo que cinquenta mil segmentos levam um instante.
+* **Marcas a partir de uma tabela:** `--fiducials-csv FICHEIRO` lê os pares de marcas (x de projeto, y de projeto, x medido, y medido; uma linha de cabeçalho e as linhas que começam por `#` são omitidas), de modo que a saída de `eh3d-vision align --isocam-args` se usa tal como está.
 
 ## 🔒 Segurança e proteção
 

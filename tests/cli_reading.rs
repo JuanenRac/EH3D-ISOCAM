@@ -186,3 +186,27 @@ fn an_output_that_is_an_input_of_the_run_is_refused_and_the_input_stays_as_it_wa
     assert_eq!(fs::read_to_string(&file).unwrap(), BOARD);
     let _ = fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn the_marks_of_a_csv_file_become_fiducials_and_a_header_or_a_comment_is_left_out() {
+    let dir = folder("fiducials_csv");
+    let file = dir.join("marks.csv");
+    fs::write(
+        &file,
+        "design_x,design_y,measured_x,measured_y\n# the first two marks\n0,0,0.1,0.2\n50;0;50.1;0.15\n  0 40 0.05 40.2\n",
+    )
+    .unwrap();
+    let (ok, out, err) = run(&["config", "--fiducials-csv", file.to_str().unwrap()]);
+    assert!(ok, "{err}");
+    assert_eq!(out.matches("fiducial = ").count(), 3, "{out}");
+    let (ok, _, err) = run(&[
+        "config",
+        "--fiducials-csv",
+        dir.join("none.csv").to_str().unwrap(),
+    ]);
+    assert!(!ok && err.contains("none.csv"), "{err}");
+    fs::write(&file, "0,0,1\n").unwrap();
+    let (ok, _, err) = run(&["config", "--fiducials-csv", file.to_str().unwrap()]);
+    assert!(!ok && err.contains("four numbers"), "{err}");
+    let _ = fs::remove_dir_all(&dir);
+}

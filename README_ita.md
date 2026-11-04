@@ -99,6 +99,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **Ogni valore regolato è un'impostazione:** niente di ciò che una persona può voler cambiare è nascosto nel codice; un valore sbagliato è un errore con la sua riga.
 * **Unità a scelta:** le lunghezze in un file di impostazioni o sulla riga di comando possono essere scritte in millimetri, mil o pollici; il G-code può essere scritto in pollici e lo schermo può mostrare mil.
 * **File più sicuri:** il G-code inizia con l'intestazione standard (generatore, unità, file di origine con il suo SHA-256), un'uscita che è anche un ingresso dell'esecuzione viene rifiutata, un tracciato con una coordinata oltre 32767 unità viene rifiutato, `--units mm|inch` dà le unità di un file di foratura che non le dice (un file con fori minuscoli e senza unità viene rifiutato senza di esso) e il contorno di tratti separati si unisce con un indice, così cinquantamila segmenti richiedono un attimo.
+* **Segni da una tabella:** `--fiducials-csv FILE` legge le coppie di segni (x di progetto, y di progetto, x misurata, y misurata; una riga di intestazione e le righe che iniziano con `#` vengono omesse), così l'uscita di `eh3d-vision align --isocam-args` si usa così com'è.
 
 ## 🔒 Sicurezza e protezione
 

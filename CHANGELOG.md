@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **Marks from a table:** `--fiducials-csv FILE` reads the pairs of marks, one row each (a header row and lines that start with `#` are left out).
 - **The G-code starts with the standard header:** the generator and its version, the units, the file the work came from with its SHA-256, and a path with a coordinate that is not a number is refused.
 - **An output that is also an input is refused:** the result is never written over the layer, the outline, the holes, the mask or the apertures of the run.
 - **A plot beyond the range of the format is refused:** a coordinate over 32767 units (819 mm) fails with a message instead of wrapping round.
