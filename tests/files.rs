@@ -454,7 +454,7 @@ fn fifty_thousand_segments_in_any_order_join_into_one_path_in_moments() {
         state ^= state << 17;
         order.swap(i, (state % (i as u64 + 1)) as usize);
     }
-    let point = |k: usize| (k as f64 * 0.5, if k % 2 == 0 { 0.0 } else { 0.3 });
+    let point = |k: usize| (k as f64 * 0.5, if k.is_multiple_of(2) { 0.0 } else { 0.3 });
     let runs: Vec<Vec<(f64, f64)>> = order
         .iter()
         .map(|&k| vec![point(k), point(k + 1)])

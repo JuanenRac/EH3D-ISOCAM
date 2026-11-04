@@ -174,11 +174,9 @@ fn an_output_that_is_an_input_of_the_run_is_refused_and_the_input_stays_as_it_wa
     let file = dir.join("board.gtl");
     fs::write(&file, BOARD).unwrap();
     let f = file.to_str().unwrap();
-    for args in [vec!["isolate", f, f]] {
-        let (ok, _, err) = run(&args);
-        assert!(!ok && err.contains("also an input"), "{args:?}: {err}");
-        assert_eq!(fs::read_to_string(&file).unwrap(), BOARD, "{args:?}");
-    }
+    let (ok, _, err) = run(&["isolate", f, f]);
+    assert!(!ok && err.contains("also an input"), "{err}");
+    assert_eq!(fs::read_to_string(&file).unwrap(), BOARD);
     // the same file written through another spelling of its path
     let other = dir.join(".").join("board.gtl");
     let (ok, _, err) = run(&["isolate", f, other.to_str().unwrap()]);
