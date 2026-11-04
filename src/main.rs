@@ -6,8 +6,8 @@ use eh3d_gerberviewer::scene::{from_gerber_with, SceneOptions};
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::drc;
 use eh3d_isocam::drill::{
-    add_tabs, read_drills_with_units, read_outline, route_outline, write_drills_as, write_route_excellon,
-    DrillStyle, Hole, Tabs,
+    add_tabs, read_drills_with_units, read_outline, route_outline, write_drills_as,
+    write_route_excellon, DrillStyle, Hole, Tabs,
 };
 use eh3d_isocam::dxf;
 use eh3d_isocam::fiducial::{apply_to_holes, apply_to_passes};
@@ -15,7 +15,6 @@ use eh3d_isocam::filetype;
 use eh3d_isocam::fill::{rubout_contours, Fill};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::gcode::write_in;
-use eh3d_parser_gcode::emit::{header_with_units, sha256_hex, Header};
 use eh3d_isocam::hpgl::{set_pen_speed, write_holes_at, write_opts, PenBy, PlotOptions};
 use eh3d_isocam::isolate::{net_scene, plan_with_pads, rubout_lines, Pass};
 use eh3d_isocam::mask;
@@ -26,6 +25,7 @@ use eh3d_isocam::problems::{problem_zones, thin_for_tolerance_in};
 use eh3d_isocam::tolerance::{close_pieces_scoped, ToleranceScope};
 use eh3d_isocam::transform::{alignment_pattern, lay_out, Axis, Board};
 use eh3d_isocam::units::{parse_length, Unit};
+use eh3d_parser_gcode::emit::{header_with_units, sha256_hex, Header};
 use eh3d_parser_gerber::{
     codes, parse_bytes_with, read_file_limited, InputError, InputLimits, ReadError, Severity,
 };
@@ -398,7 +398,13 @@ fn write_text(cli: &Cli, out_index: usize, out: &str, text: String) -> Result<()
         (Ok(a), Ok(b)) => a == b,
         _ => other == out,
     };
-    let extras = [&cli.outline, &cli.drills, &cli.mask_layer, &cli.apertures, &cli.contour];
+    let extras = [
+        &cli.outline,
+        &cli.drills,
+        &cli.mask_layer,
+        &cli.apertures,
+        &cli.contour,
+    ];
     let reads = cli
         .positional
         .iter()

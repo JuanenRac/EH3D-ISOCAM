@@ -196,7 +196,8 @@ fn a_path_with_a_coordinate_that_is_not_a_number_writes_nothing() {
     let ok = write_in(&[square(1.0)], &Job::default(), &Order::default(), Unit::Mm).unwrap();
     assert!(ok.contains("G1 X1 Y1"), "{ok}");
     for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
-        let err = write_in(&[square(bad)], &Job::default(), &Order::default(), Unit::Mm).unwrap_err();
+        let err =
+            write_in(&[square(bad)], &Job::default(), &Order::default(), Unit::Mm).unwrap_err();
         assert!(err.contains("not a number"), "{err}");
     }
 }

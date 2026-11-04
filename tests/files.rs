@@ -455,7 +455,10 @@ fn fifty_thousand_segments_in_any_order_join_into_one_path_in_moments() {
         order.swap(i, (state % (i as u64 + 1)) as usize);
     }
     let point = |k: usize| (k as f64 * 0.5, if k % 2 == 0 { 0.0 } else { 0.3 });
-    let runs: Vec<Vec<(f64, f64)>> = order.iter().map(|&k| vec![point(k), point(k + 1)]).collect();
+    let runs: Vec<Vec<(f64, f64)>> = order
+        .iter()
+        .map(|&k| vec![point(k), point(k + 1)])
+        .collect();
     let started = std::time::Instant::now();
     let o = join_runs(runs, 0.01);
     assert!(
@@ -476,7 +479,11 @@ fn a_file_without_units_and_with_tiny_holes_needs_the_units_and_with_them_it_is_
     let err = read_drills(text).unwrap_err();
     assert!(err.contains("--units"), "{err}");
     let inches = read_drills_with_units(text, Some(Units::Inches)).unwrap();
-    assert!((inches.holes[0].x_mm - 12.7).abs() < 1e-9, "{:?}", inches.holes);
+    assert!(
+        (inches.holes[0].x_mm - 12.7).abs() < 1e-9,
+        "{:?}",
+        inches.holes
+    );
     let mm = read_drills_with_units(text, Some(Units::Millimetres)).unwrap();
     assert!((mm.holes[0].x_mm - 0.5).abs() < 1e-9);
 }

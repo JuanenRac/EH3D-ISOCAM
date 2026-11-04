@@ -28,7 +28,10 @@ pub fn check_range(plot: &str) -> Result<(), String> {
         let Some(rest) = line.strip_prefix("PU").or_else(|| line.strip_prefix("PD")) else {
             continue;
         };
-        for number in rest.split(|c: char| !(c.is_ascii_digit() || c == '-')).filter(|t| !t.is_empty()) {
+        for number in rest
+            .split(|c: char| !(c.is_ascii_digit() || c == '-'))
+            .filter(|t| !t.is_empty())
+        {
             if number.parse::<i64>().map_or(true, |v| v.abs() > MAX_UNITS) {
                 return Err(format!(
                     "line {} of the plot has the coordinate {number}, beyond {MAX_UNITS} units ({:.0} mm at {UNITS_PER_MM} units to the millimetre): the board is too large for this format",

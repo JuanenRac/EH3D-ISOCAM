@@ -346,7 +346,11 @@ pub fn join_runs(runs: Vec<Vec<(f64, f64)>>, tol: f64) -> Outline {
         .collect();
     // the two ends of every run in a grid of cells as wide as the tolerance: the run that meets a point is found by looking at the nine cells around it
     // (the plain search looked at every run left for every join, which is quadratic in the runs)
-    let size = if tol.is_finite() && tol > 1e-9 { tol } else { 1e-9 };
+    let size = if tol.is_finite() && tol > 1e-9 {
+        tol
+    } else {
+        1e-9
+    };
     let key = |p: (f64, f64)| ((p.0 / size).floor() as i64, (p.1 / size).floor() as i64);
     let mut grid: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
     for (i, r) in left.iter().enumerate() {
@@ -400,7 +404,9 @@ pub fn join_runs(runs: Vec<Vec<(f64, f64)>>, tol: f64) -> Outline {
             }
             match find(&left, end) {
                 Some(i) => {
-                    let Some(mut r) = left[i].take() else { continue };
+                    let Some(mut r) = left[i].take() else {
+                        continue;
+                    };
                     if !near(r[0], end) {
                         r.reverse();
                     }
@@ -411,7 +417,9 @@ pub fn join_runs(runs: Vec<Vec<(f64, f64)>>, tol: f64) -> Outline {
                     let start = run[0];
                     match find(&left, start) {
                         Some(i) => {
-                            let Some(mut r) = left[i].take() else { continue };
+                            let Some(mut r) = left[i].take() else {
+                                continue;
+                            };
                             if !near(r[r.len() - 1], start) {
                                 r.reverse();
                             }
