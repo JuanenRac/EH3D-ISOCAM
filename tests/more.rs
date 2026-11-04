@@ -182,3 +182,38 @@ fn the_name_in_the_message_is_the_one_that_was_given_even_with_odd_characters() 
     let e = expect_gerber("my \"board\" é.drl", FileKind::Excellon).unwrap_err();
     assert!(e.contains("my \"board\" é.drl"));
 }
+
+#[test]
+fn a_path_with_a_coordinate_that_is_not_a_number_writes_nothing() {
+    use eh3d_isocam::gcode::{write_in, Job};
+    use eh3d_isocam::isolate::Pass;
+    use eh3d_isocam::order::Order;
+    use eh3d_isocam::units::Unit;
+    let square = |bad: f64| Pass {
+        paths: vec![vec![(0.0, 0.0), (1.0, 0.0), (1.0, bad), (0.0, 0.0)]],
+        ..Pass::default()
+    };
+    let ok = write_in(&[square(1.0)], &Job::default(), &Order::default(), Unit::Mm).unwrap();
+    assert!(ok.contains("G1 X1 Y1"), "{ok}");
+    for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        let err = write_in(&[square(bad)], &Job::default(), &Order::default(), Unit::Mm).unwrap_err();
+        assert!(err.contains("not a number"), "{err}");
+    }
+}
+
+#[test]
+fn a_plot_with_a_coordinate_beyond_the_range_of_the_format_is_refused() {
+    use eh3d_isocam::hpgl::{check_range, write};
+    use eh3d_isocam::isolate::Pass;
+    let pass = |far: f64| Pass {
+        paths: vec![vec![(0.0, 0.0), (far, 0.0), (far, 10.0), (0.0, 0.0)]],
+        ..Pass::default()
+    };
+    // 800 mm are 32000 units: inside; 820 mm are 32800 units: outside
+    assert!(write(&[pass(800.0)]).is_ok());
+    let err = write(&[pass(820.0)]).unwrap_err();
+    assert!(err.contains("32767") && err.contains("too large"), "{err}");
+    assert!(check_range("IN;SP1;PU0,0;PD100,-200;PU0,0;SP0;").is_ok());
+    assert!(check_range("PU0,0;PD40000,0;").is_err());
+    assert!(check_range("PU0,0;PD-40000,0;").is_err());
+}

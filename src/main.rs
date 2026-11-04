@@ -6,7 +6,7 @@ use eh3d_gerberviewer::scene::{from_gerber_with, SceneOptions};
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::drc;
 use eh3d_isocam::drill::{
-    add_tabs, read_drills, read_outline, route_outline, write_drills_as, write_route_excellon,
+    add_tabs, read_drills_with_units, read_outline, route_outline, write_drills_as, write_route_excellon,
     DrillStyle, Hole, Tabs,
 };
 use eh3d_isocam::dxf;
@@ -15,6 +15,7 @@ use eh3d_isocam::filetype;
 use eh3d_isocam::fill::{rubout_contours, Fill};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::gcode::write_in;
+use eh3d_parser_gcode::emit::{header_with_units, sha256_hex, Header};
 use eh3d_isocam::hpgl::{set_pen_speed, write_holes_at, write_opts, PenBy, PlotOptions};
 use eh3d_isocam::isolate::{net_scene, plan_with_pads, rubout_lines, Pass};
 use eh3d_isocam::mask;
@@ -86,6 +87,8 @@ struct Cli {
     max_bytes: usize,
     /// The codes of the notices of the Gerber reader that are not shown (`--hide CODE,CODE`).
     hide: Vec<String>,
+    /// The units of a drill file that does not say them, or says them wrong (`--units mm|inch`).
+    units: Option<eh3d_parser_excellon::Units>,
 }
 
 /// Numbers separated by commas, each one a length that may carry its unit.
@@ -117,6 +120,7 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
         area: None,
         max_bytes: InputLimits::default().max_bytes,
         hide: Vec::new(),
+        units: None,
     };
     // the configuration file first, so that the options on the command line win over it
     if let Some(i) = args.iter().position(|a| a == "--config") {
@@ -158,6 +162,14 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
                     .trim()
                     .parse::<usize>()
                     .map_err(|_| format!("--max-bytes '{v}' is not a whole number"))?;
+            }
+            "--units" => {
+                let v = it.next().ok_or_else(|| format!("{a} needs mm or inch"))?;
+                cli.units = Some(match v.trim().to_ascii_lowercase().as_str() {
+                    "mm" | "metric" => eh3d_parser_excellon::Units::Millimetres,
+                    "inch" | "in" | "inches" => eh3d_parser_excellon::Units::Inches,
+                    _ => return Err(format!("--units '{v}' is not mm or inch")),
+                });
             }
             "--hide" => {
                 let v = it.next().ok_or_else(|| format!("{a} needs a value"))?;
@@ -333,7 +345,7 @@ fn load_board(
     if let Some(d) = &cli.drills {
         let text = read(cli, d)?;
         filetype::expect_drills(d, filetype::detect(&text))?;
-        let drills = read_drills(&text).map_err(|e| format!("{d}: {e}"))?;
+        let drills = read_drills_with_units(&text, cli.units).map_err(|e| format!("{d}: {e}"))?;
         for n in &drills.notes {
             eprintln!("note: {d}: {n}");
         }
@@ -352,7 +364,54 @@ fn load_board(
     lay_out(&board, &cli.settings.layout())
 }
 
-fn write_text(out: &str, text: String) -> Result<(), String> {
+/// The standard header of a G-code file: the generator and its version, the units, the file the work came from with its SHA-256 and the tools.
+fn gcode_header(cli: &Cli, source: Option<&str>) -> String {
+    let named = source.and_then(|p| fs::read(p).ok().map(|bytes| (p, sha256_hex(&bytes))));
+    let units = if cli.settings.output_units == Unit::Inch {
+        "inch (G20)"
+    } else {
+        "mm (G21)"
+    };
+    header_with_units(
+        &Header {
+            generator: "eh3d-isocam",
+            version: env!("CARGO_PKG_VERSION"),
+            source: named.as_ref().map(|(p, hash)| {
+                (
+                    std::path::Path::new(p)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("input"),
+                    hash.clone(),
+                )
+            }),
+            tools: "one tool per pass, see the comment of each pass",
+        },
+        units,
+    )
+}
+
+/// Writes an output file. The output may not be a file the run reads (the layer, the outline, the holes, the mask or the apertures): that would destroy the input. `out_index` is the place
+/// of the output among the positional arguments, so that it is not compared with itself.
+fn write_text(cli: &Cli, out_index: usize, out: &str, text: String) -> Result<(), String> {
+    let same = |other: &str| match (fs::canonicalize(other), fs::canonicalize(out)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => other == out,
+    };
+    let extras = [&cli.outline, &cli.drills, &cli.mask_layer, &cli.apertures, &cli.contour];
+    let reads = cli
+        .positional
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i != out_index)
+        .map(|(_, p)| p)
+        .chain(extras.into_iter().flatten())
+        .any(|p| same(p));
+    if reads {
+        return Err(format!(
+            "{out}: the output file is also an input of this run; write the result to a new file"
+        ));
+    }
     fs::write(out, text).map_err(|e| format!("{out}: {e}"))
 }
 
@@ -642,7 +701,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 };
                 match out {
                     Some(o) => {
-                        write_text(o, text)?;
+                        write_text(&cli, 1, o, text)?;
                         println!("the preview of {} passes written to {o}", passes.len());
                     }
                     None => print!("{text}"),
@@ -724,9 +783,13 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             } else if is_dxf(out) {
                 dxf::write(&passes)?
             } else {
-                write_in(&passes, &s.job(), &order, s.output_units)?
+                let g = write_in(&passes, &s.job(), &order, s.output_units)?;
+                format!(
+                    "{}{g}",
+                    gcode_header(&cli, cli.positional.first().map(String::as_str))
+                )
             };
-            write_text(out, text)?;
+            write_text(&cli, 1, out, text)?;
             let total: f64 = passes
                 .iter()
                 .flat_map(Pass::cuts)
@@ -800,14 +863,15 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             } else if is_dxf(out) {
                 dxf::write(std::slice::from_ref(&pass))?
             } else {
-                write_in(
+                let g = write_in(
                     std::slice::from_ref(&pass),
                     &s.job(),
                     &order,
                     s.output_units,
-                )?
+                )?;
+                format!("{}{g}", gcode_header(&cli, cli.contour.as_deref()))
             };
-            write_text(out, text)?;
+            write_text(&cli, 0, out, text)?;
             println!(
                 "{} lines of {} written to {out}",
                 pass.open.len(),
@@ -827,7 +891,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             for n in &open.notes {
                 eprintln!("note: {n}");
             }
-            write_text(out, mask::write_gerber(&open)?)?;
+            write_text(&cli, 1, out, mask::write_gerber(&open)?)?;
             println!(
                 "{} openings, {} beyond each pad, written to {out}",
                 open.shapes.len(),
@@ -905,7 +969,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     },
                 )?
             };
-            write_text(out, text)?;
+            write_text(&cli, 1, out, text)?;
             println!("{} holes written to {out}", holes.len());
             Ok(())
         }
@@ -972,7 +1036,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 let (cuts, _) = arrange(&pass.cuts(), &order, order.start);
                 write_route_excellon(&cuts, s.route_tool_mm, 1)?
             };
-            write_text(out, text)?;
+            write_text(&cli, 1, out, text)?;
             println!(
                 "{} paths, {} of cut written to {out}",
                 pass.cuts().len(),

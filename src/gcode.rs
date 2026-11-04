@@ -4,6 +4,7 @@ use crate::contour::Loop;
 use crate::isolate::Pass;
 use crate::order::{arrange, Order};
 use crate::units::Unit;
+use eh3d_parser_gcode::emit::number;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Job {
@@ -58,14 +59,9 @@ impl Job {
     }
 }
 
+/// A number of the file, written the way the whole suite writes it. [`write_in`] checks beforehand that every number it writes is finite, so the error cannot happen here.
 fn n(v: f64) -> String {
-    let s = format!("{v:.3}");
-    let s = s.trim_end_matches('0').trim_end_matches('.');
-    if s == "-0" || s.is_empty() {
-        "0".to_string()
-    } else {
-        s.to_string()
-    }
+    number(v).unwrap_or_default()
 }
 
 /// A length for the file: three decimals in mm, five in inches.
@@ -113,6 +109,15 @@ pub fn write_with(passes: &[Pass], job: &Job, order: &Order) -> Result<String, S
 /// The same, in millimetres (`G21`) or in inches (`G20`: every length and the feeds are converted). G-code has no mils.
 pub fn write_in(passes: &[Pass], job: &Job, order: &Order, unit: Unit) -> Result<String, String> {
     job.validate()?;
+    // a number that is not finite would be written as `NaN` or `inf`, which a controller chokes on: nothing is written
+    if passes.iter().any(|p| {
+        !(p.offset_mm.is_finite() && p.diameter_mm.is_finite())
+            || p.cuts()
+                .iter()
+                .any(|c| c.pts.iter().any(|q| !(q.0.is_finite() && q.1.is_finite())))
+    }) {
+        return Err("a path has a coordinate that is not a number: nothing was written".into());
+    }
     if unit == Unit::Mil {
         return Err("G-code is written in mm or inch, not in mils".into());
     }

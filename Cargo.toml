@@ -24,6 +24,7 @@ eh3d-raster = { version = ">=0.0.3", path = "../EH3D-CORE-LIBS/crates/eh3d-raste
 # the pure CAM: the copper on a grid, isolation passes, checks, path order, fiducials, board transforms and old-style Gerber
 eh3d-cam = { version = ">=0.0.3", path = "../EH3D-CORE-LIBS/crates/eh3d-cam" }
 eh3d-gerberviewer ={ version = ">=0.0.1", path = "../EH3D-GERBERVIEWER" }
+eh3d-parser-gcode = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d-parser-gcode" }
 eh3d-parser-excellon = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d-parser-excellon" }
 # the Bungard file formats: Excellon (mils), plotter files, board outlines (Gerber and DXF)
 eh3d-bungard-formats = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/formats" }

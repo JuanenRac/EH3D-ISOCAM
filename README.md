@@ -98,6 +98,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 * **No unsafe code:** `#![forbid(unsafe_code)]` in the library and the program.
 * **Every tuned value is a setting:** nothing that a person may want to change is hidden in the code; a bad value is an error with its line.
 * **Units you choose:** lengths in a settings file or on the command line may be written in millimetres, mils or inches; the G-code can be written in inches and the screen can show mils.
+* **Safer files:** the G-code starts with the standard header (generator, units, source file with its SHA-256), an output that is also an input of the run is refused, a plot with a coordinate beyond 32767 units is refused, `--units mm|inch` gives the units of a drill file that does not say them (a file with tiny holes and no units is refused without it), and the outline of separate strokes is joined with an index, so fifty thousand segments take moments.
 
 ## 🔒 Security & Safety
 

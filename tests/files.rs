@@ -441,3 +441,42 @@ fn a_tool_number_above_255_is_renumbered_with_a_notice_and_two_tools_never_merge
         .iter()
         .all(|n| !n.starts_with("tool-number-too-large")));
 }
+
+#[test]
+fn fifty_thousand_segments_in_any_order_join_into_one_path_in_moments() {
+    let n = 50_000_usize;
+    // the segments of a zig-zag line, in an order that is not the order of the line
+    let mut order: Vec<usize> = (0..n).collect();
+    let mut state: u64 = 0x9E37_79B9_7F4A_7C15;
+    for i in (1..n).rev() {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        order.swap(i, (state % (i as u64 + 1)) as usize);
+    }
+    let point = |k: usize| (k as f64 * 0.5, if k % 2 == 0 { 0.0 } else { 0.3 });
+    let runs: Vec<Vec<(f64, f64)>> = order.iter().map(|&k| vec![point(k), point(k + 1)]).collect();
+    let started = std::time::Instant::now();
+    let o = join_runs(runs, 0.01);
+    assert!(
+        started.elapsed().as_secs() < 30,
+        "{:?} for {n} segments",
+        started.elapsed()
+    );
+    assert!(o.closed.is_empty());
+    assert_eq!(o.open.len(), 1);
+    assert_eq!(o.open[0].len(), n + 1);
+}
+
+#[test]
+fn a_file_without_units_and_with_tiny_holes_needs_the_units_and_with_them_it_is_read() {
+    use eh3d_isocam::drill::read_drills_with_units;
+    use eh3d_parser_excellon::Units;
+    let text = "M48\nT1C0.03\n%\nT1\nX0.5Y0.5\nX2.5Y1.5\nM30\n";
+    let err = read_drills(text).unwrap_err();
+    assert!(err.contains("--units"), "{err}");
+    let inches = read_drills_with_units(text, Some(Units::Inches)).unwrap();
+    assert!((inches.holes[0].x_mm - 12.7).abs() < 1e-9, "{:?}", inches.holes);
+    let mm = read_drills_with_units(text, Some(Units::Millimetres)).unwrap();
+    assert!((mm.holes[0].x_mm - 0.5).abs() < 1e-9);
+}

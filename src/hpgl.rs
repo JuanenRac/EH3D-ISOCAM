@@ -19,6 +19,28 @@ pub enum PenBy {
     Tool,
 }
 
+/// The largest coordinate a plotter that reads 16-bit numbers takes: 32767 units, 819 mm at 40 units to the millimetre.
+pub const MAX_UNITS: i64 = 32767;
+
+/// Fails when a coordinate of the plot is beyond [`MAX_UNITS`]: the plotter or the routing program would wrap it round or stop, and cut the board in another place.
+pub fn check_range(plot: &str) -> Result<(), String> {
+    for (n, line) in plot.lines().enumerate() {
+        let Some(rest) = line.strip_prefix("PU").or_else(|| line.strip_prefix("PD")) else {
+            continue;
+        };
+        for number in rest.split(|c: char| !(c.is_ascii_digit() || c == '-')).filter(|t| !t.is_empty()) {
+            if number.parse::<i64>().map_or(true, |v| v.abs() > MAX_UNITS) {
+                return Err(format!(
+                    "line {} of the plot has the coordinate {number}, beyond {MAX_UNITS} units ({:.0} mm at {UNITS_PER_MM} units to the millimetre): the board is too large for this format",
+                    n + 1,
+                    MAX_UNITS as f64 / UNITS_PER_MM
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn units(v: f64) -> i64 {
     (v * UNITS_PER_MM).round() as i64
 }
@@ -131,6 +153,7 @@ pub fn write_opts(
         at = end;
     }
     s.push_str("PU0,0;SP0;\n");
+    check_range(&s)?;
     Ok(s)
 }
 
@@ -325,5 +348,6 @@ pub fn write_holes_at(
         }
     }
     s.push_str("PU0,0;SP0;\n");
+    check_range(&s)?;
     Ok(s)
 }

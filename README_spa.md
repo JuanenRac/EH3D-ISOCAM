@@ -98,6 +98,7 @@ Cómo encajan las partes de este repositorio: quién lo usa, qué contiene y de 
 * **Sin código unsafe:** `#![forbid(unsafe_code)]` en la biblioteca y el programa.
 * **Cada valor afinado es un ajuste:** nada de lo que una persona pueda querer cambiar está escondido en el código; un valor malo es un error con su línea.
 * **Unidades a elegir:** las longitudes de un fichero de ajustes o de la línea de comandos pueden escribirse en milímetros, mils o pulgadas; el G-code puede escribirse en pulgadas y la pantalla puede mostrar mils.
+* **Ficheros más seguros:** el G-code empieza con la cabecera estándar (generador, unidades, fichero de origen con su SHA-256), se rechaza una salida que también es una entrada de la ejecución, se rechaza un trazado con una coordenada de más de 32767 unidades, `--units mm|inch` da las unidades de un fichero de taladros que no las dice (uno con agujeros diminutos y sin unidades se rechaza sin ello) y el contorno de trazos sueltos se une con un índice, de modo que cincuenta mil segmentos tardan un momento.
 
 ## 🔒 Seguridad y protección
 

@@ -32,6 +32,15 @@ fn mm_of_inch_or_mm(v: f64) -> f64 {
 
 /// Reads an Excellon drill file. A Bungard file in mils is read with the reader of those files; a metric file, or one with decimal coordinates, with the reader of the suite.
 pub fn read_drills(text: &str) -> Result<Drills, String> {
+    read_drills_with_units(text, None)
+}
+
+/// Like [`read_drills`] with the units of the file given by the person (`--units`): they win over what the file says. A file that does not say its units and whose holes are so
+/// close together that it may be in inches is refused unless the units are given.
+pub fn read_drills_with_units(
+    text: &str,
+    forced: Option<eh3d_parser_excellon::Units>,
+) -> Result<Drills, String> {
     if let Ok(f) = ncd::parse(text) {
         if !f.metric && !f.holes.is_empty() {
             let dia = |t: u8| {
@@ -56,10 +65,21 @@ pub fn read_drills(text: &str) -> Result<Drills, String> {
             });
         }
     }
-    let f = eh3d_parser_excellon::parse(text);
+    let f = match forced {
+        Some(units) => eh3d_parser_excellon::parse_with_units(text, units),
+        None => eh3d_parser_excellon::parse(text),
+    };
+    if forced.is_none()
+        && f.units.is_none()
+        && f.diagnostics
+            .iter()
+            .any(|d| d.code == eh3d_parser_excellon::codes::UNITS_SUSPECT)
+    {
+        return Err("the file does not say its units and its holes are so close together that it may be in inches: give the units with --units mm or --units inch".into());
+    }
     let mut notes = Vec::new();
     let units = f.units.unwrap_or_else(|| {
-        notes.push("the file does not say its units: millimetres are assumed".into());
+        notes.push("the file does not say its units: millimetres are assumed; if it is in inches, give --units inch".into());
         eh3d_parser_excellon::Units::Millimetres
     });
     if let Some(d) = f
@@ -316,10 +336,61 @@ impl Outline {
 
 /// Joins runs that meet end to end (within `tol` mm), as an outline drawn as separate strokes does; a run that comes back to its start becomes a closed path.
 pub fn join_runs(runs: Vec<Vec<(f64, f64)>>, tol: f64) -> Outline {
+    use std::collections::HashMap;
+    type Run = Vec<(f64, f64)>;
     let near = |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).hypot(a.1 - b.1) <= tol;
-    let mut left: Vec<Vec<(f64, f64)>> = runs.into_iter().filter(|r| r.len() >= 2).collect();
+    let mut left: Vec<Option<Run>> = runs
+        .into_iter()
+        .filter(|r| r.len() >= 2)
+        .map(Some)
+        .collect();
+    // the two ends of every run in a grid of cells as wide as the tolerance: the run that meets a point is found by looking at the nine cells around it
+    // (the plain search looked at every run left for every join, which is quadratic in the runs)
+    let size = if tol.is_finite() && tol > 1e-9 { tol } else { 1e-9 };
+    let key = |p: (f64, f64)| ((p.0 / size).floor() as i64, (p.1 / size).floor() as i64);
+    let mut grid: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
+    for (i, r) in left.iter().enumerate() {
+        if let Some(r) = r {
+            for p in [r[0], r[r.len() - 1]] {
+                grid.entry(key(p)).or_default().push(i);
+            }
+        }
+    }
+    // the first run of the list (by its place) with an end within the tolerance of `p`; a run already taken is skipped
+    let find = |left: &[Option<Run>], p: (f64, f64)| -> Option<usize> {
+        let (kx, ky) = key(p);
+        let mut best: Option<usize> = None;
+        for dx in -1..=1_i64 {
+            for dy in -1..=1_i64 {
+                if let Some(ids) = grid.get(&(kx.saturating_add(dx), ky.saturating_add(dy))) {
+                    for &i in ids {
+                        if best.is_some_and(|b| b <= i) {
+                            continue;
+                        }
+                        if let Some(r) = &left[i] {
+                            if near(r[0], p) || near(r[r.len() - 1], p) {
+                                best = Some(i);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        best
+    };
     let mut out = Outline::default();
-    while let Some(mut run) = left.pop() {
+    let mut top = left.len();
+    loop {
+        // the last run that is left starts the next outline
+        let mut run = loop {
+            if top == 0 {
+                return out;
+            }
+            top -= 1;
+            if let Some(r) = left[top].take() {
+                break r;
+            }
+        };
         loop {
             let end = run[run.len() - 1];
             if near(run[0], end) && run.len() >= 4 {
@@ -327,12 +398,9 @@ pub fn join_runs(runs: Vec<Vec<(f64, f64)>>, tol: f64) -> Outline {
                 out.closed.push(run);
                 break;
             }
-            let next = left
-                .iter()
-                .position(|r| near(r[0], end) || near(r[r.len() - 1], end));
-            match next {
+            match find(&left, end) {
                 Some(i) => {
-                    let mut r = left.remove(i);
+                    let Some(mut r) = left[i].take() else { continue };
                     if !near(r[0], end) {
                         r.reverse();
                     }
@@ -341,12 +409,9 @@ pub fn join_runs(runs: Vec<Vec<(f64, f64)>>, tol: f64) -> Outline {
                 None => {
                     // the start may meet the end of another run
                     let start = run[0];
-                    let prev = left
-                        .iter()
-                        .position(|r| near(r[r.len() - 1], start) || near(r[0], start));
-                    match prev {
+                    match find(&left, start) {
                         Some(i) => {
-                            let mut r = left.remove(i);
+                            let Some(mut r) = left[i].take() else { continue };
                             if !near(r[r.len() - 1], start) {
                                 r.reverse();
                             }
@@ -362,7 +427,6 @@ pub fn join_runs(runs: Vec<Vec<(f64, f64)>>, tol: f64) -> Outline {
             }
         }
     }
-    out
 }
 
 /// Reads the outline of a board from a Gerber outline layer, a DXF drawing or a plotter file (by the extension of the name).

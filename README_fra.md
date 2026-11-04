@@ -98,6 +98,7 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
 * **Pas de code unsafe :** `#![forbid(unsafe_code)]` dans la bibliothèque et le programme.
 * **Chaque valeur réglée est un réglage :** rien de ce qu'une personne voudrait changer n'est caché dans le code ; une mauvaise valeur est une erreur avec sa ligne.
 * **Unités au choix :** les longueurs d'un fichier de réglages ou de la ligne de commande peuvent être écrites en millimètres, en mils ou en pouces ; le G-code peut être écrit en pouces et l'écran peut afficher des mils.
+* **Des fichiers plus sûrs :** le G-code commence par l'en-tête standard (générateur, unités, fichier source avec son SHA-256), une sortie qui est aussi une entrée de l'exécution est refusée, un tracé avec une coordonnée au-delà de 32767 unités est refusé, `--units mm|inch` donne les unités d'un fichier de perçage qui ne les dit pas (un fichier aux trous minuscules et sans unités est refusé sans cela), et le contour fait de traits séparés est joint avec un index, si bien que cinquante mille segments prennent un instant.
 
 ## 🔒 Sécurité et protection
 

@@ -3,6 +3,11 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **The G-code starts with the standard header:** the generator and its version, the units, the file the work came from with its SHA-256, and a path with a coordinate that is not a number is refused.
+- **An output that is also an input is refused:** the result is never written over the layer, the outline, the holes, the mask or the apertures of the run.
+- **A plot beyond the range of the format is refused:** a coordinate over 32767 units (819 mm) fails with a message instead of wrapping round.
+- **The units of a drill file can be given:** `--units mm|inch`; a file that does not say its units and whose holes are tiny is refused without it.
+- **The outline of separate strokes is joined with an index:** fifty thousand segments take moments.
 - **The application icon and the logos of the program:** `images/brand/` holds the icon (SVG, PNG sizes, `.ico` and `.icns`), the horizontal and vertical logos in a light and a dark version and the social preview image.
 - **Shared checks updated:** the validator also compares the badge and the Version row of the README with the manifest, fails when one of its checks cannot run, and the CHANGELOG step of the workflow reads the base branch from the environment.
 - **Limited reading and arc tolerance:** files are read with the size limit of the reader before they are loaded (`max_input_mb`, 64 MiB by default, refusal in eight languages) and `arc_tolerance_mm` sets how closely arcs are followed.
