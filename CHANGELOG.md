@@ -3,6 +3,9 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **A window:** built with `--features gui`, `eh3d-isocam` with no arguments (or with a single layer file, or `gui [LAYER]`) opens a window in the look of the other programs of the suite (amber on charcoal, the icon of the program). A layer is opened from the list of files of the window or dropped on it; the copper and the paths of every pass are drawn with zoom (wheel) and pan (drag); the tool, passes, stepover, depth, feeds, safe height, spindle speed and grid can be edited; a box allows writing although the tool does not fit; and the paths are exported as G-code, HP-GL or DXF by the name of the file. The command line works as before, and a build without the feature is only a command line.
+- **The window speaks the eight languages:** English, Spanish, German, French, Italian, Japanese, Chinese and Portuguese of Portugal, chosen from the system and changeable in the window.
+- **The logic of the window needs no screen:** `window` (layer, parameters, paths, export, status), `viewport` (zoom and pan), `draw` (the shapes and the triangles of the regions), `browse` (the list of files) and `lang` (the words) are plain code with their own tests; `gui` only draws them.
 - **Marks from a table:** `--fiducials-csv FILE` reads the pairs of marks, one row each (a header row and lines that start with `#` are left out).
 - **The G-code starts with the standard header:** the generator and its version, the units, the file the work came from with its SHA-256, and a path with a coordinate that is not a number is refused.
 - **An output that is also an input is refused:** the result is never written over the layer, the outline, the holes, the mask or the apertures of the run.

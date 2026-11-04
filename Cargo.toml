@@ -16,6 +16,11 @@ path = "src/lib.rs"
 name = "eh3d-isocam"
 path = "src/main.rs"
 
+[features]
+default = []
+# the window (egui, with the icon of the program): `cargo run --release --features gui`
+gui = ["dep:eframe", "dep:png"]
+
 [dependencies]
 # the readers and the shapes of the suite (path dependencies on the sibling repositories)
 eh3d-parser-gerber = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d-parser-gerber" }
@@ -28,6 +33,14 @@ eh3d-parser-gcode = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d
 eh3d-parser-excellon = { version = ">=0.0.2", path = "../EH3D-CORE-LIBS/crates/eh3d-parser-excellon" }
 # the Bungard file formats: Excellon (mils), plotter files, board outlines (Gerber and DXF)
 eh3d-bungard-formats = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/formats" }
+
+# the window
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"], optional = true }
+png = { version = "0.17", optional = true }
+
+# the window of Linux needs a windowing system chosen at build time (X11 and Wayland); Windows and macOS have their own
+[target.'cfg(target_os = "linux")'.dependencies]
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"], optional = true }
 
 [profile.release]
 opt-level = 3

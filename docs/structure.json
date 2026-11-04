@@ -27,6 +27,19 @@
       "accent": "a",
       "rows": [
         {
+          "name": "browse.rs",
+          "desc": {
+            "en": "the list of files of the window that opens a file",
+            "es": "la lista de ficheros de la ventana que abre un fichero",
+            "de": "die Dateiliste des Fensters zum Öffnen einer Datei",
+            "fr": "la liste des fichiers de la fenêtre d'ouverture d'un fichier",
+            "it": "l'elenco dei file della finestra che apre un file",
+            "ja": "ファイルを開くウィンドウのファイル一覧",
+            "zh": "打开文件窗口的文件列表",
+            "pt": "a lista de ficheiros da janela que abre um ficheiro"
+          }
+        },
+        {
           "name": "config.rs",
           "desc": {
             "en": "every tunable value, from one settings file",
@@ -37,6 +50,19 @@
             "ja": "調整可能な値はすべて設定ファイルから",
             "zh": "所有可调值都来自一个设置文件",
             "pt": "todos os valores ajustáveis, a partir de um ficheiro de definições"
+          }
+        },
+        {
+          "name": "draw.rs",
+          "desc": {
+            "en": "what the window draws: the shapes and the triangles of the regions",
+            "es": "lo que dibuja la ventana: las formas y los triángulos de las regiones",
+            "de": "was das Fenster zeichnet: die Formen und die Dreiecke der Flächen",
+            "fr": "ce que dessine la fenêtre : les formes et les triangles des régions",
+            "it": "ciò che disegna la finestra: le forme e i triangoli delle regioni",
+            "ja": "ウィンドウが描くもの：図形と領域の三角形",
+            "zh": "窗口绘制的内容：图形和区域的三角形",
+            "pt": "o que a janela desenha: as formas e os triângulos das regiões"
           }
         },
         {
@@ -92,6 +118,19 @@
           }
         },
         {
+          "name": "gui.rs",
+          "desc": {
+            "en": "the window (egui, with the gui feature): draws the state and passes on what the person does",
+            "es": "la ventana (egui, con la característica gui): dibuja el estado y transmite lo que hace la persona",
+            "de": "das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut",
+            "fr": "la fenêtre (egui, avec la fonctionnalité gui) : dessine l'état et transmet ce que fait la personne",
+            "it": "la finestra (egui, con la funzione gui): disegna lo stato e inoltra ciò che fa la persona",
+            "ja": "ウィンドウ（egui、gui 機能）：状態を描き、操作を伝える",
+            "zh": "窗口（egui，gui 特性）：绘制状态并传递用户的操作",
+            "pt": "a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz"
+          }
+        },
+        {
           "name": "hpgl.rs",
           "desc": {
             "en": "the paths as an HP-GL plot file",
@@ -102,6 +141,19 @@
             "ja": "パスをHP-GLプロットファイルに",
             "zh": "把路径写成HP-GL绘图文件",
             "pt": "os percursos como ficheiro de traçado HP-GL"
+          }
+        },
+        {
+          "name": "lang.rs",
+          "desc": {
+            "en": "the words of the window in the eight languages",
+            "es": "las palabras de la ventana en los ocho idiomas",
+            "de": "die Wörter des Fensters in den acht Sprachen",
+            "fr": "les mots de la fenêtre dans les huit langues",
+            "it": "le parole della finestra nelle otto lingue",
+            "ja": "ウィンドウの文言（8言語）",
+            "zh": "窗口的文字（八种语言）",
+            "pt": "as palavras da janela nos oito idiomas"
           }
         },
         {
@@ -141,6 +193,32 @@
             "ja": "パスを SVG またはテキストで描画",
             "zh": "以 SVG 或文本绘制各遍路径",
             "pt": "as passagens desenhadas em SVG ou texto"
+          }
+        },
+        {
+          "name": "viewport.rs",
+          "desc": {
+            "en": "zoom and pan of the picture, in plain numbers",
+            "es": "zoom y desplazamiento de la imagen, en números simples",
+            "de": "Zoom und Verschiebung des Bildes, in einfachen Zahlen",
+            "fr": "zoom et déplacement de l'image, en simples nombres",
+            "it": "zoom e spostamento dell'immagine, in semplici numeri",
+            "ja": "画像の拡大縮小と移動（単純な数値）",
+            "zh": "图像的缩放和平移（纯数值）",
+            "pt": "zoom e deslocamento da imagem, em números simples"
+          }
+        },
+        {
+          "name": "window.rs",
+          "desc": {
+            "en": "the state of the window without a screen: layer, parameters, paths, export and status",
+            "es": "el estado de la ventana sin pantalla: capa, parámetros, trayectorias, exportación y estado",
+            "de": "der Zustand des Fensters ohne Bildschirm: Ebene, Parameter, Bahnen, Export und Status",
+            "fr": "l'état de la fenêtre sans écran : couche, paramètres, trajets, export et état",
+            "it": "lo stato della finestra senza schermo: livello, parametri, percorsi, esportazione e stato",
+            "ja": "画面なしのウィンドウの状態：レイヤー、パラメーター、パス、書き出し、ステータス",
+            "zh": "无需屏幕的窗口状态：层、参数、路径、导出和状态",
+            "pt": "o estado da janela sem ecrã: camada, parâmetros, trajetórias, exportação e estado"
           }
         }
       ]
@@ -242,6 +320,19 @@
           }
         },
         {
+          "name": "problems.rs",
+          "desc": {
+            "en": "tests of problem zones, the tolerance and the alignment holes",
+            "es": "pruebas de zonas problema, la tolerancia y los agujeros de alineación",
+            "de": "Tests der Problemzonen, der Toleranz und der Passlöcher",
+            "fr": "tests des zones à problème, de la tolérance et des trous d'alignement",
+            "it": "test delle zone problematiche, della tolleranza e dei fori di allineamento",
+            "ja": "問題箇所・許容差・位置合わせ穴のテスト",
+            "zh": "问题区域、容差和对位孔的测试",
+            "pt": "testes das zonas problemáticas, da tolerância e dos furos de alinhamento"
+          }
+        },
+        {
           "name": "readme.rs",
           "desc": {
             "en": "tests that run what the README and the run scripts promise",
@@ -252,6 +343,19 @@
             "ja": "READMEとrunスクリプトが約束する内容を実行するテスト",
             "zh": "运行 README 和 run 脚本所承诺内容的测试",
             "pt": "testes que executam o que o README e os scripts run prometem"
+          }
+        },
+        {
+          "name": "window_cli.rs",
+          "desc": {
+            "en": "tests that a build without the gui feature stays a command line",
+            "es": "pruebas de que una compilación sin la característica gui sigue siendo solo línea de comandos",
+            "de": "Tests, dass ein Build ohne das Feature gui eine reine Kommandozeile bleibt",
+            "fr": "tests qu'une compilation sans la fonctionnalité gui reste une ligne de commande",
+            "it": "test che una compilazione senza la funzione gui resti una riga di comando",
+            "ja": "gui 機能なしのビルドがコマンドラインのままであることのテスト",
+            "zh": "测试没有 gui 特性的构建仍然只是命令行",
+            "pt": "testes de que uma compilação sem a funcionalidade gui continua a ser só linha de comandos"
           }
         }
       ]

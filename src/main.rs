@@ -46,6 +46,7 @@ const HELP: &str = "eh3d-isocam: isolation milling of copper from a Gerber layer
   eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--contour FILE  parallel lines of a tool that clear an area or fill closed paths, cut to the copper of LAYER when it is given
   eh3d-isocam kind FILE...                       say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
   eh3d-isocam config                             every setting with its default, as a configuration file
+  eh3d-isocam [gui] [LAYER.gtl]                  the window (a build with --features gui): with no arguments, or with a single layer, it opens; the commands above never open it
 
 Every option is a setting of the configuration file: --config FILE reads one, and --fine-tool-mm 0.15 is fine_tool_mm = 0.15 (the old --tool, --passes, --stepover, --res,
 --depth, --feed, --plunge, --safe and --rpm still work). A length may carry its unit (--fine-tool-mm 8mil, --depth-mm 0.002in); a bare number is in --input-units (mm, mil or
@@ -637,6 +638,10 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         return Ok(());
     }
     let cmd = args.remove(0);
+    if cmd == "gui" {
+        // a build with the window never gets here (main opens it): this one is only a command line
+        return Err("this build has no window: build it with --features gui".into());
+    }
     let mut cli = parse_cli(args)?;
     // one net by itself: the tool of the net is the only tool, whatever the plan said
     if cli.net.is_some() && matches!(cmd.as_str(), "isolate" | "info" | "preview") {
@@ -1074,8 +1079,43 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
     }
 }
 
+/// Whether the program opens its window instead of running a command, and the layer to open in it: no arguments, `gui` (with a layer or without), or a single layer file given by the
+/// system to open (a name with an extension that is a file; the commands have none).
+#[cfg(feature = "gui")]
+fn window_request(args: &[String]) -> Option<Option<String>> {
+    match args {
+        [] => Some(None),
+        [a] if a == "gui" => Some(None),
+        [a, f] if a == "gui" => Some(Some(f.clone())),
+        [f] if !f.starts_with('-')
+            && std::path::Path::new(f).extension().is_some()
+            && std::path::Path::new(f).is_file() =>
+        {
+            Some(Some(f.clone()))
+        }
+        _ => None,
+    }
+}
+
+#[cfg(feature = "gui")]
+fn open_window(layer: Option<String>) -> ExitCode {
+    let lang = eh3d_isocam::lang::Lang::from_env();
+    match eh3d_isocam::gui::run(layer.map(std::path::PathBuf::from), lang) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: the window could not be opened: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
 fn main() -> ExitCode {
-    match run(env::args().skip(1).collect()) {
+    let args: Vec<String> = env::args().skip(1).collect();
+    #[cfg(feature = "gui")]
+    if let Some(layer) = window_request(&args) {
+        return open_window(layer);
+    }
+    match run(args) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("error: {e}");

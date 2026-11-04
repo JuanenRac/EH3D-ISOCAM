@@ -2,7 +2,7 @@
   "repo": "EH3D-ISOCAM",
   "ecosystem": "eh3d",
   "tagline": "The copper of a layer, offset exactly, as paths of the tools.",
-  "description": "EH3D-ISOCAM is a Rust library and command line that read a Gerber layer, draw its copper on a fine grid, trace the paths of one or several isolation milling tools at the exact distance, remove the leftover copper, choose the direction and the order of the cuts and write them as G-code or HP-GL; it also reads and writes drill and outline files, lays a board out for both sides and a panel, and checks the design rules; it can also lay a path along gaps the tool does not fit in, scale and correct the work from reference points, write the openings of the solder mask and draw a preview of the passes. It has no window yet.",
+  "description": "EH3D-ISOCAM is a Rust library and command line that read a Gerber layer, draw its copper on a fine grid, trace the paths of one or several isolation milling tools at the exact distance, remove the leftover copper, choose the direction and the order of the cuts and write them as G-code or HP-GL; it also reads and writes drill and outline files, lays a board out for both sides and a panel, and checks the design rules; it can also lay a path along gaps the tool does not fit in, scale and correct the work from reference points, write the openings of the solder mask and draw a preview of the passes. Built with the gui feature it also has a window (egui) that opens a layer, shows the copper and the paths, edits the main parameters and exports.",
   "columns": [
     "WHO USES IT",
     "THIS REPOSITORY",
@@ -32,26 +32,13 @@
       "code": []
     },
     {
-      "id": "bitmap",
-      "column": 1,
-      "level": "tested",
-      "title": "bitmap and edt",
-      "lines": [
-        "the copper on a grid and the",
-        "exact distance to it"
-      ],
-      "code": [
-        "src/lib.rs::pub use eh3d_cam::{"
-      ]
-    },
-    {
       "id": "isolate",
       "column": 1,
       "level": "tested",
-      "title": "isolate, forced, contour",
+      "title": "bitmap, isolate, forced",
       "lines": [
-        "tools, passes, leftover copper,",
-        "forced paths, narrow gaps, fills"
+        "the copper on a grid and its",
+        "distance, passes, forced paths"
       ],
       "code": [
         "src/lib.rs::pub use eh3d_cam::{"
@@ -115,6 +102,23 @@
       "code": [
         "src/lib.rs::pub use eh3d_cam::{",
         "src/preview.rs::pub fn svg"
+      ]
+    },
+    {
+      "id": "window",
+      "column": 1,
+      "level": "untested",
+      "title": "window (gui feature)",
+      "lines": [
+        "state, zoom and words are tested;",
+        "the drawing is not seen yet"
+      ],
+      "code": [
+        "src/window.rs::pub struct Window",
+        "src/viewport.rs::pub struct Viewport",
+        "src/lang.rs::pub enum Lang",
+        "src/browse.rs::pub struct Browser",
+        "src/gui.rs::pub fn run"
       ]
     },
     {
@@ -183,16 +187,11 @@
     },
     {
       "from": "isolate",
-      "to": "bitmap",
-      "level": "tested"
-    },
-    {
-      "from": "bitmap",
       "to": "viewer",
       "level": "tested"
     },
     {
-      "from": "bitmap",
+      "from": "isolate",
       "to": "libs",
       "level": "tested"
     },
@@ -205,12 +204,19 @@
       "from": "person",
       "to": "extras",
       "level": "tested"
+    },
+    {
+      "from": "person",
+      "to": "window",
+      "label": "window",
+      "level": "untested"
     }
   ],
   "legend": {
-    "tested": "covered by tests on a computer (183 tests)",
+    "tested": "covered by tests on a computer (255 tests)",
     "config": "planned, not used today",
-    "external": "a person, a file or another repository"
+    "external": "a person, a file or another repository",
+    "untested": "written, not built or looked at on a screen yet"
   },
   "footer": "No board has been milled with these paths yet."
 }

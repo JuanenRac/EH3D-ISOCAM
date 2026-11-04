@@ -17,7 +17,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有184个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它还没有窗口，没有在机器上试过，也没有用一批真实文件检验过。
+**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有255个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它有一个窗口（用 `--features gui` 构建），可打开层并绘制铜箔和路径，但窗口尚未在屏幕上看过，没有在机器上试过，也没有用一批真实文件检验过。
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | 版本 | `0.0.7` |
 | 成熟度 | 脚手架 |
-| 测试 | 206 |
+| 测试 | 255 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -48,9 +48,9 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 206 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
+| 测试 | 🟡 | 255 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
-| 窗口 | 🔴 | 计划中：套件通用的 egui 窗口；目前只有命令行。 |
+| 窗口 | 🟠 | 已编写（egui，`--features gui`）：打开或拖入层、缩放和平移、编辑主要参数、导出；其逻辑已测试，但尚未构建，也尚未在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
 | 文档 | 🟡 | 八种语言的 README、更新日志，以及由 `docs/` 绘制的两张图。 |
 
@@ -79,7 +79,7 @@
 
 ## 🧩 在 EH3D 中的角色
 
-EH3D-ISOCAM 是 EH3D Fabrication Suite 的一个程序。目前它以库和命令行的形式工作；与套件其他程序外观一致的窗口在计划中。它读写简单的文件，因此可以单独使用，也可以用在其他程序之间。
+EH3D-ISOCAM 是 EH3D Fabrication Suite 的一个程序。它以库和命令行的形式工作，用 `--features gui` 构建时还是一个与套件其他程序外观一致的窗口。它读写简单的文件，因此可以单独使用，也可以用在其他程序之间。
 
 ## 🏛️ 架构
 
@@ -127,6 +127,7 @@ eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--
 eh3d-isocam kind FILE...                        say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
+eh3d-isocam [gui] [LAYER.gtl]                    the window (a build with --features gui); with no arguments it opens
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 ```
@@ -134,15 +135,21 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── browse.rs                                打开文件窗口的文件列表
 │   ├── config.rs                                所有可调值都来自一个设置文件
+│   ├── draw.rs                                  窗口绘制的内容：图形和区域的三角形
 │   ├── drill.rs                                 钻孔和板框的读取与写入
 │   ├── dxf.rs                                   将路径输出为 DXF 图纸
 │   ├── filetype.rs                              判断输入文件的类型
 │   ├── gcode.rs                                 把路径写成G代码
+│   ├── gui.rs                                   窗口（egui，gui 特性）：绘制状态并传递用户的操作
 │   ├── hpgl.rs                                  把路径写成HP-GL绘图文件
+│   ├── lang.rs                                  窗口的文字（八种语言）
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
-│   └── preview.rs                               以 SVG 或文本绘制各遍路径
+│   ├── preview.rs                               以 SVG 或文本绘制各遍路径
+│   ├── viewport.rs                              图像的缩放和平移（纯数值）
+│   └── window.rs                                无需屏幕的窗口状态：层、参数、路径、导出和状态
 ├── tests/
 │   ├── advanced.rs                              强制隔离、补偿、阻焊、单位、预览
 │   ├── cli_reading.rs                           文件读取测试：大小限制、非 UTF-8 文本、按代码的提示
@@ -151,7 +158,9 @@ EH3D-ISOCAM/
 │   ├── kinds.rs                                 焊盘容差、轮廓填充、文件类型、笔、DXF
 │   ├── layout.rs                                双面、拼板、规则和命令行的测试
 │   ├── multi.rs                                 刀具、残余铜箔、方向、顺序和设置的测试
-│   └── readme.rs                                运行 README 和 run 脚本所承诺内容的测试
+│   ├── problems.rs                              问题区域、容差和对位孔的测试
+│   ├── readme.rs                                运行 README 和 run 脚本所承诺内容的测试
+│   └── window_cli.rs                            测试没有 gui 特性的构建仍然只是命令行
 ├── examples/
 │   ├── isocam.cfg                               所有设置及其默认值，可复制后修改
 │   └── sample.gtl                               试用的示例
@@ -181,11 +190,12 @@ EH3D-ISOCAM/
 cargo build --release
 cargo test
 cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
+cargo run --release --features gui   # the window
 ```
 
 ## 🧪 测试
 
-测试套件有 206 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 255 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -203,15 +213,21 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── browse.rs                                打开文件窗口的文件列表
 │   ├── config.rs                                所有可调值都来自一个设置文件
+│   ├── draw.rs                                  窗口绘制的内容：图形和区域的三角形
 │   ├── drill.rs                                 钻孔和板框的读取与写入
 │   ├── dxf.rs                                   将路径输出为 DXF 图纸
 │   ├── filetype.rs                              判断输入文件的类型
 │   ├── gcode.rs                                 把路径写成G代码
+│   ├── gui.rs                                   窗口（egui，gui 特性）：绘制状态并传递用户的操作
 │   ├── hpgl.rs                                  把路径写成HP-GL绘图文件
+│   ├── lang.rs                                  窗口的文字（八种语言）
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
-│   └── preview.rs                               以 SVG 或文本绘制各遍路径
+│   ├── preview.rs                               以 SVG 或文本绘制各遍路径
+│   ├── viewport.rs                              图像的缩放和平移（纯数值）
+│   └── window.rs                                无需屏幕的窗口状态：层、参数、路径、导出和状态
 ├── tests/
 │   ├── advanced.rs                              强制隔离、补偿、阻焊、单位、预览
 │   ├── cli_reading.rs                           文件读取测试：大小限制、非 UTF-8 文本、按代码的提示
@@ -220,7 +236,9 @@ EH3D-ISOCAM/
 │   ├── kinds.rs                                 焊盘容差、轮廓填充、文件类型、笔、DXF
 │   ├── layout.rs                                双面、拼板、规则和命令行的测试
 │   ├── multi.rs                                 刀具、残余铜箔、方向、顺序和设置的测试
-│   └── readme.rs                                运行 README 和 run 脚本所承诺内容的测试
+│   ├── problems.rs                              问题区域、容差和对位孔的测试
+│   ├── readme.rs                                运行 README 和 run 脚本所承诺内容的测试
+│   └── window_cli.rs                            测试没有 gui 特性的构建仍然只是命令行
 ├── examples/
 │   ├── isocam.cfg                               所有设置及其默认值，可复制后修改
 │   └── sample.gtl                               试用的示例
@@ -244,7 +262,7 @@ EH3D-ISOCAM/
 
 **目前已知的限制**
 
-* 还没有窗口：只有库和命令行。
+* 窗口尚未在屏幕上看过，也还不支持钻孔、板框、镜像和拼板、基准点和阻焊：这些仍在命令行中完成。
 * 没有在机器上试过，也没有用一批真实文件试过，且没有经过独立审查。
 * 路径精确到半个单元，而不是曲线本身；没有沃罗诺伊策略，按设计不拟合圆弧（曲线由许多短移动组成），强制路径会让比间隙更宽的刀具在两侧碰到铜箔，用参考点做的补偿会移动路径但保持刀具偏移量的大小，缩放以电路板中心为基准，没有丝印层，也没有用这些路径铣过任何电路板。
 * 阻焊按绘制的焊盘（圆形、矩形和长圆形）生成；走线保持被覆盖，负的外扩量不会缩小区域。
@@ -255,7 +273,7 @@ EH3D-ISOCAM/
 
 **下一步**
 
-* 在目前以文本和 SVG 提供的预览之上，加入套件通用外观的窗口，支持八种语言。
+* 在屏幕上查看窗口并完善它：钻孔和板框、镜像和拼板、基准点。
 * 沃罗诺伊策略；把用参考点做的补偿与相机的测量值比较。
 * 丝印层。
 * 把路径与真正铣过的板比较，并用真实文件和套件的其他程序试用。

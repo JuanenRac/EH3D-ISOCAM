@@ -17,7 +17,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 206 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 255 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer and draws the copper and the paths, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Maturity | Scaffolding |
-| Tests | 206 |
+| Tests | 255 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -48,9 +48,9 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 206 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 255 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
-| Window | 🔴 | Planned: the egui window common to the suite; today there is only the command line. |
+| Window | 🟠 | Written (egui, `--features gui`): open or drop a layer, zoom and pan, edit the main parameters, export; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
 | Documentation | 🟡 | README in eight languages, the changelog and the two pictures drawn from `docs/`. |
 
@@ -79,7 +79,7 @@ Each line is one part of this repository and the light says how far it is today.
 
 ## 🧩 Role in EH3D
 
-EH3D-ISOCAM is one program of the EH3D Fabrication Suite. Today it works as a library and a command line; its window, in the look the other programs of the suite share, is planned. It reads and writes plain files, so it can be used on its own or between the other programs.
+EH3D-ISOCAM is one program of the EH3D Fabrication Suite. It works as a library and a command line and, built with `--features gui`, as a window in the look the other programs of the suite share. It reads and writes plain files, so it can be used on its own or between the other programs.
 
 ## 🏛️ Architecture
 
@@ -127,6 +127,7 @@ eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--
 eh3d-isocam kind FILE...                        say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
+eh3d-isocam [gui] [LAYER.gtl]                    the window (a build with --features gui); with no arguments it opens
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 ```
@@ -134,15 +135,21 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── browse.rs                                the list of files of the window that opens a file
 │   ├── config.rs                                every tunable value, from one settings file
+│   ├── draw.rs                                  what the window draws: the shapes and the triangles of the regions
 │   ├── drill.rs                                 holes and board outline, read and written
 │   ├── dxf.rs                                   the passes as a DXF drawing
 │   ├── filetype.rs                              what kind of file an input is
 │   ├── gcode.rs                                 the paths as G-code
+│   ├── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
 │   ├── hpgl.rs                                  the paths as an HP-GL plot file
+│   ├── lang.rs                                  the words of the window in the eight languages
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
-│   └── preview.rs                               the passes drawn as SVG or text
+│   ├── preview.rs                               the passes drawn as SVG or text
+│   ├── viewport.rs                              zoom and pan of the picture, in plain numbers
+│   └── window.rs                                the state of the window without a screen: layer, parameters, paths, export and status
 ├── tests/
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── cli_reading.rs                           tests of reading files: the size limit, text that is not UTF-8, notices by code
@@ -151,7 +158,9 @@ EH3D-ISOCAM/
 │   ├── kinds.rs                                 tolerance for pads, contour fills, file kinds, pens, DXF
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
 │   ├── multi.rs                                 tests of tools, rubout, direction, order and settings
-│   └── readme.rs                                tests that run what the README and the run scripts promise
+│   ├── problems.rs                              tests of problem zones, the tolerance and the alignment holes
+│   ├── readme.rs                                tests that run what the README and the run scripts promise
+│   └── window_cli.rs                            tests that a build without the gui feature stays a command line
 ├── examples/
 │   ├── isocam.cfg                               every setting with its default, to copy and change
 │   └── sample.gtl                               a sample to try the program with
@@ -181,11 +190,12 @@ You need a stable Rust toolchain (1.88 or newer).
 cargo build --release
 cargo test
 cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
+cargo run --release --features gui   # the window
 ```
 
 ## 🧪 Testing
 
-The suite has 206 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 255 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -203,15 +213,21 @@ The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has i
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── browse.rs                                the list of files of the window that opens a file
 │   ├── config.rs                                every tunable value, from one settings file
+│   ├── draw.rs                                  what the window draws: the shapes and the triangles of the regions
 │   ├── drill.rs                                 holes and board outline, read and written
 │   ├── dxf.rs                                   the passes as a DXF drawing
 │   ├── filetype.rs                              what kind of file an input is
 │   ├── gcode.rs                                 the paths as G-code
+│   ├── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
 │   ├── hpgl.rs                                  the paths as an HP-GL plot file
+│   ├── lang.rs                                  the words of the window in the eight languages
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
-│   └── preview.rs                               the passes drawn as SVG or text
+│   ├── preview.rs                               the passes drawn as SVG or text
+│   ├── viewport.rs                              zoom and pan of the picture, in plain numbers
+│   └── window.rs                                the state of the window without a screen: layer, parameters, paths, export and status
 ├── tests/
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── cli_reading.rs                           tests of reading files: the size limit, text that is not UTF-8, notices by code
@@ -220,7 +236,9 @@ EH3D-ISOCAM/
 │   ├── kinds.rs                                 tolerance for pads, contour fills, file kinds, pens, DXF
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
 │   ├── multi.rs                                 tests of tools, rubout, direction, order and settings
-│   └── readme.rs                                tests that run what the README and the run scripts promise
+│   ├── problems.rs                              tests of problem zones, the tolerance and the alignment holes
+│   ├── readme.rs                                tests that run what the README and the run scripts promise
+│   └── window_cli.rs                            tests that a build without the gui feature stays a command line
 ├── examples/
 │   ├── isocam.cfg                               every setting with its default, to copy and change
 │   └── sample.gtl                               a sample to try the program with
@@ -244,7 +262,7 @@ EH3D-ISOCAM/
 
 **Known limits today**
 
-* It has no window yet: only the library and the command line exist.
+* The window has not been looked at on a screen and does not yet cover drills, outlines, mirror and panel, reference points or the mask: those stay on the command line.
 * It has not been tried on a machine nor with a collection of real files, and it has had no independent review.
 * The paths are exact to half a cell, not to the curve itself; there is no Voronoi strategy, arcs are not fitted, by decision (a curve is many short moves), a forced path lets a tool wider than the gap touch the copper on both sides, the correction from reference points moves the paths but keeps the size of the tool offset, the scale is about the centre of the board, there is no silkscreen layer, and no board has been milled with these paths.
 * The solder mask follows the pads as drawn (flashed circles, rectangles and obrounds); tracks are left covered, and a negative margin does not shrink a region.
@@ -255,7 +273,7 @@ EH3D-ISOCAM/
 
 **Next**
 
-* Add the window in the look shared by the programs of the suite, in the eight languages, on top of the preview that exists today as text and SVG.
+* Look at the window on a screen and finish it: drills and outline, mirror and panel, reference points.
 * The Voronoi strategy; compare the correction from reference points with measurements of a camera.
 * Silkscreen layers.
 * Compare the paths with boards that were really milled and try it with real files and with the other programs of the suite.

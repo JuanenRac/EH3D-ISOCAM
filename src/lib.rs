@@ -4,13 +4,20 @@
 //! The copper of a layer is drawn on a fine grid, the exact distance of every point of the board to the copper is worked out, and the paths of the tool are the lines where that
 //! distance equals the radius of the tool (and, for more passes, the radius plus one stepover each time). Overlapping tracks and pads need no special care: the grid has no overlaps.
 
+pub mod browse;
 pub mod config;
+pub mod draw;
 pub mod drill;
 pub mod dxf;
 pub mod filetype;
 pub mod gcode;
+#[cfg(feature = "gui")]
+pub mod gui;
 pub mod hpgl;
+pub mod lang;
 pub mod preview;
+pub mod viewport;
+pub mod window;
 
 // the pure CAM and the raster geometry, shared with the other programs of the suite
 pub use eh3d_cam::{

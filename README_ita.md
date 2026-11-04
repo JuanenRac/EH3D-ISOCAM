@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 206 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Non ha ancora una finestra, non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 255 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello e disegna il rame e i percorsi, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.0.7` |
 | Maturità | Impalcatura |
-| Test | 206 |
+| Test | 255 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,9 +48,9 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 206 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 255 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
-| Finestra | 🔴 | Previsto: la finestra egui comune alla suite; oggi esiste solo la riga di comando. |
+| Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata, ma non è ancora stata compilata né vista su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
 | Documentazione | 🟡 | README in otto lingue, il changelog e le due immagini disegnate da `docs/`. |
 
@@ -79,7 +79,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 
 ## 🧩 Ruolo in EH3D
 
-EH3D-ISOCAM è un programma della EH3D Fabrication Suite. Oggi funziona come libreria e riga di comando; la sua finestra, con l'aspetto comune agli altri programmi della suite, è prevista. Legge e scrive file semplici, quindi può essere usato da solo o tra gli altri programmi.
+EH3D-ISOCAM è un programma della EH3D Fabrication Suite. Funziona come libreria e riga di comando e, compilato con `--features gui`, come finestra con l'aspetto comune agli altri programmi della suite. Legge e scrive file semplici, quindi può essere usato da solo o tra gli altri programmi.
 
 ## 🏛️ Architettura
 
@@ -127,6 +127,7 @@ eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--
 eh3d-isocam kind FILE...                        say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
+eh3d-isocam [gui] [LAYER.gtl]                    the window (a build with --features gui); with no arguments it opens
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 ```
@@ -134,15 +135,21 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── browse.rs                                l'elenco dei file della finestra che apre un file
 │   ├── config.rs                                tutti i valori regolabili, da un file di impostazioni
+│   ├── draw.rs                                  ciò che disegna la finestra: le forme e i triangoli delle regioni
 │   ├── drill.rs                                 fori e contorno della scheda, letti e scritti
 │   ├── dxf.rs                                   le passate come disegno DXF
 │   ├── filetype.rs                              di che tipo è un file di ingresso
 │   ├── gcode.rs                                 i percorsi come G-code
+│   ├── gui.rs                                   la finestra (egui, con la funzione gui): disegna lo stato e inoltra ciò che fa la persona
 │   ├── hpgl.rs                                  i percorsi come file di tracciamento HP-GL
+│   ├── lang.rs                                  le parole della finestra nelle otto lingue
 │   ├── lib.rs                                   la libreria: ciò che usa ogni comando
 │   ├── main.rs                                  la riga di comando
-│   └── preview.rs                               le passate disegnate in SVG o testo
+│   ├── preview.rs                               le passate disegnate in SVG o testo
+│   ├── viewport.rs                              zoom e spostamento dell'immagine, in semplici numeri
+│   └── window.rs                                lo stato della finestra senza schermo: livello, parametri, percorsi, esportazione e stato
 ├── tests/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice
@@ -151,7 +158,9 @@ EH3D-ISOCAM/
 │   ├── kinds.rs                                 tolleranza per pad, riempimenti, tipi di file, penne, DXF
 │   ├── layout.rs                                test di doppia faccia, pannelli, regole e riga di comando
 │   ├── multi.rs                                 test di utensili, rame residuo, verso, ordine e impostazioni
-│   └── readme.rs                                test che eseguono ciò che promettono il README e gli script run
+│   ├── problems.rs                              test delle zone problematiche, della tolleranza e dei fori di allineamento
+│   ├── readme.rs                                test che eseguono ciò che promettono il README e gli script run
+│   └── window_cli.rs                            test che una compilazione senza la funzione gui resti una riga di comando
 ├── examples/
 │   ├── isocam.cfg                               tutte le impostazioni con il valore predefinito, da copiare e modificare
 │   └── sample.gtl                               un esempio per provare il programma
@@ -181,11 +190,12 @@ Serve una toolchain Rust stabile (1.88 o più recente).
 cargo build --release
 cargo test
 cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
+cargo run --release --features gui   # the window
 ```
 
 ## 🧪 Test
 
-La suite ha 206 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 255 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
@@ -203,15 +213,21 @@ La versione sta in `Cargo.toml` e in `eh3d.project.json`; ogni versione ha la su
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── browse.rs                                l'elenco dei file della finestra che apre un file
 │   ├── config.rs                                tutti i valori regolabili, da un file di impostazioni
+│   ├── draw.rs                                  ciò che disegna la finestra: le forme e i triangoli delle regioni
 │   ├── drill.rs                                 fori e contorno della scheda, letti e scritti
 │   ├── dxf.rs                                   le passate come disegno DXF
 │   ├── filetype.rs                              di che tipo è un file di ingresso
 │   ├── gcode.rs                                 i percorsi come G-code
+│   ├── gui.rs                                   la finestra (egui, con la funzione gui): disegna lo stato e inoltra ciò che fa la persona
 │   ├── hpgl.rs                                  i percorsi come file di tracciamento HP-GL
+│   ├── lang.rs                                  le parole della finestra nelle otto lingue
 │   ├── lib.rs                                   la libreria: ciò che usa ogni comando
 │   ├── main.rs                                  la riga di comando
-│   └── preview.rs                               le passate disegnate in SVG o testo
+│   ├── preview.rs                               le passate disegnate in SVG o testo
+│   ├── viewport.rs                              zoom e spostamento dell'immagine, in semplici numeri
+│   └── window.rs                                lo stato della finestra senza schermo: livello, parametri, percorsi, esportazione e stato
 ├── tests/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice
@@ -220,7 +236,9 @@ EH3D-ISOCAM/
 │   ├── kinds.rs                                 tolleranza per pad, riempimenti, tipi di file, penne, DXF
 │   ├── layout.rs                                test di doppia faccia, pannelli, regole e riga di comando
 │   ├── multi.rs                                 test di utensili, rame residuo, verso, ordine e impostazioni
-│   └── readme.rs                                test che eseguono ciò che promettono il README e gli script run
+│   ├── problems.rs                              test delle zone problematiche, della tolleranza e dei fori di allineamento
+│   ├── readme.rs                                test che eseguono ciò che promettono il README e gli script run
+│   └── window_cli.rs                            test che una compilazione senza la funzione gui resti una riga di comando
 ├── examples/
 │   ├── isocam.cfg                               tutte le impostazioni con il valore predefinito, da copiare e modificare
 │   └── sample.gtl                               un esempio per provare il programma
@@ -244,7 +262,7 @@ EH3D-ISOCAM/
 
 **Limiti noti oggi**
 
-* Non ha ancora una finestra: esistono solo la libreria e la riga di comando.
+* La finestra non è stata vista su uno schermo e non copre ancora fori, contorni, specchio e pannello, punti di riferimento né maschera: restano nella riga di comando.
 * Non è stato provato né su una macchina né con una raccolta di file reali, e non ha avuto alcuna revisione indipendente.
 * I percorsi sono esatti a mezza cella, non alla curva stessa; non c'è una strategia Voronoi, gli archi non sono adattati, per scelta (una curva è fatta di molti piccoli movimenti), un percorso forzato lascia che un utensile più largo dello spazio tocchi il rame da entrambi i lati, la correzione con punti di riferimento sposta i percorsi ma mantiene la dimensione dello scostamento dell'utensile, la scala è rispetto al centro della scheda, non c'è un livello di serigrafia e nessuna scheda è stata fresata con questi percorsi.
 * La maschera di saldatura segue i pad come disegnati (cerchi, rettangoli e ovali); le piste restano coperte e un margine negativo non rimpicciolisce una regione.
@@ -255,7 +273,7 @@ EH3D-ISOCAM/
 
 **Prossimi passi**
 
-* Aggiungere la finestra nell'aspetto comune ai programmi della suite, nelle otto lingue, sopra l'anteprima che oggi esiste come testo e SVG.
+* Vedere la finestra su uno schermo e completarla: fori e contorno, specchio e pannello, punti di riferimento.
 * La strategia Voronoi; confrontare la correzione con punti di riferimento con misure di una telecamera.
 * Livelli di serigrafia.
 * Confrontare i percorsi con schede realmente fresate e provarlo con file reali e con gli altri programmi della suite.

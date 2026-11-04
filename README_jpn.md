@@ -17,7 +17,7 @@
 
 ---
 
-**正直さの確認 - 現在実際に動くもの：** Rustライブラリとコマンドラインプログラム（`eh3d-isocam`）で、コンピュータ上で動くテストが184件あります。Gerberレイヤーの銅の周囲に1本または複数のミリング工具の経路を描き、残りの銅を除去し、切削の向き・開始点・順序を選び、ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、設計ルールを確認し、GコードまたはHP-GLを書き出します。まだウィンドウはなく、実機では試しておらず、実際のファイル群での確認もしていません。
+**正直さの確認 - 現在実際に動くもの：** Rustライブラリとコマンドラインプログラム（`eh3d-isocam`）で、コンピュータ上で動くテストが255件あります。Gerberレイヤーの銅の周囲に1本または複数のミリング工具の経路を描き、残りの銅を除去し、切削の向き・開始点・順序を選び、ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、設計ルールを確認し、GコードまたはHP-GLを書き出します。ウィンドウ（`--features gui` でビルド）でレイヤーを開いて銅と経路を描画できますが、画面ではまだ確認しておらず、実機では試しておらず、実際のファイル群での確認もしていません。
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | バージョン | `0.0.7` |
 | 成熟度 | 足場 |
-| テスト | 206 |
+| テスト | 255 |
 | 技術スタック | Rust |
 | 実機での動作 | 未試験：ここにあるものは機械で動かしたことがありません |
 
@@ -48,9 +48,9 @@
 | ファイルと配置 | 🟡 | ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、位置合わせ穴を追加し、設計ルールを検出位置つきで確認します。コンピュータ上でテスト済みで、他のプログラムが書いたファイルや実機では試していません。 |
 | 強制アイソレーション・補正・マスク | 🟡 | 工具が入らない隙間に沿う強制経路、軽い経路、基準点によるスケールと補正、ソルダーマスクの開口部、単位とパスのプレビュー。生成したレイヤーと破損入力でコンピュータ上でテストしましたが、実際の基板や機械では試しておらず、補正はカメラの実測値と比較していません。 |
 | コマンドライン | 🟡 | `eh3d-isocam` はライブラリと同じ関数を実行して結果を表示します。エラーはメッセージと 0 以外の終了コードで返ります。 |
-| テスト | 🟡 | 206 件のテストが通ります（`cargo test`）。通常ケース、境界ケース、破損入力を含みます。 |
+| テスト | 🟡 | 255 件のテストが通ります（`cargo test`）。通常ケース、境界ケース、破損入力を含みます。 |
 | セキュリティ | 🟡 | 安全な Rust のみ（`forbid(unsafe_code)`）。受け取ったファイルでパニックせず、不正な値は理由付きのエラーになります。独立したレビューはありません。 |
-| ウィンドウ | 🔴 | 予定：スイート共通の egui ウィンドウ。現在はコマンドラインのみです。 |
+| ウィンドウ | 🟠 | 作成済み（egui、`--features gui`）：レイヤーを開くかドロップ、拡大縮小と移動、主なパラメーターの編集、書き出し。ロジックはテスト済みですが、まだビルドも画面での確認もしていません。 |
 | 実機 | 🔴 | 未試験：ここにあるものは機械で実行したことがありません。 |
 | ドキュメント | 🟡 | 8 言語の README、変更履歴、`docs/` から描いた 2 枚の図。 |
 
@@ -79,7 +79,7 @@
 
 ## 🧩 EH3D での役割
 
-EH3D-ISOCAM は EH3D Fabrication Suite のプログラムの一つです。現在はライブラリとコマンドラインとして動作し、スイートの他のプログラムと共通の外観のウィンドウは予定です。単純なファイルを読み書きするため、単独でも他のプログラムの間でも使えます。
+EH3D-ISOCAM は EH3D Fabrication Suite のプログラムの一つです。ライブラリとコマンドラインとして動作し、`--features gui` でビルドすると、スイートの他のプログラムと共通の外観のウィンドウとしても動作します。単純なファイルを読み書きするため、単独でも他のプログラムの間でも使えます。
 
 ## 🏛️ アーキテクチャ
 
@@ -127,6 +127,7 @@ eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--
 eh3d-isocam kind FILE...                        say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
+eh3d-isocam [gui] [LAYER.gtl]                    the window (a build with --features gui); with no arguments it opens
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 ```
@@ -134,15 +135,21 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── browse.rs                                ファイルを開くウィンドウのファイル一覧
 │   ├── config.rs                                調整可能な値はすべて設定ファイルから
+│   ├── draw.rs                                  ウィンドウが描くもの：図形と領域の三角形
 │   ├── drill.rs                                 穴と基板外形の読み書き
 │   ├── dxf.rs                                   パスを DXF 図面として出力
 │   ├── filetype.rs                              入力ファイルの種類の判別
 │   ├── gcode.rs                                 パスをGコードに
+│   ├── gui.rs                                   ウィンドウ（egui、gui 機能）：状態を描き、操作を伝える
 │   ├── hpgl.rs                                  パスをHP-GLプロットファイルに
+│   ├── lang.rs                                  ウィンドウの文言（8言語）
 │   ├── lib.rs                                   ライブラリ：各コマンドが使うもの
 │   ├── main.rs                                  コマンドライン
-│   └── preview.rs                               パスを SVG またはテキストで描画
+│   ├── preview.rs                               パスを SVG またはテキストで描画
+│   ├── viewport.rs                              画像の拡大縮小と移動（単純な数値）
+│   └── window.rs                                画面なしのウィンドウの状態：レイヤー、パラメーター、パス、書き出し、ステータス
 ├── tests/
 │   ├── advanced.rs                              強制アイソレーション・補正・マスク・単位・プレビュー
 │   ├── cli_reading.rs                           ファイル読み込みのテスト：サイズ上限、UTF-8以外のテキスト、コード別の通知
@@ -151,7 +158,9 @@ EH3D-ISOCAM/
 │   ├── kinds.rs                                 パッド許容差・輪郭塗り・ファイル種別・ペン・DXF
 │   ├── layout.rs                                両面・パネル・ルール・コマンドラインのテスト
 │   ├── multi.rs                                 工具・残り銅・向き・順序・設定のテスト
-│   └── readme.rs                                READMEとrunスクリプトが約束する内容を実行するテスト
+│   ├── problems.rs                              問題箇所・許容差・位置合わせ穴のテスト
+│   ├── readme.rs                                READMEとrunスクリプトが約束する内容を実行するテスト
+│   └── window_cli.rs                            gui 機能なしのビルドがコマンドラインのままであることのテスト
 ├── examples/
 │   ├── isocam.cfg                               すべての設定と既定値（コピーして変更用）
 │   └── sample.gtl                               試すためのサンプル
@@ -181,11 +190,12 @@ EH3D-ISOCAM/
 cargo build --release
 cargo test
 cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
+cargo run --release --features gui   # the window
 ```
 
 ## 🧪 テスト
 
-テストは 206 件あります（`cargo test`、CI では Windows と Linux で実行）。通常ケース、境界ケース、破損入力を確認し、空のファイル、ゴミデータ、途中で切れたファイルでもパニックしません。CI は `cargo fmt --check`、警告をエラーにした `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
+テストは 255 件あります（`cargo test`、CI では Windows と Linux で実行）。通常ケース、境界ケース、破損入力を確認し、空のファイル、ゴミデータ、途中で切れたファイルでもパニックしません。CI は `cargo fmt --check`、警告をエラーにした `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
 
 ## 🏗️ ビルドとリリース
 
@@ -203,15 +213,21 @@ cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── browse.rs                                ファイルを開くウィンドウのファイル一覧
 │   ├── config.rs                                調整可能な値はすべて設定ファイルから
+│   ├── draw.rs                                  ウィンドウが描くもの：図形と領域の三角形
 │   ├── drill.rs                                 穴と基板外形の読み書き
 │   ├── dxf.rs                                   パスを DXF 図面として出力
 │   ├── filetype.rs                              入力ファイルの種類の判別
 │   ├── gcode.rs                                 パスをGコードに
+│   ├── gui.rs                                   ウィンドウ（egui、gui 機能）：状態を描き、操作を伝える
 │   ├── hpgl.rs                                  パスをHP-GLプロットファイルに
+│   ├── lang.rs                                  ウィンドウの文言（8言語）
 │   ├── lib.rs                                   ライブラリ：各コマンドが使うもの
 │   ├── main.rs                                  コマンドライン
-│   └── preview.rs                               パスを SVG またはテキストで描画
+│   ├── preview.rs                               パスを SVG またはテキストで描画
+│   ├── viewport.rs                              画像の拡大縮小と移動（単純な数値）
+│   └── window.rs                                画面なしのウィンドウの状態：レイヤー、パラメーター、パス、書き出し、ステータス
 ├── tests/
 │   ├── advanced.rs                              強制アイソレーション・補正・マスク・単位・プレビュー
 │   ├── cli_reading.rs                           ファイル読み込みのテスト：サイズ上限、UTF-8以外のテキスト、コード別の通知
@@ -220,7 +236,9 @@ EH3D-ISOCAM/
 │   ├── kinds.rs                                 パッド許容差・輪郭塗り・ファイル種別・ペン・DXF
 │   ├── layout.rs                                両面・パネル・ルール・コマンドラインのテスト
 │   ├── multi.rs                                 工具・残り銅・向き・順序・設定のテスト
-│   └── readme.rs                                READMEとrunスクリプトが約束する内容を実行するテスト
+│   ├── problems.rs                              問題箇所・許容差・位置合わせ穴のテスト
+│   ├── readme.rs                                READMEとrunスクリプトが約束する内容を実行するテスト
+│   └── window_cli.rs                            gui 機能なしのビルドがコマンドラインのままであることのテスト
 ├── examples/
 │   ├── isocam.cfg                               すべての設定と既定値（コピーして変更用）
 │   └── sample.gtl                               試すためのサンプル
@@ -244,7 +262,7 @@ EH3D-ISOCAM/
 
 **現時点で分かっている制限**
 
-* まだウィンドウはなく、ライブラリとコマンドラインのみです。
+* ウィンドウは画面でまだ確認しておらず、ドリル・外形・ミラーとパネル・基準点・マスクにはまだ対応していません。これらはコマンドラインで行います。
 * 実機でも実際のファイル群でも試しておらず、独立したレビューも受けていません。
 * 経路の精度は半セル分で、曲線そのものではありません。ボロノイ方式はなく、円弧のフィッティングは意図的にしません（曲線は多数の短い動きです）。強制経路では、隙間より太い工具が両側の銅に触れます。基準点による補正は経路を動かしますが、工具のオフセット量は変わりません。スケールは基板の中心を基準にします。シルク層はなく、この経路で基板を削った例もありません。
 * ソルダーマスクは描かれたとおりのパッド（円、長方形、長円）に従い、配線は覆われたままで、負の余白は領域を縮めません。
@@ -255,7 +273,7 @@ EH3D-ISOCAM/
 
 **次のステップ**
 
-* 現在テキストと SVG で提供しているプレビューの上に、スイート共通の見た目のウィンドウを8言語で追加する。
+* ウィンドウを画面で確認して仕上げる：ドリルと外形、ミラーとパネル、基準点。
 * ボロノイ方式。基準点による補正をカメラの実測値と比較する。
 * シルク層。
 * 実際に削った基板と経路を比較し、実際のファイルやスイートの他のプログラムで試す。
