@@ -2,7 +2,7 @@
   "schema_version": "1.1",
   "ecosystem": "EH3D",
   "name": "EH3D-ISOCAM",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "role": "tool",
   "stack": "rust",
   "technologies": [

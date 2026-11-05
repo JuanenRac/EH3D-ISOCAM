@@ -3,6 +3,9 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+
+## [0.0.8] - The window covers drills, outline, mirror, panel, marks and mask, tested generated G-code and the Windows icon
+
 - **The dependencies on the shared readers name the version that has what is used:** the G-code crate (and for ISOCAM the Excellon one) is required from 0.0.7, the version that brought the way of writing a number, the header of a program and the units given by the caller.
 - **The drill file says what its coordinates are:** a comment under `M48` states that they are whole mils without a decimal point and that each is rounded to the nearest mil, at most 0.0127 mm off.
 - **The G-code is read back in the tests:** the passes, the tool change, the spindle wait, the inch file and the file of the command line are read with the reader of the suite and walked the way the strict mode of the G-code debugger walks them; there is no warning, no rapid move into the material and no cut with the spindle off. The header of the command line is compared with the expected text.
