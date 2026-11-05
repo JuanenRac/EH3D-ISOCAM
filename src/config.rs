@@ -151,7 +151,7 @@ pub struct Settings {
     pub ncd_isocam_style: bool,
     /// Digits of a coordinate in a drill file, filled with zeros in front; 0 writes the number as it is.
     pub ncd_digits: u8,
-    /// The format of the coordinates of a drill file that has no decimal point: `auto` (what the file says; whole mils for inches that say nothing) or `2.4` (two digits before the
+    /// The format of the coordinates of a drill file (read and written) and of a routing file (written) that have no decimal point: `auto` (what the file says; whole mils for inches that say nothing) or `2.4` (two digits before the
     /// point and four after, read and written).
     pub excellon_format: ExcellonFormat,
 }

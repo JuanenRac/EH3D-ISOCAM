@@ -297,6 +297,17 @@ fn two_four(mm: f64) -> Result<String, String> {
     })
 }
 
+/// The text of one position (`mm`) in the format asked for: whole mils filled with zeros in front up to `digits` (`Auto`), or six digits of the 2.4 format.
+fn position(mm: f64, format: ExcellonFormat, digits: u8) -> Result<String, String> {
+    match format {
+        ExcellonFormat::Auto => Ok(coordinate(mil(mm)?, digits)),
+        ExcellonFormat::TwoFour => two_four(mm),
+    }
+}
+
+/// The first lines of a file in the 2.4 format, drills and routing alike: `INCH,TZ`, the format as a comment, and a note of how far a position can be off by the rounding.
+const TWO_FOUR_HEAD: &str = "M48\nINCH,TZ\n; FILE_FORMAT=2:4\n; coordinates are inches with 2 digits before the point and 4 after, in 6 digits; each is rounded to the nearest 0.0001 in, at most 0.00127 mm off\n";
+
 /// The holes as an Excellon file in whole mils, as `style` says.
 pub fn write_drills_as(holes: &[Hole], style: &DrillStyle) -> Result<String, String> {
     write_drills_in_format(holes, style, ExcellonFormat::Auto)
@@ -344,7 +355,7 @@ pub fn write_drills_in_format(
     // the coordinates are whole mils with no decimal point (the convention of the Bungard programs), not the 2.4 format that other Excellon readers assume for inches: the file says so,
     // with the most a position can be off by the rounding to a mil
     let mut s = String::from(if fixed {
-        "M48\nINCH,TZ\n; FILE_FORMAT=2:4\n; coordinates are inches with 2 digits before the point and 4 after, in 6 digits; each is rounded to the nearest 0.0001 in, at most 0.00127 mm off\n"
+        TWO_FOUR_HEAD
     } else {
         "M48\nINCH\n; coordinates are whole mils (0.001 in) without a decimal point; each is rounded to the nearest mil, at most 0.0127 mm off\n"
     });
@@ -359,15 +370,11 @@ pub fn write_drills_in_format(
     for (t, _) in &tools {
         s.push_str(&format!("T{t}\n"));
         for h in holes.iter().filter(|h| h.tool == *t) {
-            if fixed {
-                s.push_str(&format!("X{}Y{}\n", two_four(h.x_mm)?, two_four(h.y_mm)?));
-            } else {
-                s.push_str(&format!(
-                    "X{}Y{}\n",
-                    coordinate(mil(h.x_mm)?, style.digits),
-                    coordinate(mil(h.y_mm)?, style.digits)
-                ));
-            }
+            s.push_str(&format!(
+                "X{}Y{}\n",
+                position(h.x_mm, format, style.digits)?,
+                position(h.y_mm, format, style.digits)?
+            ));
         }
     }
     s.push_str("M30\n");
@@ -422,6 +429,17 @@ fn write_plain_drills(holes: &[Hole], digits: u8) -> Result<String, String> {
 
 /// The cuts as a routing Excellon file in whole mils: the tool is put down at the start of each cut (`M15`), moves in straight lines (`G01`) and is lifted (`M16`).
 pub fn write_route_excellon(cuts: &[Cut], tool_mm: f64, tool: u8) -> Result<String, String> {
+    write_route_excellon_in_format(cuts, tool_mm, tool, ExcellonFormat::Auto)
+}
+
+/// Like [`write_route_excellon`] with the format of the coordinates: `Auto` writes whole mils, `TwoFour` writes inches in six digits (two before the point, four after) announced by
+/// `INCH,TZ` and a `FILE_FORMAT=2:4` comment, as the drill files are.
+pub fn write_route_excellon_in_format(
+    cuts: &[Cut],
+    tool_mm: f64,
+    tool: u8,
+    format: ExcellonFormat,
+) -> Result<String, String> {
     if !(tool_mm.is_finite() && tool_mm > 0.0 && tool_mm <= 50.0) {
         return Err(format!("the tool is {tool_mm} mm: it must be from 0 to 50"));
     }
@@ -431,16 +449,24 @@ pub fn write_route_excellon(cuts: &[Cut], tool_mm: f64, tool: u8) -> Result<Stri
     if !cuts.iter().any(|c| c.pts.len() >= 2) {
         return Err("there is nothing to route".into());
     }
-    let mut s = format!("M48\nINCH\nT{tool}C{}\n%\nT{tool}\n", inches(tool_mm));
+    let head = if format == ExcellonFormat::TwoFour {
+        TWO_FOUR_HEAD
+    } else {
+        "M48\nINCH\n"
+    };
+    let mut s = format!("{head}T{tool}C{}\n%\nT{tool}\n", inches(tool_mm));
+    let xy = |p: &(f64, f64)| -> Result<String, String> {
+        Ok(format!(
+            "X{}Y{}",
+            position(p.0, format, 0)?,
+            position(p.1, format, 0)?
+        ))
+    };
     for c in cuts.iter().filter(|c| c.pts.len() >= 2) {
-        s.push_str(&format!(
-            "G00X{}Y{}\nM15\n",
-            mil(c.pts[0].0)?,
-            mil(c.pts[0].1)?
-        ));
+        s.push_str(&format!("G00{}\nM15\n", xy(&c.pts[0])?));
         let rest = c.pts.iter().skip(1).chain(c.closed.then(|| &c.pts[0]));
         for p in rest {
-            s.push_str(&format!("G01X{}Y{}\n", mil(p.0)?, mil(p.1)?));
+            s.push_str(&format!("G01{}\n", xy(p)?));
         }
         s.push_str("M16\n");
     }

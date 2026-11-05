@@ -67,7 +67,7 @@ hpgl_shift_negative = no keeps the coordinates of the board in a plot, negative 
 --outline FILE puts the cut round the outline (the tool of route_tool_mm) first in the plot, on hpgl_outline_pen (0 = the pen after the others), the isolation on hpgl_isolation_pen
 (0 = as usual). ncd_isocam_style = yes writes a drill file as the Bungard programs do (M48 and %, tools by number, a repeated coordinate left out, CR LF, M00), and ncd_digits fills
 the coordinates with zeros in front (5 for whole mils in five digits).
---excellon-format 2.4 (excellon_format = 2.4) reads and writes the coordinates of a drill file as two digits before the point and four after, six digits in inches (X012340 is 1.2340 in),
+--excellon-format 2.4 (excellon_format = 2.4) reads and writes the coordinates of a drill file, and writes those of the routing file of route, as two digits before the point and four after, six digits in inches (X012340 is 1.2340 in),
 with the zeros as the header says (INCH,TZ or INCH,LZ); a file that states its own format (a FILE_FORMAT comment or INCH,TZ,00.0000) keeps it. The default, auto, is what the file says and whole mils
 for inches that say nothing. The plain style of ncd_isocam_style is whole mils only.";
 

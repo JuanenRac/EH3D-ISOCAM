@@ -1,9 +1,11 @@
-//! The format 2.4 of the coordinates of a drill file (`--excellon-format 2.4`, `excellon_format = 2.4`): two digits before the point and four after, with the zeros as the header says.
+//! The format 2.4 of the coordinates of a drill file and of a routing file (`--excellon-format 2.4`, `excellon_format = 2.4`): two digits before the point and four after, with the zeros as the header says.
 
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::drill::{
-    read_drills, read_drills_with_format, write_drills_in_format, DrillStyle, ExcellonFormat, Hole,
+    read_drills, read_drills_with_format, write_drills_in_format, write_route_excellon,
+    write_route_excellon_in_format, DrillStyle, ExcellonFormat, Hole,
 };
+use eh3d_isocam::order::Cut;
 use std::process::Command;
 
 const INCH_MM: f64 = 25.4;
@@ -289,4 +291,207 @@ fn the_command_line_refuses_a_format_it_does_not_know_and_the_plain_style_with_2
     assert!(!ok && err.contains("ncd_isocam_style"), "{err}");
     let (ok, text, err) = run(&["config"]);
     assert!(ok && text.contains("excellon_format = auto"), "{err}");
+}
+
+fn square(x0: f64, y0: f64, x1: f64, y1: f64, closed: bool) -> Cut {
+    Cut {
+        pts: vec![(x0, y0), (x1, y0), (x1, y1), (x0, y1)],
+        closed,
+    }
+}
+
+/// The points of the routed paths of a file, in millimetres, read with the reader of the suite.
+fn route_points_mm(text: &str) -> Vec<Vec<(f64, f64)>> {
+    let f = eh3d_parser_excellon::parse(text);
+    let units = f.units.expect("the routing file says its units");
+    f.routes
+        .iter()
+        .map(|r| {
+            r.points
+                .iter()
+                .map(|p| (units.to_mm(p.x), units.to_mm(p.y)))
+                .collect()
+        })
+        .collect()
+}
+
+const OUTLINE_50_BY_30: &str = "%FSLAX24Y24*%\n%MOMM*%\n%ADD10C,0.1*%\nD10*\nG01*\nX0Y0D02*\nX500000Y0D01*\nX500000Y300000D01*\nX0Y300000D01*\nX0Y0D01*\nM02*\n";
+
+#[test]
+fn the_routing_file_is_written_in_six_digits_with_the_same_head_as_the_drills() {
+    let cuts = [
+        square(0.0, 0.0, 25.4, 12.7, true),
+        square(-12.7, 5.08, 2.54, 10.16, false),
+    ];
+    let text = write_route_excellon_in_format(&cuts, 1.0, 2, ExcellonFormat::TwoFour).unwrap();
+    assert!(
+        text.starts_with("M48\nINCH,TZ\n; FILE_FORMAT=2:4\n"),
+        "{text}"
+    );
+    assert!(text.contains("T2C0.0394\n%\nT2\n"), "{text}");
+    for line in [
+        "G00X000000Y000000\nM15\n",
+        "G01X010000Y000000\n",
+        "G01X010000Y005000\n",
+        "G00X-005000Y002000\nM15\n",
+        "G01X001000Y004000\n",
+    ] {
+        assert!(text.contains(line), "{line:?} in {text}");
+    }
+    assert_eq!(text.matches("M15").count(), 2);
+    assert_eq!(text.matches("M16").count(), 2);
+    assert!(text.ends_with("M16\nM30\n"), "{text}");
+    // the drill files and the routing file share the lines that announce the format
+    let drills = write_drills_in_format(
+        &[hole(1, 10.0, 10.0, 0.8)],
+        &two_four(),
+        ExcellonFormat::TwoFour,
+    )
+    .unwrap();
+    let head = |t: &str| t.lines().take(4).collect::<Vec<_>>().join("\n");
+    assert_eq!(head(&text), head(&drills));
+}
+
+#[test]
+fn the_routing_file_in_2_4_is_read_back_with_negative_positions() {
+    let cuts = [
+        square(-12.7, -5.08, 30.48, 20.32, true),
+        square(1.27, 2.54, 3.81, 5.08, false),
+    ];
+    let text = write_route_excellon_in_format(&cuts, 1.0, 1, ExcellonFormat::TwoFour).unwrap();
+    let paths = route_points_mm(&text);
+    assert_eq!(paths.len(), 2, "{text}");
+    for (path, cut) in paths.iter().zip(&cuts) {
+        let mut want = cut.pts.clone();
+        if cut.closed {
+            want.push(cut.pts[0]);
+        }
+        assert_eq!(path.len(), want.len(), "{text}");
+        for (a, b) in path.iter().zip(&want) {
+            assert!(near(a.0, b.0) && near(a.1, b.1), "{a:?} {b:?}");
+        }
+    }
+}
+
+#[test]
+fn the_routing_file_in_whole_mils_is_what_it_was() {
+    let cuts = [square(0.0, 0.0, 25.4, 12.7, true)];
+    let auto = write_route_excellon_in_format(&cuts, 1.0, 1, ExcellonFormat::Auto).unwrap();
+    assert_eq!(auto, write_route_excellon(&cuts, 1.0, 1).unwrap());
+    assert!(
+        auto.starts_with("M48\nINCH\nT1C0.0394\n%\nT1\nG00X0Y0\nM15\n"),
+        "{auto}"
+    );
+    assert!(
+        auto.contains("G01X1000Y0\n") && !auto.contains("FILE_FORMAT"),
+        "{auto}"
+    );
+}
+
+#[test]
+fn a_cut_that_does_not_fit_two_digits_is_refused_in_the_routing_file_too() {
+    let fits = [square(0.0, 0.0, 2539.99, 1.0, false)];
+    assert!(write_route_excellon_in_format(&fits, 1.0, 1, ExcellonFormat::TwoFour).is_ok());
+    for mm in [2540.0, -2540.0] {
+        let cuts = [square(0.0, 0.0, mm, 1.0, false)];
+        let e = write_route_excellon_in_format(&cuts, 1.0, 1, ExcellonFormat::TwoFour).unwrap_err();
+        assert!(
+            e.contains("does not fit the 2.4 format") && e.contains("99.9999 in"),
+            "{mm}: {e}"
+        );
+        // whole mils hold it
+        assert!(write_route_excellon_in_format(&cuts, 1.0, 1, ExcellonFormat::Auto).is_ok());
+    }
+    let nan = [square(0.0, 0.0, f64::NAN, 1.0, false)];
+    let e = write_route_excellon_in_format(&nan, 1.0, 1, ExcellonFormat::TwoFour).unwrap_err();
+    assert!(e.contains("out of range"), "{e}");
+    // the checks of the tool and of the path are the same in both formats
+    let one = [square(0.0, 0.0, 1.0, 1.0, true)];
+    assert!(write_route_excellon_in_format(&[], 1.0, 1, ExcellonFormat::TwoFour).is_err());
+    assert!(write_route_excellon_in_format(&one, 0.0, 1, ExcellonFormat::TwoFour).is_err());
+    assert!(write_route_excellon_in_format(&one, 1.0, 0, ExcellonFormat::TwoFour).is_err());
+}
+
+#[test]
+fn the_command_line_routes_in_2_4_with_the_option_and_with_a_configuration_file() {
+    let outline = tmp("excellon_24_route.gko");
+    std::fs::write(&outline, OUTLINE_50_BY_30).unwrap();
+    let out = tmp("excellon_24_route.ncd");
+    let (ok, text, err) = run(&[
+        "route",
+        &outline,
+        &out,
+        "--route-tool-mm",
+        "2",
+        "--excellon-format",
+        "2.4",
+    ]);
+    assert!(ok, "{err}");
+    assert!(text.contains("1 paths"), "{text}");
+    let written = std::fs::read_to_string(&out).unwrap();
+    assert!(
+        written.starts_with("M48\nINCH,TZ\n; FILE_FORMAT=2:4\n"),
+        "{written}"
+    );
+    // every position is six digits, with a sign when it is negative (the cut goes round the board, outside it)
+    let moves: Vec<&str> = written
+        .lines()
+        .filter(|l| l.starts_with("G00") || l.starts_with("G01"))
+        .collect();
+    assert!(moves.len() >= 5, "{written}");
+    for l in &moves {
+        let (x, y) = l[4..].split_once('Y').expect("an X and a Y");
+        for v in [x, y] {
+            let digits = v.strip_prefix('-').unwrap_or(v);
+            assert!(
+                digits.len() == 6 && digits.bytes().all(|b| b.is_ascii_digit()),
+                "{l}"
+            );
+        }
+    }
+    let paths = route_points_mm(&written);
+    assert_eq!(paths.len(), 1, "{written}");
+    let lo = paths[0].iter().fold(f64::MAX, |m, p| m.min(p.0));
+    let hi = paths[0].iter().fold(f64::MIN, |m, p| m.max(p.0));
+    assert!(
+        (lo + 1.0).abs() < 0.5 && (hi - 51.0).abs() < 0.5,
+        "{lo} {hi}"
+    );
+    let cfg = tmp("excellon_24_route.cfg");
+    std::fs::write(&cfg, "excellon_format = 2.4\nroute_tool_mm = 2\n").unwrap();
+    let out2 = tmp("excellon_24_route2.ncd");
+    let (ok, _, err) = run(&["route", &outline, &out2, "--config", &cfg]);
+    assert!(ok, "{err}");
+    assert_eq!(std::fs::read_to_string(&out2).unwrap(), written);
+    // without the option the file is in whole mils as before
+    let out3 = tmp("excellon_24_route3.ncd");
+    let (ok, _, err) = run(&["route", &outline, &out3, "--route-tool-mm", "2"]);
+    assert!(ok, "{err}");
+    let plain = std::fs::read_to_string(&out3).unwrap();
+    assert!(
+        plain.starts_with("M48\nINCH\nT1C0.0787\n") && !plain.contains("FILE_FORMAT"),
+        "{plain}"
+    );
+}
+
+#[test]
+fn the_command_line_refuses_the_plain_style_with_2_4_and_an_unknown_format_when_routing() {
+    let outline = tmp("excellon_24_route_bad.gko");
+    std::fs::write(&outline, OUTLINE_50_BY_30).unwrap();
+    let out = tmp("excellon_24_route_bad.ncd");
+    let (ok, _, err) = run(&[
+        "route",
+        &outline,
+        &out,
+        "--excellon-format",
+        "2.4",
+        "--ncd-isocam-style",
+        "yes",
+    ]);
+    assert!(!ok && err.contains("ncd_isocam_style"), "{err}");
+    let (ok, _, err) = run(&["route", &outline, &out, "--excellon-format", "3.3"]);
+    assert!(
+        !ok && err.contains("excellon_format '3.3' is not auto or 2.4"),
+        "{err}"
+    );
 }

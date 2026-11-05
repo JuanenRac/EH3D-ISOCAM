@@ -5,7 +5,7 @@ use crate::config::Settings;
 use crate::contour::Loop;
 use crate::drill::{
     add_tabs, read_drills_with_format, read_outline, route_outline, write_drills_in_format,
-    write_route_excellon, DrillStyle, Hole, Outline, TabReport, Tabs,
+    write_route_excellon_in_format, DrillStyle, Hole, Outline, TabReport, Tabs,
 };
 use crate::fiducial::{apply_to_holes, apply_to_passes, Fit};
 use crate::filetype;
@@ -397,7 +397,7 @@ pub fn route_job(
         )?
     } else {
         let (cuts, _) = arrange(&pass.cuts(), &order, order.start);
-        write_route_excellon(&cuts, s.route_tool_mm, 1)?
+        write_route_excellon_in_format(&cuts, s.route_tool_mm, 1, s.excellon_format)?
     };
     let cuts = pass.cuts();
     Ok(RouteJob {
