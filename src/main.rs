@@ -3,27 +3,27 @@
 #![forbid(unsafe_code)]
 
 use eh3d_gerberviewer::scene::{from_gerber_with, SceneOptions};
+use eh3d_isocam::board::{
+    centre_of, drills_job, finish_plot, isolation_plot, mark_rows, mask_job, plot_options,
+    route_job,
+};
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::drc;
-use eh3d_isocam::drill::{
-    add_tabs, read_drills_with_units, read_outline, route_outline, write_drills_as,
-    write_route_excellon, DrillStyle, Hole, Tabs,
-};
+use eh3d_isocam::drill::{read_drills_with_units, read_outline};
 use eh3d_isocam::dxf;
-use eh3d_isocam::fiducial::{apply_to_holes, apply_to_passes};
+use eh3d_isocam::fiducial::apply_to_passes;
 use eh3d_isocam::filetype;
 use eh3d_isocam::fill::{rubout_contours, Fill};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::gcode::write_in;
-use eh3d_isocam::hpgl::{set_pen_speed, write_holes_at, write_opts, PenBy, PlotOptions};
+use eh3d_isocam::hpgl::{write_opts, PenBy};
 use eh3d_isocam::isolate::{net_scene, plan_with_pads, rubout_lines, Pass};
-use eh3d_isocam::mask;
 use eh3d_isocam::optimize::optimize_passes;
 use eh3d_isocam::order::{arrange, directions, travel_mm, Cut, Strategy};
 use eh3d_isocam::preview;
 use eh3d_isocam::problems::{problem_zones, thin_for_tolerance_in};
 use eh3d_isocam::tolerance::{close_pieces_scoped, ToleranceScope};
-use eh3d_isocam::transform::{alignment_pattern, lay_out, Axis, Board};
+use eh3d_isocam::transform::{lay_out, Board};
 use eh3d_isocam::units::{parse_length, Unit};
 use eh3d_parser_gcode::emit::{header_with_units, sha256_hex, Header};
 use eh3d_parser_gerber::{
@@ -176,17 +176,7 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
                 // the pairs of marks, one row each: design x, design y, measured x, measured y (a header row and lines that start with # are left out)
                 let file = it.next().ok_or_else(|| format!("{a} needs a file"))?;
                 let text = read(&cli, &file)?;
-                for line in text.lines().map(str::trim) {
-                    let first = line
-                        .split(|c: char| c == ',' || c == ';' || c.is_whitespace())
-                        .find(|t| !t.is_empty());
-                    let numeric = first.is_some_and(|t| {
-                        t.trim_start_matches(['+', '-', '.'])
-                            .starts_with(|c: char| c.is_ascii_digit())
-                    });
-                    if line.is_empty() || line.starts_with('#') || !numeric {
-                        continue;
-                    }
+                for line in mark_rows(&text) {
                     cli.settings
                         .set("fiducial", line)
                         .map_err(|e| format!("{file}: {e}"))?;
@@ -457,35 +447,6 @@ fn close_scoped(
     )
 }
 
-/// A plot file with the pen speed of the settings (none when it is 0).
-fn plot(cli: &Cli, text: Result<String, String>) -> Result<String, String> {
-    let text = set_pen_speed(&text?, cli.settings.hpgl_pen_speed_cm_s)?;
-    Ok(if cli.settings.hpgl_isocam_style {
-        eh3d_isocam::hpgl::isocam_style(&text)
-    } else {
-        text
-    })
-}
-
-/// How a plot is written, from the settings.
-fn plot_options(cli: &Cli, whole: &eh3d_gerberviewer::scene::Bounds) -> PlotOptions {
-    PlotOptions {
-        keep_negative: !cli.settings.hpgl_shift_negative,
-        pen_of_pass: Vec::new(),
-        origin: plot_origin(cli, whole),
-    }
-}
-
-/// The smallest X and Y of a job for the plots: the box of the board less the margin, the same for the isolation and for the holes of one board.
-fn plot_origin(cli: &Cli, whole: &eh3d_gerberviewer::scene::Bounds) -> Option<(f64, f64)> {
-    let m = cli.settings.hpgl_margin_mm;
-    if whole.min_x.is_finite() && whole.min_y.is_finite() {
-        Some((whole.min_x - m, whole.min_y - m))
-    } else {
-        None
-    }
-}
-
 fn is_dxf(path: &str) -> bool {
     path.to_ascii_lowercase().ends_with(".dxf")
 }
@@ -623,15 +584,6 @@ fn build_passes(
     Ok((passes, unfixed))
 }
 
-/// The centre of the box of the whole board (or panel); the origin when it is empty.
-fn centre_of(b: &eh3d_gerberviewer::scene::Bounds) -> (f64, f64) {
-    if b.is_empty() {
-        (0.0, 0.0)
-    } else {
-        ((b.min_x + b.max_x) / 2.0, (b.min_y + b.max_y) / 2.0)
-    }
-}
-
 fn run(mut args: Vec<String>) -> Result<(), String> {
     if args.is_empty() || matches!(args[0].as_str(), "help" | "--help" | "-h") {
         println!("{HELP}");
@@ -760,57 +712,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let out = arg(&cli, 1, "isolate needs an output file")?;
             let order = s.order();
             let text = if is_plot(out) {
-                let pens = if pl.tools.len() > 1 || pl.rubout.is_some() {
-                    PenBy::Tool
-                } else {
-                    PenBy::Pass
-                };
-                let mut all = passes.clone();
-                let mut opts = plot_options(&cli, &whole);
-                if s.plot_outline {
-                    if board.outline.is_empty() {
-                        return Err(
-                            "plot_outline needs the outline of the board: give --outline FILE"
-                                .into(),
-                        );
-                    }
-                    let outline = eh3d_isocam::drill::Outline {
-                        closed: board.outline.clone(),
-                        open: Vec::new(),
-                    };
-                    let mut cut = route_outline(
-                        &outline,
-                        s.route_tool_mm,
-                        s.res_mm.min(s.route_tool_mm / 2.0),
-                    )?;
-                    let (t, _) = s.transform(centre_of(&whole))?;
-                    if !t.is_identity() {
-                        let mut one = vec![cut];
-                        apply_to_passes(&mut one, &t)?;
-                        cut = one.remove(0);
-                    }
-                    // the pens of the passes as they would be, then the cut in front of them
-                    let usual = |k: usize, p: &Pass| match pens {
-                        PenBy::Pass => k + 1,
-                        PenBy::Tool => p.tool + 1,
-                    };
-                    let mut pen_of: Vec<usize> = all
-                        .iter()
-                        .enumerate()
-                        .map(|(k, p)| match s.hpgl_isolation_pen {
-                            0 => usual(k, p),
-                            n => usize::from(n),
-                        })
-                        .collect();
-                    let outline_pen = match s.hpgl_outline_pen {
-                        0 => pen_of.iter().copied().max().unwrap_or(0) + 1,
-                        n => usize::from(n),
-                    };
-                    pen_of.insert(0, outline_pen);
-                    all.insert(0, cut);
-                    opts.pen_of_pass = pen_of;
-                }
-                plot(&cli, write_opts(&all, &order, pens, &opts))?
+                isolation_plot(&passes, s, &whole, &board.outline)?
             } else if is_dxf(out) {
                 dxf::write(&passes)?
             } else {
@@ -882,13 +784,13 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             };
             let order = s.order();
             let text = if is_plot(out) {
-                plot(
-                    &cli,
+                finish_plot(
+                    s,
                     write_opts(
                         std::slice::from_ref(&pass),
                         &order,
                         PenBy::Pass,
-                        &plot_options(&cli, &eh3d_gerberviewer::scene::Bounds::empty()),
+                        &plot_options(s, &eh3d_gerberviewer::scene::Bounds::empty()),
                     ),
                 )?
             } else if is_dxf(out) {
@@ -918,14 +820,14 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 Some(m) => Some(scene_of(&cli, &read_layer(&cli, m)?)),
                 None => None,
             };
-            let open = mask::openings(&copper, mask_scene.as_ref(), s.mask_margin_mm)?;
-            for n in &open.notes {
+            let job = mask_job(&copper, mask_scene.as_ref(), s.mask_margin_mm)?;
+            for n in &job.notes {
                 eprintln!("note: {n}");
             }
-            write_text(&cli, 1, out, mask::write_gerber(&open)?)?;
+            write_text(&cli, 1, out, job.text)?;
             println!(
                 "{} openings, {} beyond each pad, written to {out}",
-                open.shapes.len(),
+                job.openings,
                 len(&cli, s.mask_margin_mm)
             );
             Ok(())
@@ -950,58 +852,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let mut cli2 = cli.clone();
             cli2.drills = Some(input.to_string());
             let (board, whole) = load_board(&cli2, None)?;
-            let mut holes: Vec<Hole> = board.holes;
-            if cli.align {
-                let clash = holes.iter().any(|h| {
-                    h.tool == s.alignment_tool
-                        && (h.diameter_mm - s.alignment_hole_mm).abs() > 0.005
-                });
-                let tool = if clash {
-                    holes
-                        .iter()
-                        .map(|h| h.tool)
-                        .max()
-                        .and_then(|m| m.checked_add(1))
-                        .ok_or("no free tool number for the alignment holes")?
-                } else {
-                    s.alignment_tool
-                };
-                holes.extend(alignment_pattern(
-                    &whole,
-                    s.alignment_hole_mm,
-                    s.alignment_margin_mm,
-                    s.alignment_holes,
-                    s.mirror.unwrap_or(Axis::Vertical),
-                    tool,
-                    s.alignment_pattern,
-                    (s.alignment_special_a_mm, s.alignment_special_b_mm),
-                )?);
-            }
-            let (t, _) = s.transform(centre_of(&whole))?;
-            if !t.is_identity() {
-                apply_to_holes(&mut holes, &t)?;
-            }
-            let text = if is_plot(out) {
-                plot(
-                    &cli,
-                    write_holes_at(
-                        &holes,
-                        &s.hpgl_pen_map,
-                        !s.hpgl_shift_negative,
-                        plot_origin(&cli, &whole),
-                    ),
-                )?
-            } else {
-                write_drills_as(
-                    &holes,
-                    &DrillStyle {
-                        plain: s.ncd_isocam_style,
-                        digits: s.ncd_digits,
-                    },
-                )?
-            };
-            write_text(&cli, 1, out, text)?;
-            println!("{} holes written to {out}", holes.len());
+            let job = drills_job(board.holes, &whole, s, cli.align, is_plot(out))?;
+            write_text(&cli, 1, out, job.text)?;
+            println!("{} holes written to {out}", job.holes);
             Ok(())
         }
         "route" => {
@@ -1011,67 +864,27 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             cli2.outline = Some(file.to_string());
             cli2.drills = None;
             let (board, whole) = load_board(&cli2, None)?;
-            let outline = eh3d_isocam::drill::Outline {
-                closed: board.outline,
-                open: Vec::new(),
-            };
-            let mut pass = route_outline(
-                &outline,
-                s.route_tool_mm,
-                s.res_mm.min(s.route_tool_mm / 2.0),
-            )?;
-            if s.tab_count > 0 {
-                let r = add_tabs(
-                    &mut pass,
-                    s.route_tool_mm,
-                    &Tabs {
-                        count: s.tab_count,
-                        width_mm: s.tab_width_mm,
-                        min_length_mm: s.tab_min_length_mm,
-                    },
-                )?;
-                if r.bridges > 0 {
-                    eprintln!(
-                        "note: {} bridges of {} on {} paths",
-                        r.bridges,
-                        len(&cli, s.tab_width_mm),
-                        r.paths_cut
-                    );
-                }
-                if r.paths_left_closed > 0 {
-                    eprintln!(
-                        "warning: {} paths are too short for a bridge ({} between bridges) and are cut right round: the piece will not be held",
-                        r.paths_left_closed,
-                        len(&cli, s.tab_min_length_mm)
-                    );
-                }
+            let r = route_job(&board.outline, &whole, s, is_plot(out))?;
+            if r.tabs.bridges > 0 {
+                eprintln!(
+                    "note: {} bridges of {} on {} paths",
+                    r.tabs.bridges,
+                    len(&cli, s.tab_width_mm),
+                    r.tabs.paths_cut
+                );
             }
-            let mut passes = vec![pass];
-            let (t, _) = s.transform(centre_of(&whole))?;
-            if !t.is_identity() {
-                apply_to_passes(&mut passes, &t)?;
+            if r.tabs.paths_left_closed > 0 {
+                eprintln!(
+                    "warning: {} paths are too short for a bridge ({} between bridges) and are cut right round: the piece will not be held",
+                    r.tabs.paths_left_closed,
+                    len(&cli, s.tab_min_length_mm)
+                );
             }
-            let pass = passes.remove(0);
-            let order = s.order();
-            let text = if is_plot(out) {
-                plot(
-                    &cli,
-                    write_opts(
-                        std::slice::from_ref(&pass),
-                        &order,
-                        PenBy::Pass,
-                        &plot_options(&cli, &whole),
-                    ),
-                )?
-            } else {
-                let (cuts, _) = arrange(&pass.cuts(), &order, order.start);
-                write_route_excellon(&cuts, s.route_tool_mm, 1)?
-            };
-            write_text(&cli, 1, out, text)?;
+            write_text(&cli, 1, out, r.text)?;
             println!(
                 "{} paths, {} of cut written to {out}",
-                pass.cuts().len(),
-                len(&cli, pass.cuts().iter().map(Cut::length_mm).sum::<f64>())
+                r.paths,
+                len(&cli, r.cut_mm)
             );
             Ok(())
         }
