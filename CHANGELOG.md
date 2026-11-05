@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Drill files in the 2.4 format:** `--excellon-format 2.4` (or `excellon_format = 2.4` in the settings file; `auto` is the default and changes nothing) reads and writes the coordinates of a drill file as two digits before the point and four after, six digits in inches (`X012340` is 1.2340 in), with the zeros as the header says (`INCH,TZ` or `INCH,LZ`). The file is read by the reader of the suite, which is given the format as the default of a file that says nothing; a file that states its own format (a `FILE_FORMAT` comment or `INCH,TZ,00.0000`) keeps it and is no longer read as whole mils. The written file says `INCH,TZ` and `FILE_FORMAT=2:4`. A position beyond 99.9999 in, a format that is not `auto` or `2.4` and the plain style of `ncd_isocam_style` together with 2.4 are errors with stable words, and a line number in an error is the one of the file.
+
 - **Binaries for every system:** `release-binaries.yml` builds the program with its window for Windows (64 and 32 bits), Linux and macOS (Apple silicon and Intel), packs each one with the licence, the readme, the icon and the examples, writes `SHA256SUMS` and a build manifest, attests their provenance, verifies the artifact as a stranger would, prepares a draft release only after the owner approves it (a dry run is the default) and opens an issue `build-failed` when anything does not finish.
 
 ## [0.0.8] - The window covers drills, outline, mirror, panel, marks and mask, tested generated G-code and the Windows icon

@@ -269,6 +269,19 @@
           }
         },
         {
+          "name": "excellon_format.rs",
+          "desc": {
+            "en": "tests of the 2.4 format of the coordinates of a drill file",
+            "es": "tests del formato 2.4 de las coordenadas de un fichero de taladros",
+            "de": "Tests des Formats 2.4 der Koordinaten einer Bohrdatei",
+            "fr": "tests du format 2.4 des coordonnées d'un fichier de perçage",
+            "it": "test del formato 2.4 delle coordinate di un file di foratura",
+            "ja": "ドリルファイルの座標の 2.4 形式のテスト",
+            "zh": "钻孔文件坐标 2.4 格式的测试",
+            "pt": "testes do formato 2.4 das coordenadas de um ficheiro de furação"
+          }
+        },
+        {
           "name": "files.rs",
           "desc": {
             "en": "tests of the drill and outline files",
