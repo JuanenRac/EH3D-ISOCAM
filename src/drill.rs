@@ -30,9 +30,89 @@ fn mm_of_inch_or_mm(v: f64) -> f64 {
     }
 }
 
+/// The number of digits the coordinates of a drill file without decimal points are written with.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ExcellonFormat {
+    /// What the file says; a file in inches that says nothing is in whole mils (the Bungard convention), and one in millimetres in 3.3.
+    #[default]
+    Auto,
+    /// Two digits before the point and four after (`X012340` is 1.2340), with the zeros as the header says (`TZ` or `LZ`). A file that states its own format keeps it.
+    TwoFour,
+}
+
+impl ExcellonFormat {
+    /// The value of the setting `excellon_format`: `auto` or `2.4`.
+    pub fn parse(v: &str) -> Result<ExcellonFormat, String> {
+        match v.trim().to_ascii_lowercase().as_str() {
+            "auto" => Ok(ExcellonFormat::Auto),
+            "2.4" => Ok(ExcellonFormat::TwoFour),
+            _ => Err(format!("excellon_format '{}' is not auto or 2.4", v.trim())),
+        }
+    }
+
+    /// The value as the setting is written.
+    pub fn name(self) -> &'static str {
+        match self {
+            ExcellonFormat::Auto => "auto",
+            ExcellonFormat::TwoFour => "2.4",
+        }
+    }
+}
+
+/// The most a coordinate of the 2.4 format can hold: 99.9999 in, written as six digits.
+const MAX_TWO_FOUR: i64 = 999_999;
+
+/// A Bungard file in whole mils, read with the reader of those files; `None` when the file is not one.
+fn read_whole_mils(text: &str) -> Option<Result<Drills, String>> {
+    let f = ncd::parse(text).ok()?;
+    if f.metric || f.holes.is_empty() {
+        return None;
+    }
+    let dia = |t: u8| {
+        f.diameters
+            .iter()
+            .find(|d| d.0 == t)
+            .map_or(0.0, |d| mm_of_inch_or_mm(d.1))
+    };
+    let holes: Vec<Hole> = f
+        .holes
+        .iter()
+        .map(|h| Hole {
+            tool: h.tool,
+            x_mm: h.x_mm(),
+            y_mm: h.y_mm(),
+            diameter_mm: dia(h.tool),
+        })
+        .collect();
+    Some(check_holes(Drills {
+        holes,
+        notes: Vec::new(),
+    }))
+}
+
 /// Reads an Excellon drill file. A Bungard file in mils is read with the reader of those files; a metric file, or one with decimal coordinates, with the reader of the suite.
 pub fn read_drills(text: &str) -> Result<Drills, String> {
     read_drills_with_units(text, None)
+}
+
+/// Whether a file states the format of its coordinates itself: a `FILE_FORMAT=2:4` comment, or the digits after the units (`INCH,TZ,00.0000`). Such a file is read by the reader of the
+/// suite, which honours it, and never as whole mils.
+fn states_its_format(text: &str) -> bool {
+    text.lines().any(|raw| {
+        let t: String = raw
+            .trim()
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>()
+            .to_ascii_uppercase();
+        if let Some(c) = t.strip_prefix(';') {
+            return c.starts_with("FILE_FORMAT=");
+        }
+        (t.starts_with("INCH") || t.starts_with("METRIC"))
+            && t.split(',')
+                .skip(1)
+                .any(|p| p.contains('.') && p.chars().all(|c| c.is_ascii_digit() || c == '.'))
+    })
 }
 
 /// Like [`read_drills`] with the units of the file given by the person (`--units`): they win over what the file says. A file that does not say its units and whose holes are so
@@ -41,30 +121,30 @@ pub fn read_drills_with_units(
     text: &str,
     forced: Option<eh3d_parser_excellon::Units>,
 ) -> Result<Drills, String> {
-    if let Ok(f) = ncd::parse(text) {
-        if !f.metric && !f.holes.is_empty() {
-            let dia = |t: u8| {
-                f.diameters
-                    .iter()
-                    .find(|d| d.0 == t)
-                    .map_or(0.0, |d| mm_of_inch_or_mm(d.1))
-            };
-            let holes: Vec<Hole> = f
-                .holes
-                .iter()
-                .map(|h| Hole {
-                    tool: h.tool,
-                    x_mm: h.x_mm(),
-                    y_mm: h.y_mm(),
-                    diameter_mm: dia(h.tool),
-                })
-                .collect();
-            return check_holes(Drills {
-                holes,
-                notes: Vec::new(),
-            });
+    read_drills_with_format(text, forced, ExcellonFormat::Auto)
+}
+
+/// Like [`read_drills_with_units`] with the format of the coordinates given by the person (`--excellon-format`). With 2.4 the file is read by the reader of the suite as a file of two
+/// digits before the point and four after, unless it states a format of its own; the zeros are as its header says. A file that states its format is never read as whole mils.
+pub fn read_drills_with_format(
+    text: &str,
+    forced: Option<eh3d_parser_excellon::Units>,
+    format: ExcellonFormat,
+) -> Result<Drills, String> {
+    let two_four = format == ExcellonFormat::TwoFour;
+    if !two_four && !states_its_format(text) {
+        if let Some(mils) = read_whole_mils(text) {
+            return mils;
         }
     }
+    // the format asked for goes first as a comment, which the reader takes as a default: a format that the file states itself comes later and wins; the line it takes is not counted
+    let framed;
+    let (text, shift) = if two_four {
+        framed = format!("; FILE_FORMAT=2:4\n{text}");
+        (framed.as_str(), 1)
+    } else {
+        (text, 0)
+    };
     let f = match forced {
         Some(units) => eh3d_parser_excellon::parse_with_units(text, units),
         None => eh3d_parser_excellon::parse(text),
@@ -88,9 +168,17 @@ pub fn read_drills_with_units(
         .find(|d| d.severity == eh3d_parser_excellon::Severity::Error)
     {
         if f.drills.is_empty() {
-            return Err(format!("line {}: {}", d.line, d.message));
+            return Err(format!(
+                "line {}: {}",
+                d.line.saturating_sub(shift),
+                d.message
+            ));
         }
-        notes.push(format!("line {}: {}", d.line, d.message));
+        notes.push(format!(
+            "line {}: {}",
+            d.line.saturating_sub(shift),
+            d.message
+        ));
     }
     if !f.slots.is_empty() || !f.routes.is_empty() {
         notes.push(format!(
@@ -190,8 +278,41 @@ fn coordinate(v: i64, digits: u8) -> String {
     format!("{v:0w$}", w = usize::from(digits))
 }
 
+/// A coordinate of the 2.4 format: the position in ten-thousandths of an inch as six digits, with a minus sign in front when it is negative.
+fn two_four(mm: f64) -> Result<String, String> {
+    if !mm.is_finite() {
+        return Err(format!("{mm} mm is out of range for a drill file"));
+    }
+    let v = (mm / 25.4 * 10_000.0).round();
+    if v.abs() > MAX_TWO_FOUR as f64 {
+        return Err(format!(
+            "{mm} mm does not fit the 2.4 format of a drill file (at most 99.9999 in)"
+        ));
+    }
+    let v = v as i64;
+    Ok(if v < 0 {
+        format!("-{:06}", -v)
+    } else {
+        format!("{v:06}")
+    })
+}
+
 /// The holes as an Excellon file in whole mils, as `style` says.
 pub fn write_drills_as(holes: &[Hole], style: &DrillStyle) -> Result<String, String> {
+    write_drills_in_format(holes, style, ExcellonFormat::Auto)
+}
+
+/// Like [`write_drills_as`] with the format of the coordinates: `Auto` writes whole mils, `TwoFour` writes inches with two digits before the point and four after, always six digits
+/// (`X012340` is 1.2340 in), announced by `INCH,TZ` and a `FILE_FORMAT=2:4` comment. The plain style of the Bungard programs is whole mils only, so it is refused with 2.4.
+pub fn write_drills_in_format(
+    holes: &[Hole],
+    style: &DrillStyle,
+    format: ExcellonFormat,
+) -> Result<String, String> {
+    let fixed = format == ExcellonFormat::TwoFour;
+    if style.plain && fixed {
+        return Err("the plain style of the Bungard programs (ncd_isocam_style) is written in whole mils: it cannot be written in the 2.4 format".into());
+    }
     if style.plain {
         return write_plain_drills(holes, style.digits);
     }
@@ -222,9 +343,11 @@ pub fn write_drills_as(holes: &[Hole], style: &DrillStyle) -> Result<String, Str
     }
     // the coordinates are whole mils with no decimal point (the convention of the Bungard programs), not the 2.4 format that other Excellon readers assume for inches: the file says so,
     // with the most a position can be off by the rounding to a mil
-    let mut s = String::from(
-        "M48\nINCH\n; coordinates are whole mils (0.001 in) without a decimal point; each is rounded to the nearest mil, at most 0.0127 mm off\n",
-    );
+    let mut s = String::from(if fixed {
+        "M48\nINCH,TZ\n; FILE_FORMAT=2:4\n; coordinates are inches with 2 digits before the point and 4 after, in 6 digits; each is rounded to the nearest 0.0001 in, at most 0.00127 mm off\n"
+    } else {
+        "M48\nINCH\n; coordinates are whole mils (0.001 in) without a decimal point; each is rounded to the nearest mil, at most 0.0127 mm off\n"
+    });
     for (t, d) in &tools {
         if *d > 0.0 {
             s.push_str(&format!("T{t}C{}\n", inches(*d)));
@@ -236,11 +359,15 @@ pub fn write_drills_as(holes: &[Hole], style: &DrillStyle) -> Result<String, Str
     for (t, _) in &tools {
         s.push_str(&format!("T{t}\n"));
         for h in holes.iter().filter(|h| h.tool == *t) {
-            s.push_str(&format!(
-                "X{}Y{}\n",
-                coordinate(mil(h.x_mm)?, style.digits),
-                coordinate(mil(h.y_mm)?, style.digits)
-            ));
+            if fixed {
+                s.push_str(&format!("X{}Y{}\n", two_four(h.x_mm)?, two_four(h.y_mm)?));
+            } else {
+                s.push_str(&format!(
+                    "X{}Y{}\n",
+                    coordinate(mil(h.x_mm)?, style.digits),
+                    coordinate(mil(h.y_mm)?, style.digits)
+                ));
+            }
         }
     }
     s.push_str("M30\n");

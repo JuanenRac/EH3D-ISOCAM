@@ -4,7 +4,7 @@
 use crate::config::Settings;
 use crate::contour::Loop;
 use crate::drill::{
-    add_tabs, read_drills_with_units, read_outline, route_outline, write_drills_as,
+    add_tabs, read_drills_with_format, read_outline, route_outline, write_drills_in_format,
     write_route_excellon, DrillStyle, Hole, Outline, TabReport, Tabs,
 };
 use crate::fiducial::{apply_to_holes, apply_to_passes, Fit};
@@ -94,7 +94,8 @@ pub fn read_drill_file(
     let name = file_name(path);
     let text = read_text(path, s)?;
     filetype::expect_drills(&name, filetype::detect(&text))?;
-    let d = read_drills_with_units(&text, units).map_err(|e| format!("{name}: {e}"))?;
+    let d = read_drills_with_format(&text, units, s.excellon_format)
+        .map_err(|e| format!("{name}: {e}"))?;
     Ok(DrillFile {
         path: path.to_path_buf(),
         name,
@@ -324,12 +325,13 @@ pub fn drills_job(
             ),
         )?
     } else {
-        write_drills_as(
+        write_drills_in_format(
             &holes,
             &DrillStyle {
                 plain: s.ncd_isocam_style,
                 digits: s.ncd_digits,
             },
+            s.excellon_format,
         )?
     };
     Ok(DrillJob {

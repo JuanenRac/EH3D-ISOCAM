@@ -2,6 +2,7 @@
 //! keys as options (`--fine-tool-mm 0.15` is `fine_tool_mm = 0.15`), so nothing tuned is hidden in the code.
 
 use crate::drc::Rules;
+use crate::drill::ExcellonFormat;
 use crate::fiducial::{fit, Affine, Fit, Limits, Model, Pair};
 use crate::forced::Forced;
 use crate::gcode::Job;
@@ -150,6 +151,9 @@ pub struct Settings {
     pub ncd_isocam_style: bool,
     /// Digits of a coordinate in a drill file, filled with zeros in front; 0 writes the number as it is.
     pub ncd_digits: u8,
+    /// The format of the coordinates of a drill file that has no decimal point: `auto` (what the file says; whole mils for inches that say nothing) or `2.4` (two digits before the
+    /// point and four after, read and written).
+    pub excellon_format: ExcellonFormat,
 }
 
 impl Default for Settings {
@@ -243,6 +247,7 @@ impl Default for Settings {
             hpgl_isolation_pen: 0,
             ncd_isocam_style: false,
             ncd_digits: 0,
+            excellon_format: ExcellonFormat::Auto,
         }
     }
 }
@@ -444,6 +449,7 @@ impl Settings {
                 }
                 self.ncd_digits = n as u8;
             }
+            "excellon_format" => self.excellon_format = ExcellonFormat::parse(v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -533,6 +539,7 @@ hpgl_margin_mm = {}
 spindle_wait_s = {}
 max_input_mb = {}
 arc_tolerance_mm = {}
+excellon_format = {}
 ",
             self.conflict_tolerance_scope.name(),
             self.rubout_fill_margin_mm,
@@ -548,7 +555,8 @@ arc_tolerance_mm = {}
             self.hpgl_margin_mm,
             self.spindle_wait_s,
             self.max_input_mb,
-            self.arc_tolerance_mm
+            self.arc_tolerance_mm,
+            self.excellon_format.name()
         ));
         for p in &self.fiducials {
             extra.push_str(&format!(
@@ -658,6 +666,12 @@ arc_tolerance_mm = {}
         range("panel_gap_mm", self.panel_gap_mm, 0.0, 100.0)?;
         range("start_x_mm", self.start_x_mm, -10_000.0, 10_000.0)?;
         range("start_y_mm", self.start_y_mm, -10_000.0, 10_000.0)?;
+        if self.ncd_isocam_style && self.excellon_format != ExcellonFormat::Auto {
+            return Err(format!(
+                "excellon_format {}: the plain style of the Bungard programs (ncd_isocam_style) is written in whole mils",
+                self.excellon_format.name()
+            ));
+        }
         if !matches!(self.alignment_holes, 2 | 3 | 6) {
             return Err(format!(
                 "alignment_holes is {}: it must be 2, 3 or 6",
