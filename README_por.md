@@ -17,7 +17,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 255 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada e desenha o cobre e as trajetórias, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 289 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versão | `0.0.7` |
 | Maturidade | Estrutura inicial |
-| Testes | 255 |
+| Testes | 289 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -48,7 +48,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ficheiros e disposição | 🟡 | lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, acrescenta furos de alinhamento e verifica as regras de projeto com a posição de cada achado; testado num computador, não com ficheiros escritos por outros programas nem numa máquina. |
 | Isolamento forçado, correção, máscara | 🟡 | percursos forçados nos espaços onde a ferramenta não cabe, percursos mais leves, escala e correção com pontos de referência, aberturas da máscara de soldadura, unidades e pré-visualização das passagens; testado num computador com camadas geradas e entradas danificadas, nunca com placas reais nem numa máquina, e a correção não foi comparada com medições reais de uma câmara. |
 | Linha de comandos | 🟡 | `eh3d-isocam` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 255 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 289 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🟠 | Escrita (egui, `--features gui`): abrir ou largar uma camada, zoom e deslocamento, editar os parâmetros principais, exportar; a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -62,7 +62,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **HP-GL para as máquinas Bungard** (`src/hpgl.rs`): com um ficheiro de saída que acaba em `.plt` as passagens são escritas como ficheiro de traçado HP-GL a 40 unidades por milímetro, uma caneta por passagem, que é o que lê o programa de fresagem das máquinas Bungard.
 * **Várias ferramentas e cobre restante** (`isolate`): um plano tem até quatro ferramentas e corta primeiro a mais larga; onde uma ferramenta mais larga já cortou ao longo de um percurso de outra mais fina, esse troço é omitido (o resto fica como troços abertos), e anéis de uma ferramenta mais larga, cada um sobreposto ao anterior, podem limpar o cobre que fica para além das passagens; o G-code pára para a troca de ferramenta quando a largura da ferramenta muda. Com `around_pads_min_mm` maior que 0, as ferramentas mais largas cortam apenas os anéis à volta de pads com pelo menos essa largura e a mais fina faz o resto (pistas e pads pequenos).
 * **Sentido, início e ordem** (`order`): os percursos são traçados com o cobre à direita da ferramenta (fresagem em concordância com um fuso que gira no sentido horário); as definições podem invertê-lo (convencional), forçar horário ou anti-horário, começar cada percurso fechado no ponto mais próximo, no ponto mais baixo ou onde foi traçado, fixar o ponto de onde a ferramenta parte e ordenar os percursos pela ordem do traçado, o mais próximo primeiro ou encurtado ainda mais virando troços da ordem; `info` mostra quantos percursos vão em cada sentido e o deslocamento em vazio.
-* **Furos e contorno da placa** (`src/drill.rs`): os ficheiros de furação são lidos (os da Bungard em milésimos de polegada com o leitor dos formatos Bungard, os métricos com o leitor da suite) e escritos em milésimos inteiros; um contorno é lido de uma camada Gerber de contorno, de um desenho DXF ou de um ficheiro de traçado HP-GL, os traços desenhados um a um são unidos, e o percurso da ferramenta à volta da placa e dentro dos seus recortes é escrito como HP-GL ou como ficheiro Excellon de fresagem. Um ficheiro de furação com ferramentas numeradas acima de 255 renumera-as com números livres, com um aviso, para que duas ferramentas nunca se tornem uma.
+* **Furos e contorno da placa** (`src/drill.rs`): os ficheiros de furação são lidos (os da Bungard em milésimos de polegada com o leitor dos formatos Bungard, os métricos com o leitor da suite) e escritos em milésimos inteiros; um contorno é lido de uma camada Gerber de contorno, de um desenho DXF ou de um ficheiro de traçado HP-GL, os traços desenhados um a um são unidos, e o percurso da ferramenta à volta da placa e dentro dos seus recortes é escrito como HP-GL ou como ficheiro Excellon de fresagem. Um ficheiro de furação com ferramentas numeradas acima de 289 renumera-as com números livres, com um aviso, para que duas ferramentas nunca se tornem uma.
 * **Duas faces, painéis e furos de alinhamento** (`transform`): a camada, os furos e o contorno são virados, rodados em quartos de volta e repetidos num painel em conjunto; os furos de alinhamento ficam fora da placa onde a placa virada os volta a encontrar (um terceiro sobre o eixo distingue-a da mesma placa rodada meia volta).
 * **Regras de projeto** (`drc`): cobre mais estreito do que a regra, peças de cobre mais próximas do que a regra ou do que a largura da ferramenta, e furos com menos cobre à volta do que a regra, cada um com a sua posição em milímetros.
 * **Um ficheiro de definições** (`src/config.rs`): cada valor que se pode afinar é uma definição com um valor por omissão, lida de um ficheiro `chave = valor` (`examples/isocam.cfg`) ou dada com o mesmo nome como opção da linha de comandos.
@@ -135,6 +135,7 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── board.rs                                 os passos que a linha de comandos e a janela partilham
 │   ├── browse.rs                                a lista de ficheiros da janela que abre um ficheiro
 │   ├── config.rs                                todos os valores ajustáveis, a partir de um ficheiro de definições
 │   ├── draw.rs                                  o que a janela desenha: as formas e os triângulos das regiões
@@ -195,7 +196,7 @@ cargo run --release --features gui   # the window
 
 ## 🧪 Testes
 
-O conjunto tem 255 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 289 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -213,6 +214,7 @@ A versão está em `Cargo.toml` e em `eh3d.project.json`; cada versão tem a sua
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── board.rs                                 os passos que a linha de comandos e a janela partilham
 │   ├── browse.rs                                a lista de ficheiros da janela que abre um ficheiro
 │   ├── config.rs                                todos os valores ajustáveis, a partir de um ficheiro de definições
 │   ├── draw.rs                                  o que a janela desenha: as formas e os triângulos das regiões
@@ -262,7 +264,7 @@ EH3D-ISOCAM/
 
 **Limites conhecidos hoje**
 
-* A janela não foi vista num ecrã e ainda não cobre furos, contornos, espelho e painel, pontos de referência nem máscara: isso fica na linha de comandos.
+* A janela não foi vista num ecrã; usa as definições por defeito além dos parâmetros que mostra e não cobre os comandos `check`, `drc`, `info`, `preview` e `rubout-area`: esses ficam na linha de comandos.
 * Não foi experimentado numa máquina nem com uma coleção de ficheiros reais, e não teve revisão independente.
 * Os percursos são exatos a meia célula, não à própria curva; não há estratégia Voronoi, os arcos não são ajustados, por decisão (uma curva são muitos movimentos curtos), um percurso forçado deixa uma ferramenta mais larga do que o espaço tocar no cobre dos dois lados, a correção com pontos de referência move os percursos mas mantém o tamanho do desvio da ferramenta, a escala é em relação ao centro da placa, não há camada de serigrafia e nenhuma placa foi fresada com estes percursos.
 * A máscara de soldadura segue os pads tal como estão desenhados (círculos, retângulos e ovais); as pistas ficam cobertas e uma margem negativa não encolhe uma região.
@@ -273,7 +275,7 @@ EH3D-ISOCAM/
 
 **A seguir**
 
-* Ver a janela num ecrã e completá-la: furos e contorno, espelho e painel, pontos de referência.
+* Ver a janela num ecrã e levar para ela as verificações da linha de comandos (`check`, `drc`, a pré-visualização).
 * A estratégia Voronoi; comparar a correção com pontos de referência com medições de uma câmara.
 * Camadas de serigrafia.
 * Comparar os percursos com placas realmente fresadas e experimentá-lo com ficheiros reais e com os outros programas da suite.

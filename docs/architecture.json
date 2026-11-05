@@ -2,7 +2,7 @@
   "repo": "EH3D-ISOCAM",
   "ecosystem": "eh3d",
   "tagline": "The copper of a layer, offset exactly, as paths of the tools.",
-  "description": "EH3D-ISOCAM is a Rust library and command line that read a Gerber layer, draw its copper on a fine grid, trace the paths of one or several isolation milling tools at the exact distance, remove the leftover copper, choose the direction and the order of the cuts and write them as G-code or HP-GL; it also reads and writes drill and outline files, lays a board out for both sides and a panel, and checks the design rules; it can also lay a path along gaps the tool does not fit in, scale and correct the work from reference points, write the openings of the solder mask and draw a preview of the passes. Built with the gui feature it also has a window (egui) that opens a layer, shows the copper and the paths, edits the main parameters and exports.",
+  "description": "EH3D-ISOCAM is a Rust library and command line that read a Gerber layer, draw its copper on a fine grid, trace the paths of one or several isolation milling tools at the exact distance, remove the leftover copper, choose the direction and the order of the cuts and write them as G-code or HP-GL; it also reads and writes drill and outline files, lays a board out for both sides and a panel, and checks the design rules; it can also lay a path along gaps the tool does not fit in, scale and correct the work from reference points, write the openings of the solder mask and draw a preview of the passes. Built with the gui feature it also has a window (egui) that opens a layer, drills, an outline, a mask layer and reference points, lays the board out, shows the copper, the holes, the outline and the paths, edits the main parameters and exports.",
   "columns": [
     "WHO USES IT",
     "THIS REPOSITORY",
@@ -213,7 +213,7 @@
     }
   ],
   "legend": {
-    "tested": "covered by tests on a computer (255 tests)",
+    "tested": "covered by tests on a computer (289 tests)",
     "config": "planned, not used today",
     "external": "a person, a file or another repository",
     "untested": "written, not built or looked at on a screen yet"

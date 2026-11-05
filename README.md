@@ -17,7 +17,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 255 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer and draws the copper and the paths, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 289 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Maturity | Scaffolding |
-| Tests | 255 |
+| Tests | 289 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -48,7 +48,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 255 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 289 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`): open or drop a layer, zoom and pan, edit the main parameters, export; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -62,7 +62,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **HP-GL for the Bungard machines** (`src/hpgl.rs`): with an output file that ends in `.plt` the passes are written as an HP-GL plot file at 40 units to the millimetre, one pen for each pass, which is what the routing program of the Bungard machines reads.
 * **Several tools and leftover copper** (`isolate`): a plan has up to four tools and the widest cuts first; where a wider tool has already cut along a path of a narrower one, that stretch is left out (the rest stays as open runs), and rings of a wider tool, each overlapping the one before, can clear the copper that is left beyond the passes; the G-code stops for a tool change when the width of the tool changes. With `around_pads_min_mm` above 0 the wider tools cut only the rings round pads at least that wide and the narrowest tool does the rest (tracks and small pads).
 * **Direction, start and order** (`order`): the paths are traced with the copper on the right of the tool (climb milling with a spindle that turns clockwise); the settings can turn that round (conventional), force clockwise or counterclockwise, start each closed path at its nearest point, its lowest point or where it was traced, set the point the tool starts from and put the paths in the order they were traced, nearest first, or shortened further by turning stretches of the order round; `info` shows how many paths go each way and the travel through the air.
-* **Holes and board outline** (`src/drill.rs`): drill files are read (Bungard files in mils with the reader of the Bungard formats, metric files with the reader of the suite) and written in whole mils; an outline is read from a Gerber outline layer, a DXF drawing or an HP-GL plot file, strokes drawn one by one are joined, and the path of the tool round the board and inside its cutouts is written as HP-GL or as a routing Excellon file. A drill file with tools numbered above 255 gets them renumbered to free numbers, with a notice, so two tools never become one.
+* **Holes and board outline** (`src/drill.rs`): drill files are read (Bungard files in mils with the reader of the Bungard formats, metric files with the reader of the suite) and written in whole mils; an outline is read from a Gerber outline layer, a DXF drawing or an HP-GL plot file, strokes drawn one by one are joined, and the path of the tool round the board and inside its cutouts is written as HP-GL or as a routing Excellon file. A drill file with tools numbered above 289 gets them renumbered to free numbers, with a notice, so two tools never become one.
 * **Both sides, panels and alignment holes** (`transform`): the layer, the holes and the outline are turned over, turned by quarter turns and repeated on a panel together; alignment holes are put outside the board where the turned-over board finds them again (a third one on the line tells it from the same board turned half a turn).
 * **Design rules** (`drc`): copper narrower than the rule, pieces of copper closer than the rule or than the tool is wide, and holes with less copper round them than the rule, each with its place in millimetres.
 * **One settings file** (`src/config.rs`): every value that can be tuned is a setting with a default, read from a `key = value` file (`examples/isocam.cfg`) or given by the same name as an option of the command line.
@@ -135,6 +135,7 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── board.rs                                 the steps the command line and the window share
 │   ├── browse.rs                                the list of files of the window that opens a file
 │   ├── config.rs                                every tunable value, from one settings file
 │   ├── draw.rs                                  what the window draws: the shapes and the triangles of the regions
@@ -195,7 +196,7 @@ cargo run --release --features gui   # the window
 
 ## 🧪 Testing
 
-The suite has 255 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 289 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -213,6 +214,7 @@ The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has i
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── board.rs                                 the steps the command line and the window share
 │   ├── browse.rs                                the list of files of the window that opens a file
 │   ├── config.rs                                every tunable value, from one settings file
 │   ├── draw.rs                                  what the window draws: the shapes and the triangles of the regions
@@ -262,7 +264,7 @@ EH3D-ISOCAM/
 
 **Known limits today**
 
-* The window has not been looked at on a screen and does not yet cover drills, outlines, mirror and panel, reference points or the mask: those stay on the command line.
+* The window has not been looked at on a screen; it uses the default settings besides the parameters it shows, and it does not cover the commands `check`, `drc`, `info`, `preview` and `rubout-area`: those stay on the command line.
 * It has not been tried on a machine nor with a collection of real files, and it has had no independent review.
 * The paths are exact to half a cell, not to the curve itself; there is no Voronoi strategy, arcs are not fitted, by decision (a curve is many short moves), a forced path lets a tool wider than the gap touch the copper on both sides, the correction from reference points moves the paths but keeps the size of the tool offset, the scale is about the centre of the board, there is no silkscreen layer, and no board has been milled with these paths.
 * The solder mask follows the pads as drawn (flashed circles, rectangles and obrounds); tracks are left covered, and a negative margin does not shrink a region.
@@ -273,7 +275,7 @@ EH3D-ISOCAM/
 
 **Next**
 
-* Look at the window on a screen and finish it: drills and outline, mirror and panel, reference points.
+* Look at the window on a screen and bring the checks of the command line into it (`check`, `drc`, the preview).
 * The Voronoi strategy; compare the correction from reference points with measurements of a camera.
 * Silkscreen layers.
 * Compare the paths with boards that were really milled and try it with real files and with the other programs of the suite.

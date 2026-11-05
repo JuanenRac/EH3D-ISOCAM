@@ -17,7 +17,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 255 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa y dibuja el cobre y las trayectorias, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 289 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versión | `0.0.7` |
 | Madurez | Andamiaje |
-| Pruebas | 255 |
+| Pruebas | 289 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -48,7 +48,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Ficheros y disposición | 🟡 | lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, añade agujeros de alineación y comprueba las reglas de diseño con la posición de cada hallazgo; probado en un ordenador, no con ficheros escritos por otros programas ni en una máquina. |
 | Aislamiento forzado, corrección, máscara | 🟡 | caminos forzados por los huecos donde no cabe la herramienta, trayectorias más ligeras, escala y corrección con puntos de referencia, las aberturas de la máscara de soldadura, unidades y vista previa de las pasadas; probado en un ordenador con capas generadas y entradas dañadas, nunca con placas reales ni en una máquina, y la corrección no se ha comparado con mediciones reales de una cámara. |
 | Línea de comandos | 🟡 | `eh3d-isocam` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 255 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
+| Pruebas | 🟡 | 289 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🟠 | Escrita (egui, `--features gui`): abrir o soltar una capa, zoom y desplazamiento, editar los parámetros principales, exportar; su lógica está probada, pero todavía no se ha compilado ni visto en una pantalla. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -62,7 +62,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 * **HP-GL para las máquinas Bungard** (`src/hpgl.rs`): con un fichero de salida que acaba en `.plt` las pasadas se escriben como fichero de trazado HP-GL a 40 unidades por milímetro, una plumilla por pasada, que es lo que lee el programa de fresado de las máquinas Bungard.
 * **Varias herramientas y cobre sobrante** (`isolate`): un plan tiene hasta cuatro herramientas y corta primero la más ancha; donde una herramienta más ancha ya ha cortado a lo largo de una trayectoria de otra más fina, ese tramo se omite (el resto queda como tramos abiertos), y anillos de una herramienta más ancha, cada uno solapado con el anterior, pueden limpiar el cobre que queda más allá de las pasadas; el G-code se detiene para cambiar de herramienta cuando cambia su ancho. Con `around_pads_min_mm` mayor que 0, las herramientas más anchas cortan solo los anillos alrededor de pads de al menos esa anchura y la más fina hace el resto (pistas y pads pequeños).
 * **Sentido, inicio y orden** (`order`): las trayectorias se trazan con el cobre a la derecha de la herramienta (fresado en concordancia con un husillo que gira en sentido horario); los ajustes pueden invertirlo (convencional), forzar horario o antihorario, empezar cada trayectoria cerrada en su punto más cercano, en su punto más bajo o donde se trazó, fijar el punto desde el que sale la herramienta y ordenar las trayectorias como se trazaron, la más cercana primero o acortando aún más el recorrido dando la vuelta a tramos del orden; `info` muestra cuántas trayectorias van en cada sentido y el recorrido en vacío.
-* **Taladros y contorno de la placa** (`src/drill.rs`): los ficheros de taladros se leen (los de Bungard en milésimas de pulgada con el lector de los formatos Bungard, los métricos con el lector de la suite) y se escriben en milésimas enteras; el contorno se lee de una capa Gerber de contorno, un dibujo DXF o un fichero de trazado HP-GL, los trazos dibujados uno a uno se unen, y la trayectoria de la herramienta alrededor de la placa y dentro de sus recortes se escribe como HP-GL o como fichero Excellon de fresado. Un archivo de taladros con herramientas numeradas por encima de 255 las renumera con números libres, con un aviso, para que dos herramientas nunca se conviertan en una.
+* **Taladros y contorno de la placa** (`src/drill.rs`): los ficheros de taladros se leen (los de Bungard en milésimas de pulgada con el lector de los formatos Bungard, los métricos con el lector de la suite) y se escriben en milésimas enteras; el contorno se lee de una capa Gerber de contorno, un dibujo DXF o un fichero de trazado HP-GL, los trazos dibujados uno a uno se unen, y la trayectoria de la herramienta alrededor de la placa y dentro de sus recortes se escribe como HP-GL o como fichero Excellon de fresado. Un archivo de taladros con herramientas numeradas por encima de 289 las renumera con números libres, con un aviso, para que dos herramientas nunca se conviertan en una.
 * **Dos caras, paneles y agujeros de alineación** (`transform`): la capa, los taladros y el contorno se dan la vuelta, se giran en cuartos de vuelta y se repiten en un panel a la vez; los agujeros de alineación se ponen fuera de la placa donde ésta los vuelve a encontrar una vez dada la vuelta (un tercero sobre la línea la distingue de la misma placa girada media vuelta).
 * **Reglas de diseño** (`drc`): cobre más estrecho que la regla, piezas de cobre más cerca que la regla o que el ancho de la herramienta, y taladros con menos cobre alrededor que la regla, cada uno con su posición en milímetros.
 * **Un fichero de ajustes** (`src/config.rs`): cada valor que se puede afinar es un ajuste con un valor por defecto, que se lee de un fichero `clave = valor` (`examples/isocam.cfg`) o se da con el mismo nombre como opción de la línea de comandos.
@@ -135,6 +135,7 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── board.rs                                 los pasos que comparten la línea de comandos y la ventana
 │   ├── browse.rs                                la lista de ficheros de la ventana que abre un fichero
 │   ├── config.rs                                todos los valores ajustables, desde un fichero de ajustes
 │   ├── draw.rs                                  lo que dibuja la ventana: las formas y los triángulos de las regiones
@@ -195,7 +196,7 @@ cargo run --release --features gui   # the window
 
 ## 🧪 Pruebas
 
-El conjunto tiene 255 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 289 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 
@@ -213,6 +214,7 @@ La versión está en `Cargo.toml` y en `eh3d.project.json`; cada versión tiene 
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── board.rs                                 los pasos que comparten la línea de comandos y la ventana
 │   ├── browse.rs                                la lista de ficheros de la ventana que abre un fichero
 │   ├── config.rs                                todos los valores ajustables, desde un fichero de ajustes
 │   ├── draw.rs                                  lo que dibuja la ventana: las formas y los triángulos de las regiones
@@ -262,7 +264,7 @@ EH3D-ISOCAM/
 
 **Límites conocidos hoy**
 
-* La ventana no se ha visto en una pantalla y todavía no cubre taladros, contornos, espejo y panel, puntos de referencia ni máscara: eso sigue en la línea de comandos.
+* La ventana no se ha visto en una pantalla; usa los ajustes por defecto además de los parámetros que muestra y no cubre los comandos `check`, `drc`, `info`, `preview` y `rubout-area`: eso sigue en la línea de comandos.
 * No se ha probado en una máquina ni con una colección de ficheros reales, y no ha tenido revisión independiente.
 * Las trayectorias son exactas a media celda, no a la curva misma; no hay estrategia Voronoi, no se ajustan arcos, por decisión (una curva son muchos movimientos cortos), un camino forzado deja que una herramienta más ancha que el hueco toque el cobre por los dos lados, la corrección con puntos de referencia mueve las trayectorias pero conserva el tamaño del desfase de la herramienta, la escala es respecto al centro de la placa, no hay capa de serigrafía y no se ha fresado ninguna placa con estas trayectorias.
 * La máscara de soldadura sigue los pads tal como están dibujados (círculos, rectángulos y óvalos); las pistas quedan cubiertas y un margen negativo no encoge una región.
@@ -273,7 +275,7 @@ EH3D-ISOCAM/
 
 **Siguiente**
 
-* Ver la ventana en una pantalla y completarla: taladros y contorno, espejo y panel, puntos de referencia.
+* Ver la ventana en una pantalla y llevar a ella las comprobaciones de la línea de comandos (`check`, `drc`, la vista previa).
 * La estrategia Voronoi; comparar la corrección con puntos de referencia con mediciones de una cámara.
 * Capas de serigrafía.
 * Comparar las trayectorias con placas fresadas de verdad y probarlo con ficheros reales y con los demás programas de la suite.

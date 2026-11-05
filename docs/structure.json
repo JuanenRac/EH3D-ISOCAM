@@ -27,6 +27,19 @@
       "accent": "a",
       "rows": [
         {
+          "name": "board.rs",
+          "desc": {
+            "en": "the steps the command line and the window share",
+            "es": "los pasos que comparten la línea de comandos y la ventana",
+            "de": "die Schritte, die Kommandozeile und Fenster teilen",
+            "fr": "les étapes que la ligne de commande et la fenêtre partagent",
+            "it": "i passi condivisi da riga di comando e finestra",
+            "ja": "コマンドラインとウィンドウが共有する処理",
+            "zh": "命令行与窗口共用的步骤",
+            "pt": "os passos que a linha de comandos e a janela partilham"
+          }
+        },
+        {
           "name": "browse.rs",
           "desc": {
             "en": "the list of files of the window that opens a file",
