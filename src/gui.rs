@@ -3,7 +3,8 @@
 
 use crate::browse::{self, Browser};
 use crate::lang::{Lang, Msg};
-use crate::window::{Status, Window, LAYER_EXTENSIONS};
+use crate::transform::Axis;
+use crate::window::{DrillUnits, Job, Section, Status, Window};
 use eframe::egui::{
     self, Color32, FontData, FontDefinitions, FontFamily, Pos2, Rect, Stroke, Vec2,
 };
@@ -20,6 +21,8 @@ const ACCENT: Color32 = Color32::from_rgb(0xff, 0xb0, 0x00);
 const OK: Color32 = Color32::from_rgb(0x9b, 0xe3, 0x4a);
 const DANGER: Color32 = Color32::from_rgb(0xff, 0x54, 0x70);
 const COPPER: Color32 = Color32::from_rgb(0xc8, 0xa3, 0x3c);
+const HOLE: Color32 = Color32::from_rgb(0xe8, 0xe8, 0xf0);
+const OUTLINE: Color32 = Color32::from_rgb(0x4d, 0xd0, 0xe1);
 
 /// The colours of the passes, the same as the SVG preview of the command line.
 const PASS_COLOURS: [Color32; 8] = [
@@ -33,17 +36,16 @@ const PASS_COLOURS: [Color32; 8] = [
     Color32::from_rgb(0x1f, 0x78, 0xb4),
 ];
 
-/// The extensions the window offers for the file of the paths.
-const OUTPUT_EXTENSIONS: [&str; 3] = ["nc", "plt", "dxf"];
-
 enum Outcome {
     Cancel,
     Pick(PathBuf),
 }
 
-/// The window that opens a layer or asks for the name of the file to write.
+/// The window that opens a file or asks for the name of the file to write.
 struct Dialog {
     browser: Browser,
+    /// What the file is for.
+    job: Job,
     /// The name being typed when the window asks for a file to write.
     export: Option<String>,
 }
@@ -69,31 +71,33 @@ impl App {
     }
 
     fn folder(&self) -> PathBuf {
-        self.win
-            .layer
-            .as_ref()
-            .and_then(|l| l.path.parent().map(|p| p.to_path_buf()))
-            .filter(|p| !p.as_os_str().is_empty())
-            .unwrap_or_else(browse::start_dir)
+        self.win.work_folder().unwrap_or_else(browse::start_dir)
     }
 
-    fn open_dialog(&mut self) {
+    /// Opens the window of files for a job: the list of files to open, or the name of the file to write.
+    fn ask(&mut self, job: Job) {
+        let export = job.is_export().then(|| {
+            self.win
+                .suggested_output_for(job)
+                .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+                .unwrap_or_else(|| default_name(job).to_string())
+        });
         self.dialog = Some(Dialog {
-            browser: Browser::new(self.folder(), &LAYER_EXTENSIONS),
-            export: None,
+            browser: Browser::new(self.folder(), job.extensions()),
+            job,
+            export,
         });
     }
 
-    fn export_dialog(&mut self) {
-        let name = self
-            .win
-            .suggested_output()
-            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
-            .unwrap_or_else(|| "paths.nc".to_string());
-        self.dialog = Some(Dialog {
-            browser: Browser::new(self.folder(), &OUTPUT_EXTENSIONS),
-            export: Some(name),
-        });
+    /// Takes away the file that is open for a job.
+    fn clear(&mut self, job: Job) {
+        match job {
+            Job::OpenDrills => self.win.clear_drills(),
+            Job::OpenOutline => self.win.clear_outline(),
+            Job::OpenMask => self.win.clear_mask(),
+            Job::OpenMarks => self.win.clear_marks(),
+            _ => {}
+        }
     }
 
     fn top_bar(&mut self, ui: &mut egui::Ui) {
@@ -108,11 +112,12 @@ impl App {
                 );
                 ui.separator();
                 if ui.button(Msg::Open.tr(lang)).clicked() {
-                    self.open_dialog();
+                    self.ask(Job::OpenLayer);
                 }
                 let has_layer = self.win.layer.is_some();
+                let has_work = self.win.has_work();
                 if ui
-                    .add_enabled(has_layer, egui::Button::new(Msg::Compute.tr(lang)))
+                    .add_enabled(has_work, egui::Button::new(Msg::Compute.tr(lang)))
                     .clicked()
                 {
                     self.win.compute();
@@ -121,10 +126,10 @@ impl App {
                     .add_enabled(has_layer, egui::Button::new(Msg::Export.tr(lang)))
                     .clicked()
                 {
-                    self.export_dialog();
+                    self.ask(Job::ExportPaths);
                 }
                 if ui
-                    .add_enabled(has_layer, egui::Button::new(Msg::Fit.tr(lang)))
+                    .add_enabled(has_work, egui::Button::new(Msg::Fit.tr(lang)))
                     .clicked()
                 {
                     self.fit_pending = true;
@@ -144,32 +149,203 @@ impl App {
     }
 
     fn side_panel(&mut self, ui: &mut egui::Ui) {
-        let lang = self.win.lang;
         egui::Panel::left("parameters")
-            .default_size(250.0)
+            .default_size(290.0)
             .show(ui, |ui| {
-                ui.add_space(4.0);
-                ui.label(
-                    egui::RichText::new(Msg::Parameters.tr(lang))
-                        .strong()
-                        .color(ACCENT),
-                );
-                ui.separator();
-                for i in 0..self.win.fields.len() {
-                    let label = self.win.fields[i].label.tr(lang);
-                    let mut text = self.win.fields[i].text.clone();
-                    ui.label(label);
-                    let edit = egui::TextEdit::singleline(&mut text).desired_width(f32::INFINITY);
-                    if ui.add(edit).changed() {
-                        self.win.set_field(i, text);
-                    }
-                }
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.add_space(4.0);
+                    self.isolation_group(ui);
+                    self.drills_group(ui);
+                    self.outline_group(ui);
+                    self.layout_group(ui);
+                    self.marks_group(ui);
+                    self.mask_group(ui);
+                    self.notes_group(ui);
+                });
+            });
+    }
+
+    /// The title of a group of the side panel.
+    fn heading(&self, msg: Msg) -> egui::RichText {
+        egui::RichText::new(msg.tr(self.win.lang))
+            .strong()
+            .color(ACCENT)
+    }
+
+    /// The parameters of one group, each with its name above a box to type in.
+    fn fields_of(&mut self, ui: &mut egui::Ui, section: Section) {
+        let lang = self.win.lang;
+        for i in 0..self.win.fields.len() {
+            if self.win.fields[i].section != section {
+                continue;
+            }
+            let label = self.win.fields[i].label.tr(lang);
+            let mut text = self.win.fields[i].text.clone();
+            ui.label(label);
+            let edit = egui::TextEdit::singleline(&mut text).desired_width(f32::INFINITY);
+            if ui.add(edit).changed() {
+                self.win.set_field(i, text);
+            }
+        }
+    }
+
+    /// The buttons that open and take away a file, and its name.
+    fn file_row(&mut self, ui: &mut egui::Ui, job: Job, open: Msg) {
+        let lang = self.win.lang;
+        let name = self.win.open_name(job);
+        ui.horizontal(|ui| {
+            if ui.button(open.tr(lang)).clicked() {
+                self.ask(job);
+            }
+            if ui
+                .add_enabled(name.is_some(), egui::Button::new(Msg::Clear.tr(lang)))
+                .clicked()
+            {
+                self.clear(job);
+            }
+        });
+        let shown = name.unwrap_or_else(|| Msg::NoFile.tr(lang).to_string());
+        ui.label(egui::RichText::new(shown).color(DIM));
+    }
+
+    /// A button that asks for the name of a file to write.
+    fn export_button(&mut self, ui: &mut egui::Ui, job: Job, label: Msg, enabled: bool) {
+        let lang = self.win.lang;
+        if ui
+            .add_enabled(enabled, egui::Button::new(label.tr(lang)))
+            .clicked()
+        {
+            self.ask(job);
+        }
+    }
+
+    fn isolation_group(&mut self, ui: &mut egui::Ui) {
+        let lang = self.win.lang;
+        egui::CollapsingHeader::new(self.heading(Section::Isolation.title()))
+            .default_open(true)
+            .show(ui, |ui| {
+                self.fields_of(ui, Section::Isolation);
                 ui.add_space(8.0);
                 let mut force = self.win.force;
                 if ui.checkbox(&mut force, Msg::Force.tr(lang)).changed() {
                     self.win.set_force(force);
                 }
             });
+    }
+
+    fn drills_group(&mut self, ui: &mut egui::Ui) {
+        let lang = self.win.lang;
+        egui::CollapsingHeader::new(self.heading(Section::Drills.title()))
+            .default_open(true)
+            .show(ui, |ui| {
+                self.file_row(ui, Job::OpenDrills, Msg::OpenDrills);
+                ui.label(Msg::DrillUnits.tr(lang));
+                let mut units = self.win.drill_units;
+                egui::ComboBox::from_id_salt("drill_units")
+                    .selected_text(units.label().tr(lang))
+                    .show_ui(ui, |ui| {
+                        for u in DrillUnits::ALL {
+                            ui.selectable_value(&mut units, u, u.label().tr(lang));
+                        }
+                    });
+                if units != self.win.drill_units {
+                    self.win.set_drill_units(units);
+                }
+                self.fields_of(ui, Section::Drills);
+                let mut align = self.win.align;
+                if ui
+                    .checkbox(&mut align, Msg::AddAlignment.tr(lang))
+                    .changed()
+                {
+                    self.win.align = align;
+                }
+                let has = self.win.drills.is_some();
+                self.export_button(ui, Job::ExportDrills, Msg::ExportDrills, has);
+            });
+    }
+
+    fn outline_group(&mut self, ui: &mut egui::Ui) {
+        let lang = self.win.lang;
+        egui::CollapsingHeader::new(self.heading(Section::Outline.title()))
+            .default_open(true)
+            .show(ui, |ui| {
+                self.file_row(ui, Job::OpenOutline, Msg::OpenOutline);
+                self.fields_of(ui, Section::Outline);
+                let mut plot_outline = self.win.plot_outline;
+                if ui
+                    .checkbox(&mut plot_outline, Msg::PlotOutline.tr(lang))
+                    .changed()
+                {
+                    self.win.plot_outline = plot_outline;
+                }
+                let has = self.win.outline.is_some();
+                self.export_button(ui, Job::ExportRoute, Msg::ExportRoute, has);
+            });
+    }
+
+    fn layout_group(&mut self, ui: &mut egui::Ui) {
+        let lang = self.win.lang;
+        egui::CollapsingHeader::new(self.heading(Section::Layout.title()))
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.label(Msg::Mirror.tr(lang));
+                let mut mirror = self.win.mirror;
+                let shown = match mirror {
+                    None => Msg::MirrorNone,
+                    Some(Axis::Vertical) => Msg::MirrorVertical,
+                    Some(Axis::Horizontal) => Msg::MirrorHorizontal,
+                };
+                egui::ComboBox::from_id_salt("mirror")
+                    .selected_text(shown.tr(lang))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut mirror, None, Msg::MirrorNone.tr(lang));
+                        ui.selectable_value(
+                            &mut mirror,
+                            Some(Axis::Vertical),
+                            Msg::MirrorVertical.tr(lang),
+                        );
+                        ui.selectable_value(
+                            &mut mirror,
+                            Some(Axis::Horizontal),
+                            Msg::MirrorHorizontal.tr(lang),
+                        );
+                    });
+                if mirror != self.win.mirror {
+                    self.win.set_mirror(mirror);
+                }
+                self.fields_of(ui, Section::Layout);
+            });
+    }
+
+    fn marks_group(&mut self, ui: &mut egui::Ui) {
+        let lang = self.win.lang;
+        egui::CollapsingHeader::new(self.heading(Msg::SectionMarks))
+            .default_open(false)
+            .show(ui, |ui| {
+                self.file_row(ui, Job::OpenMarks, Msg::LoadMarks);
+                ui.label(egui::RichText::new(Msg::MarksHint.tr(lang)).color(DIM));
+                if let Some(text) = self.win.marks_fit_text() {
+                    ui.label(egui::RichText::new(text).color(OK));
+                }
+            });
+    }
+
+    fn mask_group(&mut self, ui: &mut egui::Ui) {
+        egui::CollapsingHeader::new(self.heading(Section::Mask.title()))
+            .default_open(false)
+            .show(ui, |ui| {
+                self.file_row(ui, Job::OpenMask, Msg::OpenMask);
+                self.fields_of(ui, Section::Mask);
+                let has = self.win.layer.is_some();
+                self.export_button(ui, Job::ExportMask, Msg::ExportMask, has);
+            });
+    }
+
+    /// What the readers did not understand or did not use, from the last file that was opened.
+    fn notes_group(&self, ui: &mut egui::Ui) {
+        for note in &self.win.notes {
+            ui.label(egui::RichText::new(note.as_str()).color(DIM).small());
+        }
     }
 
     fn status_bar(&mut self, ui: &mut egui::Ui) {
@@ -197,7 +373,7 @@ impl App {
             let rect = response.rect;
             let (w, h) = (f64::from(rect.width()), f64::from(rect.height()));
             painter.rect_filled(rect, 0.0, BACKGROUND);
-            if self.win.layer.is_none() {
+            if !self.win.has_work() {
                 painter.text(
                     rect.center(),
                     egui::Align2::CENTER_CENTER,
@@ -241,11 +417,9 @@ impl App {
             Pos2::new(rect.min.x + px as f32, rect.min.y + py as f32)
         };
         let px = |mm: f64| (mm * scale) as f32;
-        let Some(layer) = self.win.layer.as_ref() else {
-            return;
-        };
+        let view = &self.win.view;
         let painter = painter.with_clip_rect(rect);
-        for (shape, tris) in layer.drawing.shapes.iter().zip(&layer.drawing.tris) {
+        for (shape, tris) in view.drawing.shapes.iter().zip(&view.drawing.tris) {
             use eh3d_gerberviewer::scene::Shape;
             match shape {
                 Shape::Disc { x, y, r } => {
@@ -288,6 +462,10 @@ impl App {
                 }
             }
         }
+        for path in &view.outline {
+            let line: Vec<Pos2> = path.iter().map(|p| at(p.0, p.1)).collect();
+            painter.add(egui::Shape::closed_line(line, Stroke::new(1.5, OUTLINE)));
+        }
         for (k, pass) in self.win.passes.iter().enumerate() {
             let colour = PASS_COLOURS[k % PASS_COLOURS.len()];
             let width = px(pass.diameter_mm).max(1.5);
@@ -305,6 +483,13 @@ impl App {
                 painter.add(egui::Shape::line(line.clone(), Stroke::new(width, band)));
                 painter.add(egui::Shape::line(line, Stroke::new(1.0, colour)));
             }
+        }
+        // the holes are drawn over the paths
+        for h in &view.holes {
+            let centre = at(h.x_mm, h.y_mm);
+            let r = px(h.diameter_mm / 2.0).max(2.0);
+            painter.circle_filled(centre, r, BACKGROUND);
+            painter.circle_stroke(centre, r, Stroke::new(1.5, HOLE));
         }
         // the key of the colours
         let lang = self.win.lang;
@@ -324,9 +509,17 @@ impl App {
             );
             y += 20.0;
         };
-        key(COPPER, Msg::LegendCopper.tr(lang));
+        if self.win.layer.is_some() {
+            key(COPPER, Msg::LegendCopper.tr(lang));
+        }
         if !self.win.passes.is_empty() {
             key(PASS_COLOURS[0], Msg::LegendPaths.tr(lang));
+        }
+        if !view.holes.is_empty() {
+            key(HOLE, Msg::LegendHoles.tr(lang));
+        }
+        if !view.outline.is_empty() {
+            key(OUTLINE, Msg::LegendOutline.tr(lang));
         }
     }
 
@@ -338,14 +531,15 @@ impl App {
             None => self.dialog = Some(dialog),
             Some(Outcome::Cancel) => {}
             Some(Outcome::Pick(path)) => {
-                if dialog.export.is_some() {
-                    if !self.win.export(&path) {
-                        // the window stays open so that another name can be tried
-                        self.dialog = Some(dialog);
+                if self.win.run_job(dialog.job, &path) {
+                    if matches!(
+                        dialog.job,
+                        Job::OpenLayer | Job::OpenDrills | Job::OpenOutline
+                    ) {
+                        self.fit_pending = true;
                     }
-                } else if self.win.open(&path) {
-                    self.fit_pending = true;
                 } else {
+                    // the window stays open so that another file or name can be tried
                     self.dialog = Some(dialog);
                 }
             }
@@ -357,12 +551,7 @@ impl App {
 fn show_dialog(ctx: &egui::Context, d: &mut Dialog, lang: Lang) -> Option<Outcome> {
     let mut outcome = None;
     let mut open = true;
-    let title = if d.export.is_some() {
-        Msg::ExportTitle
-    } else {
-        Msg::OpenTitle
-    };
-    egui::Window::new(title.tr(lang))
+    egui::Window::new(d.job.title().tr(lang))
         .open(&mut open)
         .collapsible(false)
         .default_size([620.0, 460.0])
@@ -447,18 +636,27 @@ impl eframe::App for App {
                 .collect()
         });
         if let Some(p) = dropped.first() {
-            if self.win.open(p) {
+            if self.win.open_dropped(p) {
                 self.fit_pending = true;
             }
         }
         if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::O)) {
-            self.open_dialog();
+            self.ask(Job::OpenLayer);
         }
         self.top_bar(ui);
         self.status_bar(ui);
         self.side_panel(ui);
         self.canvas(ui);
         self.dialog_window(&ctx);
+    }
+}
+
+/// The name offered for a file to write when nothing is open to take it from.
+fn default_name(job: Job) -> &'static str {
+    match job {
+        Job::ExportDrills | Job::ExportRoute => "output.ncd",
+        Job::ExportMask => "mask.gts",
+        _ => "paths.nc",
     }
 }
 
