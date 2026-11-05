@@ -17,7 +17,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 289 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 294 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Reifegrad | Gerüst |
-| Tests | 289 |
+| Tests | 294 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -48,7 +48,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Dateien und Anordnung | 🟡 | liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, setzt Passlöcher und prüft die Entwurfsregeln mit dem Ort jedes Befunds; auf einem Computer getestet, nicht mit Dateien anderer Programme und nicht auf einer Maschine. |
 | Erzwungene Isolation, Korrektur, Maske | 🟡 | erzwungene Pfade durch Lücken, in die das Werkzeug nicht passt, leichtere Bahnen, Skalierung und Korrektur mit Referenzpunkten, die Öffnungen der Lötstoppmaske, Einheiten und die Vorschau der Durchgänge; auf einem Computer mit erzeugten Lagen und beschädigten Eingaben getestet, nie mit echten Platinen und nie auf einer Maschine, und die Korrektur wurde nicht mit echten Kameramessungen verglichen. |
 | Kommandozeile | 🟡 | `eh3d-isocam` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 289 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
+| Tests | 🟡 | 294 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`): Ebene öffnen oder hineinziehen, Zoom und Verschieben, die wichtigsten Parameter ändern, exportieren; die Logik ist getestet, aber noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -62,7 +62,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 * **HP-GL für die Bungard-Maschinen** (`src/hpgl.rs`): Bei einer Ausgabedatei mit der Endung `.plt` werden die Durchgänge als HP-GL-Plotdatei mit 40 Einheiten je Millimeter geschrieben, ein Stift je Durchgang; das liest das Fräsprogramm der Bungard-Maschinen.
 * **Mehrere Werkzeuge und Restkupfer** (`isolate`): ein Plan hat bis zu vier Werkzeuge, das breiteste schneidet zuerst; wo ein breiteres Werkzeug schon entlang einer Bahn eines schmaleren geschnitten hat, entfällt dieses Stück (der Rest bleibt als offene Abschnitte), und Ringe eines breiteren Werkzeugs, die sich jeweils mit dem vorigen überlappen, können das Kupfer jenseits der Durchgänge abräumen; der G-Code hält zum Werkzeugwechsel an, wenn sich die Werkzeugbreite ändert. Ist `around_pads_min_mm` größer als 0, schneiden die breiteren Werkzeuge nur die Ringe um Pads mit mindestens dieser Breite, und das feinste Werkzeug übernimmt den Rest (Leiterbahnen und kleine Pads).
 * **Richtung, Start und Reihenfolge** (`order`): die Bahnen werden mit dem Kupfer rechts vom Werkzeug gezeichnet (Gleichlauffräsen bei rechtsdrehender Spindel); die Einstellungen können das umkehren (Gegenlauf), im oder gegen den Uhrzeigersinn erzwingen, jede geschlossene Bahn an ihrem nächsten Punkt, ihrem tiefsten Punkt oder dort beginnen lassen, wo sie gezeichnet wurde, den Startpunkt des Werkzeugs festlegen und die Bahnen in der gezeichneten Reihenfolge, die nächste zuerst oder durch Umkehren von Abschnitten der Reihenfolge noch kürzer ordnen; `info` zeigt, wie viele Bahnen in welche Richtung laufen, und den Leerweg.
-* **Bohrungen und Platinenkontur** (`src/drill.rs`): Bohrdateien werden gelesen (Bungard-Dateien in Mil mit dem Leser der Bungard-Formate, metrische mit dem Leser der Suite) und in ganzen Mil geschrieben; eine Kontur wird aus einer Gerber-Konturlage, einer DXF-Zeichnung oder einer HP-GL-Plotdatei gelesen, einzeln gezeichnete Striche werden verbunden, und die Bahn des Werkzeugs um die Platine und in ihren Ausschnitten wird als HP-GL oder als Excellon-Fräsdatei geschrieben. Eine Bohrdatei mit Werkzeugnummern über 289 bekommt freie Nummern, mit einem Hinweis, sodass zwei Werkzeuge nie zu einem werden.
+* **Bohrungen und Platinenkontur** (`src/drill.rs`): Bohrdateien werden gelesen (Bungard-Dateien in Mil mit dem Leser der Bungard-Formate, metrische mit dem Leser der Suite) und in ganzen Mil geschrieben; eine Kontur wird aus einer Gerber-Konturlage, einer DXF-Zeichnung oder einer HP-GL-Plotdatei gelesen, einzeln gezeichnete Striche werden verbunden, und die Bahn des Werkzeugs um die Platine und in ihren Ausschnitten wird als HP-GL oder als Excellon-Fräsdatei geschrieben. Eine Bohrdatei mit Werkzeugnummern über 255 bekommt freie Nummern, mit einem Hinweis, sodass zwei Werkzeuge nie zu einem werden.
 * **Beide Seiten, Nutzen und Passlöcher** (`transform`): Lage, Bohrungen und Kontur werden zusammen gewendet, um Vierteldrehungen gedreht und auf einem Nutzen wiederholt; Passlöcher liegen außerhalb der Platine dort, wo die gewendete Platine sie wiederfindet (ein drittes auf der Achse unterscheidet sie von derselben, um eine halbe Drehung gedrehten Platine).
 * **Entwurfsregeln** (`drc`): Kupfer schmaler als die Regel, Kupferstücke näher als die Regel oder als das Werkzeug breit ist, und Bohrungen mit weniger Kupfer ringsum als die Regel, jeweils mit ihrem Ort in Millimetern.
 * **Eine Einstellungsdatei** (`src/config.rs`): jeder einstellbare Wert ist eine Einstellung mit Standardwert, gelesen aus einer `Schlüssel = Wert`-Datei (`examples/isocam.cfg`) oder unter demselben Namen als Option der Kommandozeile angegeben.
@@ -99,6 +99,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Jeder abgestimmte Wert ist eine Einstellung:** nichts, was jemand ändern möchte, steckt fest im Code; ein schlechter Wert ist ein Fehler mit Zeilenangabe.
 * **Einheiten nach Wahl:** Längen in einer Einstellungsdatei oder auf der Kommandozeile können in Millimetern, Mil oder Zoll geschrieben werden; der G-Code kann in Zoll geschrieben werden und der Bildschirm kann Mil anzeigen.
 * **Sicherere Dateien:** der G-Code beginnt mit dem Standardkopf (Erzeuger, Einheiten, Quelldatei mit ihrem SHA-256), eine Ausgabe, die zugleich Eingabe des Laufs ist, wird abgelehnt, ein Plot mit einer Koordinate über 32767 Einheiten wird abgelehnt, `--units mm|inch` gibt die Einheiten einer Bohrdatei an, die sie nicht nennt (eine Datei mit winzigen Löchern und ohne Einheiten wird ohne die Angabe abgelehnt), und die Kontur aus einzelnen Strichen wird mit einem Index verbunden, sodass fünfzigtausend Segmente nur Augenblicke brauchen.
+* **Ausgabe geprüft und dokumentiert:** Die Bohrdatei sagt in einem Kommentar, dass ihre Koordinaten ganze Mil (0,001 Zoll) ohne Dezimalpunkt sind und wie weit die Rundung danebenliegen kann; die Tests lesen den G-Code der Durchgänge und den der Befehlszeile mit dem Leser der Suite wieder ein und finden keine Warnung, keine Eilbewegung ins Material und keinen Schnitt bei stehender Spindel.
 * **Marken aus einer Tabelle:** `--fiducials-csv DATEI` liest die Markenpaare (Entwurf x, Entwurf y, gemessen x, gemessen y; eine Kopfzeile und Zeilen, die mit `#` beginnen, werden übergangen), sodass die Ausgabe von `eh3d-vision align --isocam-args` unverändert verwendet werden kann.
 
 ## 🔒 Sicherheit und Schutz
@@ -196,7 +197,7 @@ cargo run --release --features gui   # the window
 
 ## 🧪 Tests
 
-Die Suite hat 289 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 294 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 

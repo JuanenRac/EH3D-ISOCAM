@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 289 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 294 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.0.7` |
 | Maturità | Impalcatura |
-| Test | 289 |
+| Test | 294 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,7 +48,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 289 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 294 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata, ma non è ancora stata compilata né vista su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -62,7 +62,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **HP-GL per le macchine Bungard** (`src/hpgl.rs`): con un file di uscita che termina in `.plt` le passate sono scritte come file di tracciato HP-GL a 40 unità al millimetro, una penna per passata, ciò che legge il programma di fresatura delle macchine Bungard.
 * **Più utensili e rame residuo** (`isolate`): un piano ha fino a quattro utensili, taglia per primo il più largo; dove un utensile più largo ha già tagliato lungo un percorso di uno più fine, quel tratto viene omesso (il resto resta come tratti aperti), e anelli di un utensile più largo, ciascuno sovrapposto al precedente, possono ripulire il rame rimasto oltre le passate; il G-code si ferma per il cambio utensile quando cambia la larghezza dell'utensile. Con `around_pads_min_mm` maggiore di 0, gli utensili più larghi tagliano solo gli anelli attorno ai pad larghi almeno così e l'utensile più sottile fa il resto (piste e pad piccoli).
 * **Verso, partenza e ordine** (`order`): i percorsi sono tracciati con il rame alla destra dell'utensile (fresatura concorde con un mandrino che gira in senso orario); le impostazioni possono invertirlo (discorde), imporre orario o antiorario, far iniziare ogni percorso chiuso nel punto più vicino, nel punto più basso o dove è stato tracciato, fissare il punto da cui parte l'utensile e mettere i percorsi nell'ordine del tracciamento, il più vicino per primo o accorciato ancora girando tratti dell'ordine; `info` mostra quanti percorsi vanno in ogni verso e lo spostamento a vuoto.
-* **Fori e contorno della scheda** (`src/drill.rs`): i file di foratura sono letti (quelli Bungard in millesimi di pollice con il lettore dei formati Bungard, quelli metrici con il lettore della suite) e scritti in millesimi interi; un contorno è letto da un livello Gerber di contorno, un disegno DXF o un file di tracciamento HP-GL, i tratti disegnati uno a uno vengono uniti, e il percorso dell'utensile attorno alla scheda e dentro i suoi ritagli è scritto come HP-GL o come file Excellon di fresatura. Un file di foratura con utensili numerati oltre 289 li rinumera con numeri liberi, con un avviso, così due utensili non diventano mai uno.
+* **Fori e contorno della scheda** (`src/drill.rs`): i file di foratura sono letti (quelli Bungard in millesimi di pollice con il lettore dei formati Bungard, quelli metrici con il lettore della suite) e scritti in millesimi interi; un contorno è letto da un livello Gerber di contorno, un disegno DXF o un file di tracciamento HP-GL, i tratti disegnati uno a uno vengono uniti, e il percorso dell'utensile attorno alla scheda e dentro i suoi ritagli è scritto come HP-GL o come file Excellon di fresatura. Un file di foratura con utensili numerati oltre 255 li rinumera con numeri liberi, con un avviso, così due utensili non diventano mai uno.
 * **Due facce, pannelli e fori di allineamento** (`transform`): il livello, i fori e il contorno vengono ribaltati, ruotati a quarti di giro e ripetuti su un pannello insieme; i fori di allineamento sono messi fuori dalla scheda dove la scheda ribaltata li ritrova (un terzo sull'asse la distingue dalla stessa scheda ruotata di mezzo giro).
 * **Regole di progetto** (`drc`): rame più stretto della regola, pezzi di rame più vicini della regola o della larghezza dell'utensile, e fori con meno rame intorno della regola, ciascuno con la sua posizione in millimetri.
 * **Un file di impostazioni** (`src/config.rs`): ogni valore regolabile è un'impostazione con un valore predefinito, letta da un file `chiave = valore` (`examples/isocam.cfg`) o data con lo stesso nome come opzione della riga di comando.
@@ -99,6 +99,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **Ogni valore regolato è un'impostazione:** niente di ciò che una persona può voler cambiare è nascosto nel codice; un valore sbagliato è un errore con la sua riga.
 * **Unità a scelta:** le lunghezze in un file di impostazioni o sulla riga di comando possono essere scritte in millimetri, mil o pollici; il G-code può essere scritto in pollici e lo schermo può mostrare mil.
 * **File più sicuri:** il G-code inizia con l'intestazione standard (generatore, unità, file di origine con il suo SHA-256), un'uscita che è anche un ingresso dell'esecuzione viene rifiutata, un tracciato con una coordinata oltre 32767 unità viene rifiutato, `--units mm|inch` dà le unità di un file di foratura che non le dice (un file con fori minuscoli e senza unità viene rifiutato senza di esso) e il contorno di tratti separati si unisce con un indice, così cinquantamila segmenti richiedono un attimo.
+* **Uscita controllata e documentata:** il file dei fori dice in un commento che le sue coordinate sono millesimi di pollice interi senza punto decimale e di quanto può sbagliare l'arrotondamento; i test rileggono il G-code delle passate e quello della riga di comando con il lettore della suite, che non trova alcun avviso, alcun movimento rapido nel materiale e alcun taglio con il mandrino fermo.
 * **Segni da una tabella:** `--fiducials-csv FILE` legge le coppie di segni (x di progetto, y di progetto, x misurata, y misurata; una riga di intestazione e le righe che iniziano con `#` vengono omesse), così l'uscita di `eh3d-vision align --isocam-args` si usa così com'è.
 
 ## 🔒 Sicurezza e protezione
@@ -196,7 +197,7 @@ cargo run --release --features gui   # the window
 
 ## 🧪 Test
 
-La suite ha 289 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 294 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

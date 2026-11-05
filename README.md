@@ -17,7 +17,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 289 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 294 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Maturity | Scaffolding |
-| Tests | 289 |
+| Tests | 294 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -48,7 +48,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 289 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 294 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`): open or drop a layer, zoom and pan, edit the main parameters, export; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -62,7 +62,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **HP-GL for the Bungard machines** (`src/hpgl.rs`): with an output file that ends in `.plt` the passes are written as an HP-GL plot file at 40 units to the millimetre, one pen for each pass, which is what the routing program of the Bungard machines reads.
 * **Several tools and leftover copper** (`isolate`): a plan has up to four tools and the widest cuts first; where a wider tool has already cut along a path of a narrower one, that stretch is left out (the rest stays as open runs), and rings of a wider tool, each overlapping the one before, can clear the copper that is left beyond the passes; the G-code stops for a tool change when the width of the tool changes. With `around_pads_min_mm` above 0 the wider tools cut only the rings round pads at least that wide and the narrowest tool does the rest (tracks and small pads).
 * **Direction, start and order** (`order`): the paths are traced with the copper on the right of the tool (climb milling with a spindle that turns clockwise); the settings can turn that round (conventional), force clockwise or counterclockwise, start each closed path at its nearest point, its lowest point or where it was traced, set the point the tool starts from and put the paths in the order they were traced, nearest first, or shortened further by turning stretches of the order round; `info` shows how many paths go each way and the travel through the air.
-* **Holes and board outline** (`src/drill.rs`): drill files are read (Bungard files in mils with the reader of the Bungard formats, metric files with the reader of the suite) and written in whole mils; an outline is read from a Gerber outline layer, a DXF drawing or an HP-GL plot file, strokes drawn one by one are joined, and the path of the tool round the board and inside its cutouts is written as HP-GL or as a routing Excellon file. A drill file with tools numbered above 289 gets them renumbered to free numbers, with a notice, so two tools never become one.
+* **Holes and board outline** (`src/drill.rs`): drill files are read (Bungard files in mils with the reader of the Bungard formats, metric files with the reader of the suite) and written in whole mils; an outline is read from a Gerber outline layer, a DXF drawing or an HP-GL plot file, strokes drawn one by one are joined, and the path of the tool round the board and inside its cutouts is written as HP-GL or as a routing Excellon file. A drill file with tools numbered above 255 gets them renumbered to free numbers, with a notice, so two tools never become one.
 * **Both sides, panels and alignment holes** (`transform`): the layer, the holes and the outline are turned over, turned by quarter turns and repeated on a panel together; alignment holes are put outside the board where the turned-over board finds them again (a third one on the line tells it from the same board turned half a turn).
 * **Design rules** (`drc`): copper narrower than the rule, pieces of copper closer than the rule or than the tool is wide, and holes with less copper round them than the rule, each with its place in millimetres.
 * **One settings file** (`src/config.rs`): every value that can be tuned is a setting with a default, read from a `key = value` file (`examples/isocam.cfg`) or given by the same name as an option of the command line.
@@ -99,6 +99,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 * **Every tuned value is a setting:** nothing that a person may want to change is hidden in the code; a bad value is an error with its line.
 * **Units you choose:** lengths in a settings file or on the command line may be written in millimetres, mils or inches; the G-code can be written in inches and the screen can show mils.
 * **Safer files:** the G-code starts with the standard header (generator, units, source file with its SHA-256), an output that is also an input of the run is refused, a plot with a coordinate beyond 32767 units is refused, `--units mm|inch` gives the units of a drill file that does not say them (a file with tiny holes and no units is refused without it), and the outline of separate strokes is joined with an index, so fifty thousand segments take moments.
+* **Output checked and documented:** the drill file says in a comment that its coordinates are whole mils without a decimal point and how far the rounding can be off, and the tests read the G-code of the passes and the one of the command line back with the reader of the suite, which finds no warning, no rapid move into the material and no cut with the spindle off.
 * **Marks from a table:** `--fiducials-csv FILE` reads the pairs of marks (design x, design y, measured x, measured y; a header row and lines that start with `#` are left out), so the output of `eh3d-vision align --isocam-args` can be used as it is.
 
 ## 🔒 Security & Safety
@@ -196,7 +197,7 @@ cargo run --release --features gui   # the window
 
 ## 🧪 Testing
 
-The suite has 289 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 294 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 

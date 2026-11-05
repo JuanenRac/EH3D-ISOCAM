@@ -487,3 +487,19 @@ fn a_file_without_units_and_with_tiny_holes_needs_the_units_and_with_them_it_is_
     let mm = read_drills_with_units(text, Some(Units::Millimetres)).unwrap();
     assert!((mm.holes[0].x_mm - 0.5).abs() < 1e-9);
 }
+
+#[test]
+fn the_drill_file_says_that_its_coordinates_are_whole_mils_and_still_reads_back() {
+    let text = write_drills(&[hole(1, 25.4, 12.7, 0.8)]).unwrap();
+    assert!(
+        text.starts_with(
+            "M48\nINCH\n; coordinates are whole mils (0.001 in) without a decimal point"
+        ),
+        "{text}"
+    );
+    assert!(text.contains("at most 0.0127 mm off\n"), "{text}");
+    assert!(text.contains("X1000Y500\n"), "{text}");
+    let back = read_drills(&text).unwrap();
+    assert_eq!(back.holes.len(), 1);
+    assert!((back.holes[0].x_mm - 25.4).abs() < 1e-9 && (back.holes[0].y_mm - 12.7).abs() < 1e-9);
+}

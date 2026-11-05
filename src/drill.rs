@@ -220,7 +220,11 @@ pub fn write_drills_as(holes: &[Hole], style: &DrillStyle) -> Result<String, Str
             None => tools.push((h.tool, h.diameter_mm)),
         }
     }
-    let mut s = String::from("M48\nINCH\n");
+    // the coordinates are whole mils with no decimal point (the convention of the Bungard programs), not the 2.4 format that other Excellon readers assume for inches: the file says so,
+    // with the most a position can be off by the rounding to a mil
+    let mut s = String::from(
+        "M48\nINCH\n; coordinates are whole mils (0.001 in) without a decimal point; each is rounded to the nearest mil, at most 0.0127 mm off\n",
+    );
     for (t, d) in &tools {
         if *d > 0.0 {
             s.push_str(&format!("T{t}C{}\n", inches(*d)));
