@@ -139,6 +139,10 @@ pub struct Settings {
     pub spindle_wait_s: f64,
     /// The largest input file, in MiB, that is read; a larger one is refused before it is read into memory (`--max-bytes` on the command line wins over it).
     pub max_input_mb: f64,
+    /// The thinnest tool, in mm, that a setting may name (0.02 at the least); a tool below it is refused with a message that names the setting.
+    pub min_tool_mm: f64,
+    /// The speed of the rapid moves in mm/min, used only to estimate the time of a job (`info`); 0 (the default) gives no estimate.
+    pub rapid_mm_min: f64,
     /// The largest distance, in mm, between an arc of a layer and the polygon that is drawn for it.
     pub arc_tolerance_mm: f64,
     /// Put the cut round the outline (`--outline`) first in a plot of `isolate`.
@@ -241,6 +245,8 @@ impl Default for Settings {
             hpgl_margin_mm: 1.0,
             spindle_wait_s: 2.0,
             max_input_mb: 64.0,
+            min_tool_mm: 0.02,
+            rapid_mm_min: 0.0,
             arc_tolerance_mm: 0.005,
             plot_outline: false,
             hpgl_outline_pen: 0,
@@ -435,6 +441,8 @@ impl Settings {
             "hpgl_margin_mm" => self.hpgl_margin_mm = num(key, v)?,
             "spindle_wait_s" => self.spindle_wait_s = num(key, v)?,
             "max_input_mb" => self.max_input_mb = num(key, v)?,
+            "min_tool_mm" => self.min_tool_mm = num(key, v)?,
+            "rapid_mm_min" => self.rapid_mm_min = num(key, v)?,
             "arc_tolerance_mm" => self.arc_tolerance_mm = num(key, v)?,
             "plot_outline" => self.plot_outline = flag(key, v)?,
             "hpgl_outline_pen" => self.hpgl_outline_pen = pen(key, v)?,
@@ -538,6 +546,8 @@ ncd_digits = {}
 hpgl_margin_mm = {}
 spindle_wait_s = {}
 max_input_mb = {}
+min_tool_mm = {}
+rapid_mm_min = {}
 arc_tolerance_mm = {}
 excellon_format = {}
 ",
@@ -555,6 +565,8 @@ excellon_format = {}
             self.hpgl_margin_mm,
             self.spindle_wait_s,
             self.max_input_mb,
+            self.min_tool_mm,
+            self.rapid_mm_min,
             self.arc_tolerance_mm,
             self.excellon_format.name()
         ));
@@ -655,10 +667,30 @@ excellon_format = {}
             0.0,
             0.5,
         )?;
-        if self.conflict_tolerance_mm > self.fine_tool_mm - 0.02 {
+        range("min_tool_mm", self.min_tool_mm, 0.02, 10.0)?;
+        // a rate of 0 gives no estimate of the time; anything else must be a believable speed
+        if self.rapid_mm_min != 0.0 {
+            range("rapid_mm_min", self.rapid_mm_min, 100.0, 100_000.0)?;
+        }
+        // the tools that are on (0 switches the coarse tool and the removal of the leftover copper off) may not be thinner than the limit of the file
+        for (name, v, off_at_zero) in [
+            ("fine_tool_mm", self.fine_tool_mm, false),
+            ("coarse_tool_mm", self.coarse_tool_mm, true),
+            ("rubout_tool_mm", self.rubout_tool_mm, true),
+            ("net_tool_mm", self.net_tool_mm, false),
+            ("rubout_lines_tool_mm", self.rubout_lines_tool_mm, false),
+        ] {
+            if v < self.min_tool_mm && !(off_at_zero && v == 0.0) {
+                return Err(format!(
+                    "{name} is {v}: it is thinner than min_tool_mm ({}), the thinnest tool this file allows",
+                    self.min_tool_mm
+                ));
+            }
+        }
+        if self.conflict_tolerance_mm > self.fine_tool_mm - self.min_tool_mm {
             return Err(format!(
-                "conflict_tolerance_mm is {}: it must leave a tool of at least 0.02 mm (the finest tool is {} mm)",
-                self.conflict_tolerance_mm, self.fine_tool_mm
+                "conflict_tolerance_mm is {}: it must leave a tool of at least {} mm (the finest tool is {} mm)",
+                self.conflict_tolerance_mm, self.min_tool_mm, self.fine_tool_mm
             ));
         }
         range("alignment_hole_mm", self.alignment_hole_mm, 0.3, 10.0)?;
@@ -900,7 +932,7 @@ excellon_format = {}
 
     /// The width below which a gap between two pieces of copper counts as one the tool does not fit in: the tool less the tolerance.
     pub fn conflict_gap_mm(&self, finest_mm: f64) -> f64 {
-        (finest_mm - self.conflict_tolerance_mm).max(0.02)
+        (finest_mm - self.conflict_tolerance_mm).max(self.min_tool_mm)
     }
 
     pub fn rules(&self) -> Rules {

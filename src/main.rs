@@ -712,6 +712,24 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     len(&cli, travel_mm(&chosen, order.start)),
                     order.strategy.name()
                 );
+                // the time, when the settings give the speed of the rapid moves
+                if s.rapid_mm_min > 0.0 {
+                    let cut: f64 = all.iter().map(|c| c.length_mm()).sum();
+                    let t = eh3d_isocam::gcode::estimate_time(
+                        &s.job(),
+                        s.rapid_mm_min,
+                        cut,
+                        travel_mm(&chosen, order.start),
+                        all.len(),
+                    )?;
+                    println!(
+                        "estimated time: {} ({} cutting, {} going down, {} moving); the spindle wait and the tool changes by hand are not counted",
+                        eh3d_isocam::gcode::duration_text(t.total_s()),
+                        eh3d_isocam::gcode::duration_text(t.cutting_s),
+                        eh3d_isocam::gcode::duration_text(t.plunging_s),
+                        eh3d_isocam::gcode::duration_text(t.rapid_s)
+                    );
+                }
                 return Ok(());
             }
             let out = arg(&cli, 1, "isolate needs an output file")?;

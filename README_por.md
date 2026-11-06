@@ -17,7 +17,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 323 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 327 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versão | `0.0.8` |
 | Maturidade | Estrutura inicial |
-| Testes | 323 |
+| Testes | 327 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -48,7 +48,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ficheiros e disposição | 🟡 | lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, acrescenta furos de alinhamento e verifica as regras de projeto com a posição de cada achado; testado num computador, não com ficheiros escritos por outros programas nem numa máquina. |
 | Isolamento forçado, correção, máscara | 🟡 | percursos forçados nos espaços onde a ferramenta não cabe, percursos mais leves, escala e correção com pontos de referência, aberturas da máscara de soldadura, unidades e pré-visualização das passagens; testado num computador com camadas geradas e entradas danificadas, nunca com placas reais nem numa máquina, e a correção não foi comparada com medições reais de uma câmara. |
 | Linha de comandos | 🟡 | `eh3d-isocam` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 323 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 327 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🟠 | Escrita (egui, `--features gui`): abrir ou largar uma camada, zoom e deslocamento, editar os parâmetros principais, exportar; a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -75,7 +75,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **Máscara de soldadura** (`mask`): as aberturas são escritas como uma camada Gerber, a partir da camada de máscara do desenho ou dos pads do cobre, cada uma alargada de `mask_margin_mm`; as pistas ficam cobertas.
 * **Unidades e pré-visualização** (`eh3d-raster`, `src/preview.rs`): um comprimento pode levar `mm`, `mil` ou `in`, o G-code pode ser escrito em polegadas, e `preview` desenha as passagens sobre o cobre como desenho SVG ou como texto.
 * **Camadas Gerber antigas** (`legacy`): uma camada sem instrução de formato (RS-274D, como muitos programas antigos a escrevem) é lida quando se indica a sua lista de aberturas (`--apertures`, um código D e o seu tamanho por linha) juntamente com o seu formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); é reescrita como Gerber estendido e passa pelo leitor normal. Testado com camadas escritas à mão, não com ficheiros de outros programas.
-* **Leitura e avisos por código (linha de comandos):** os ficheiros são lidos com um limite de tamanho (`--max-bytes N` or `max_input_mb`, 64 MiB por omissão) e o texto que não é UTF-8 é lido como Latin-1 com um aviso (`input-not-utf8`); os avisos do leitor de Gerber são mostrados com o seu código estável e `--hide CODE[,CODE]` omite esses códigos. A nota sobre os trajetos mais leves e a das pontes do corte só são impressas quando mudaram alguma coisa. `arc_tolerance_mm` define com que rigor se seguem os arcos de uma camada.
+* **Leitura e avisos por código (linha de comandos):** os ficheiros são lidos com um limite de tamanho (`--max-bytes N` or `max_input_mb`, 64 MiB por omissão) e o texto que não é UTF-8 é lido como Latin-1 com um aviso (`input-not-utf8`); os avisos do leitor de Gerber são mostrados com o seu código estável e `--hide CODE[,CODE]` omite esses códigos. A nota sobre os trajetos mais leves e a das pontes do corte só são impressas quando mudaram alguma coisa. `arc_tolerance_mm` define com que rigor se seguem os arcos de uma camada. `min_tool_mm` (0,02 por omissão) define a ferramenta mais fina que qualquer definição de ferramenta pode ter, e uma mais fina é recusada com o nome da definição; `rapid_mm_min` (0 por omissão, sem estimativa) é a velocidade dos movimentos rápidos, com a qual `info` acrescenta uma estimativa do tempo do trabalho (corte, descida, deslocações; a espera do fuso e as trocas de ferramenta à mão não são contadas).
 
 ## 🧩 Papel no EH3D
 
@@ -204,7 +204,7 @@ Para tirar uma captura da janela sem a abrir à mão, execute-o com `--shot FICH
 
 ## 🧪 Testes
 
-O conjunto tem 323 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 327 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 

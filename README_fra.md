@@ -17,7 +17,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 323 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il a une fenêtre (compilée avec `--features gui`) qui ouvre une couche, un fichier de perçage, un contour, une couche de masque et une table de points de référence, retourne la carte et la répète sur un panneau, dessine le cuivre, les perçages, le contour et les trajets et écrit les mêmes fichiers que la ligne de commande, mais qui n'a pas encore été vue sur un écran ; il n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 327 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il a une fenêtre (compilée avec `--features gui`) qui ouvre une couche, un fichier de perçage, un contour, une couche de masque et une table de points de référence, retourne la carte et la répète sur un panneau, dessine le cuivre, les perçages, le contour et les trajets et écrit les mêmes fichiers que la ligne de commande, mais qui n'a pas encore été vue sur un écran ; il n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.0.8` |
 | Maturité | Échafaudage |
-| Tests | 323 |
+| Tests | 327 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -48,7 +48,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Fichiers et disposition | 🟡 | lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, ajoute des trous d'alignement et vérifie les règles de conception avec l'endroit de chaque constat ; testé sur un ordinateur, pas avec des fichiers écrits par d'autres programmes ni sur une machine. |
 | Isolation forcée, correction, masque | 🟡 | trajets forcés dans les espaces où l'outil ne passe pas, trajets allégés, échelle et correction par points de référence, ouvertures du masque de soudure, unités et aperçu des passes ; testé sur un ordinateur avec des couches générées et des entrées abîmées, jamais avec de vraies cartes ni sur une machine, et la correction n'a pas été comparée à de vraies mesures d'une caméra. |
 | Ligne de commande | 🟡 | `eh3d-isocam` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 323 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
+| Tests | 🟡 | 327 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🟠 | Écrite (egui, `--features gui`) : ouvrir ou déposer une couche, zoom et déplacement, modifier les principaux paramètres, exporter ; sa logique est testée, mais elle n'a pas encore été compilée ni vue sur un écran. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -75,7 +75,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 * **Masque de soudure** (`mask`) : les ouvertures sont écrites comme une couche Gerber, à partir de la couche de masque du dessin ou des pastilles du cuivre, chacune agrandie de `mask_margin_mm` ; les pistes restent couvertes.
 * **Unités et aperçu** (`eh3d-raster`, `src/preview.rs`) : une longueur peut porter `mm`, `mil` ou `in`, le G-code peut être écrit en pouces, et `preview` dessine les passes sur le cuivre en dessin SVG ou en texte.
 * **Couches Gerber anciennes** (`legacy`) : une couche sans instruction de format (RS-274D, comme l'écrivent beaucoup d'anciens programmes) est lue quand on donne sa liste d'ouvertures (`--apertures`, un code D et sa taille par ligne) avec son format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`) ; elle est réécrite en Gerber étendu et passe par le lecteur normal. Testé avec des couches écrites à la main, pas avec des fichiers d'autres programmes.
-* **Lecture et avis par code (ligne de commande) :** les fichiers sont lus avec une limite de taille (`--max-bytes N` or `max_input_mb`, 64 MiB par défaut) et le texte non UTF-8 est lu comme du Latin-1 avec un avertissement (`input-not-utf8`) ; les avis du lecteur Gerber sont affichés avec leur code stable et `--hide CODE[,CODE]` omet ces codes. La note sur les tracés allégés et celle sur les ponts de la découpe ne sont affichées que lorsqu'elles ont changé quelque chose. `arc_tolerance_mm` fixe la précision avec laquelle les arcs d'une couche sont suivis.
+* **Lecture et avis par code (ligne de commande) :** les fichiers sont lus avec une limite de taille (`--max-bytes N` or `max_input_mb`, 64 MiB par défaut) et le texte non UTF-8 est lu comme du Latin-1 avec un avertissement (`input-not-utf8`) ; les avis du lecteur Gerber sont affichés avec leur code stable et `--hide CODE[,CODE]` omet ces codes. La note sur les tracés allégés et celle sur les ponts de la découpe ne sont affichées que lorsqu'elles ont changé quelque chose. `arc_tolerance_mm` fixe la précision avec laquelle les arcs d'une couche sont suivis. `min_tool_mm` (0,02 par défaut) fixe l'outil le plus fin que peut avoir un réglage d'outil, et un outil plus fin est refusé avec le nom du réglage ; `rapid_mm_min` (0 par défaut, pas d'estimation) est la vitesse des déplacements rapides, avec laquelle `info` ajoute une estimation de la durée du travail (coupe, descente, déplacements ; l'attente de la broche et les changements d'outil à la main ne sont pas comptés).
 
 ## 🧩 Rôle dans EH3D
 
@@ -204,7 +204,7 @@ Pour prendre une capture de la fenêtre sans l'ouvrir à la main, lancez-la avec
 
 ## 🧪 Tests
 
-La suite compte 323 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 327 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 

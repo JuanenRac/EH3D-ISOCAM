@@ -208,3 +208,21 @@ fn the_marks_of_a_csv_file_become_fiducials_and_a_header_or_a_comment_is_left_ou
     assert!(!ok && err.contains("four numbers"), "{err}");
     let _ = fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn info_estimates_the_time_only_when_the_settings_give_the_rapid_speed() {
+    let dir = folder("time");
+    let file = dir.join("t.gtl");
+    fs::write(&file, BOARD).unwrap();
+    let cfg = dir.join("isocam.cfg");
+    fs::write(&cfg, "rapid_mm_min = 3000\n").unwrap();
+    let (f, c) = (file.to_str().unwrap(), cfg.to_str().unwrap());
+    let (ok, out, err) = run(&["info", f]);
+    assert!(ok && !out.contains("estimated time"), "{out}{err}");
+    let (ok, out, err) = run(&["info", f, "--config", c]);
+    assert!(ok && out.contains("estimated time: "), "{out}{err}");
+    fs::write(&cfg, "rapid_mm_min = 50\n").unwrap();
+    let (ok, _, err) = run(&["info", f, "--config", c]);
+    assert!(!ok && err.contains("rapid_mm_min is 50"), "{err}");
+    let _ = fs::remove_dir_all(&dir);
+}

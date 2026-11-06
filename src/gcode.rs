@@ -78,6 +78,65 @@ fn nn(v: f64, unit: Unit) -> String {
     }
 }
 
+/// The time a job takes, estimated from the speeds of the settings (not from a machine): the seconds of cutting, of going down into the material and of the rapid moves.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TimeEstimate {
+    pub cutting_s: f64,
+    pub plunging_s: f64,
+    pub rapid_s: f64,
+}
+
+impl TimeEstimate {
+    pub fn total_s(&self) -> f64 {
+        self.cutting_s + self.plunging_s + self.rapid_s
+    }
+}
+
+/// The time of cutting `cut_mm` of path in `paths` runs with `travel_mm` of travel through the air between them. Every run goes down from the safe height to the depth of the cut at the
+/// plunge feed and comes back up at the rapid speed; spindle waits and tool changes by hand are not counted. A rapid speed that is not above zero is refused.
+pub fn estimate_time(
+    job: &Job,
+    rapid_mm_min: f64,
+    cut_mm: f64,
+    travel_mm: f64,
+    paths: usize,
+) -> Result<TimeEstimate, String> {
+    let ok = |v: f64| v.is_finite() && v >= 0.0;
+    if !(rapid_mm_min.is_finite() && rapid_mm_min > 0.0) {
+        return Err("rapid_mm_min must be above 0 to estimate the time".into());
+    }
+    if !(ok(cut_mm) && ok(travel_mm)) {
+        return Err("the lengths of the job must be finite and not negative".into());
+    }
+    if !(job.feed_mm_min > 0.0 && job.plunge_mm_min > 0.0) {
+        return Err("the feed and the plunge feed must be above 0 to estimate the time".into());
+    }
+    let down_mm = job.safe_z_mm + job.depth_mm;
+    let runs = paths as f64;
+    Ok(TimeEstimate {
+        cutting_s: cut_mm / job.feed_mm_min * 60.0,
+        plunging_s: runs * down_mm / job.plunge_mm_min * 60.0,
+        rapid_s: (travel_mm + runs * down_mm) / rapid_mm_min * 60.0,
+    })
+}
+
+/// A time for a person: `45 s`, `2 min 27 s`, `1 h 2 min` (the seconds are rounded first, and the seconds are left out from an hour on).
+pub fn duration_text(seconds: f64) -> String {
+    let total = if seconds.is_finite() && seconds > 0.0 {
+        seconds.round() as u64
+    } else {
+        0
+    };
+    let (h, m, s) = (total / 3600, total % 3600 / 60, total % 60);
+    if h > 0 {
+        format!("{h} h {m} min")
+    } else if m > 0 {
+        format!("{m} min {s} s")
+    } else {
+        format!("{s} s")
+    }
+}
+
 /// The total length of the closed paths, in mm.
 pub fn length(paths: &[Loop]) -> f64 {
     paths

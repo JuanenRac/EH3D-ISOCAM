@@ -380,3 +380,77 @@ hpgl_margin_mm = 0.5
     assert_eq!(Settings::parse(&s.to_text()).unwrap(), s);
     assert_eq!(Settings::default().spindle_wait_s, 2.0);
 }
+
+// ---- the thinnest tool and the estimate of the time of a job --------------------------------------------------------------------------------------------
+
+#[test]
+fn the_time_of_a_job_is_worked_out_from_the_speeds() {
+    use eh3d_isocam::gcode::estimate_time;
+    // 600 mm of cut at 300 mm/min = 120 s; 10 runs down 2 + 0.06 mm at 60 mm/min = 10 x 2.06 s = 20.6 s;
+    // (300 mm of travel + 10 x 2.06 mm of going up) at 3000 mm/min = 320.6 / 3000 x 60 = 6.412 s
+    let t = estimate_time(&Job::default(), 3000.0, 600.0, 300.0, 10).unwrap();
+    assert!((t.cutting_s - 120.0).abs() < 1e-9, "{t:?}");
+    assert!((t.plunging_s - 20.6).abs() < 1e-9, "{t:?}");
+    assert!((t.rapid_s - 6.412).abs() < 1e-9, "{t:?}");
+    assert!((t.total_s() - 147.012).abs() < 1e-9, "{t:?}");
+    // no work, no time
+    let none = estimate_time(&Job::default(), 3000.0, 0.0, 0.0, 0).unwrap();
+    assert_eq!(none.total_s(), 0.0);
+    // a speed that is not above zero, or a length that is not a number, is refused
+    for rapid in [0.0, -5.0, f64::NAN] {
+        assert!(estimate_time(&Job::default(), rapid, 1.0, 1.0, 1).is_err());
+    }
+    assert!(estimate_time(&Job::default(), 3000.0, f64::NAN, 1.0, 1).is_err());
+    assert!(estimate_time(&Job::default(), 3000.0, 1.0, -1.0, 1).is_err());
+}
+
+#[test]
+fn a_time_is_written_for_a_person() {
+    use eh3d_isocam::gcode::duration_text;
+    for (seconds, text) in [
+        (0.0, "0 s"),
+        (-3.0, "0 s"),
+        (f64::NAN, "0 s"),
+        (44.6, "45 s"),
+        (147.012, "2 min 27 s"),
+        (59.6, "1 min 0 s"),
+        (3725.0, "1 h 2 min"),
+    ] {
+        assert_eq!(duration_text(seconds), text, "{seconds}");
+    }
+}
+
+#[test]
+fn the_settings_name_the_thinnest_tool_and_the_speed_of_the_rapid_moves() {
+    let d = Settings::default();
+    assert_eq!((d.min_tool_mm, d.rapid_mm_min), (0.02, 0.0));
+    let s = Settings::parse("min_tool_mm = 0.1\nrapid_mm_min = 3000\n").unwrap();
+    assert_eq!((s.min_tool_mm, s.rapid_mm_min), (0.1, 3000.0));
+    assert_eq!(Settings::parse(&s.to_text()).unwrap(), s);
+    // the gap that counts as a conflict never goes below the thinnest tool
+    assert_eq!(s.conflict_gap_mm(0.05), 0.1);
+    assert_eq!(d.conflict_gap_mm(0.05), 0.05);
+    for (text, part) in [
+        ("min_tool_mm = 0.01\n", "from 0.02 to 10"),
+        ("min_tool_mm = 11\n", "from 0.02 to 10"),
+        ("rapid_mm_min = 50\n", "rapid_mm_min is 50"),
+        ("rapid_mm_min = -1\n", "rapid_mm_min is -1"),
+        (
+            "min_tool_mm = 0.05\nfine_tool_mm = 0.03\n",
+            "fine_tool_mm is 0.03",
+        ),
+        (
+            "min_tool_mm = 0.3\nfine_tool_mm = 0.4\nnet_tool_mm = 0.25\n",
+            "net_tool_mm is 0.25",
+        ),
+        (
+            "min_tool_mm = 0.1\nfine_tool_mm = 0.2\nconflict_tolerance_mm = 0.15\n",
+            "at least 0.1 mm",
+        ),
+    ] {
+        let e = Settings::parse(text).unwrap_err();
+        assert!(e.contains(part), "{text:?} gave {e:?}");
+    }
+    // a tool that is switched off (0) is not a tool below the limit
+    assert!(Settings::parse("min_tool_mm = 0.1\ncoarse_tool_mm = 0\nrubout_tool_mm = 0\n").is_ok());
+}

@@ -17,7 +17,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 323 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 327 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versión | `0.0.8` |
 | Madurez | Andamiaje |
-| Pruebas | 323 |
+| Pruebas | 327 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -48,7 +48,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Ficheros y disposición | 🟡 | lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, añade agujeros de alineación y comprueba las reglas de diseño con la posición de cada hallazgo; probado en un ordenador, no con ficheros escritos por otros programas ni en una máquina. |
 | Aislamiento forzado, corrección, máscara | 🟡 | caminos forzados por los huecos donde no cabe la herramienta, trayectorias más ligeras, escala y corrección con puntos de referencia, las aberturas de la máscara de soldadura, unidades y vista previa de las pasadas; probado en un ordenador con capas generadas y entradas dañadas, nunca con placas reales ni en una máquina, y la corrección no se ha comparado con mediciones reales de una cámara. |
 | Línea de comandos | 🟡 | `eh3d-isocam` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 323 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
+| Pruebas | 🟡 | 327 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🟠 | Escrita (egui, `--features gui`): abrir o soltar una capa, zoom y desplazamiento, editar los parámetros principales, exportar; su lógica está probada, pero todavía no se ha compilado ni visto en una pantalla. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -75,7 +75,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 * **Máscara de soldadura** (`mask`): las aberturas se escriben como una capa Gerber, a partir de la capa de máscara del diseño o de los pads del cobre, cada una ensanchada en `mask_margin_mm`; las pistas quedan cubiertas.
 * **Unidades y vista previa** (`eh3d-raster`, `src/preview.rs`): una longitud puede llevar `mm`, `mil` o `in`, el G-code puede escribirse en pulgadas, y `preview` dibuja las pasadas sobre el cobre como dibujo SVG o como texto.
 * **Capas Gerber antiguas** (`legacy`): una capa sin sentencia de formato (RS-274D, como la escriben muchos programas antiguos) se lee cuando se da su lista de aperturas (`--apertures`, un código D y su tamaño por línea) junto con su formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); se reescribe como Gerber extendido y pasa por el lector normal. Probado con capas escritas a mano, no con ficheros de otros programas.
-* **Lectura y avisos por código (línea de comandos):** los ficheros se leen con un límite de tamaño (`--max-bytes N` or `max_input_mb`, 64 MiB por defecto) y el texto que no es UTF-8 se lee como Latin-1 con un aviso (`input-not-utf8`); los avisos del lector de Gerber se muestran con su código estable y `--hide CODE[,CODE]` omite esos códigos. La nota sobre los trazados más ligeros y la de los puentes del corte solo se imprimen cuando cambiaron algo. `arc_tolerance_mm` fija con qué precisión se siguen los arcos de una capa.
+* **Lectura y avisos por código (línea de comandos):** los ficheros se leen con un límite de tamaño (`--max-bytes N` or `max_input_mb`, 64 MiB por defecto) y el texto que no es UTF-8 se lee como Latin-1 con un aviso (`input-not-utf8`); los avisos del lector de Gerber se muestran con su código estable y `--hide CODE[,CODE]` omite esos códigos. La nota sobre los trazados más ligeros y la de los puentes del corte solo se imprimen cuando cambiaron algo. `arc_tolerance_mm` fija con qué precisión se siguen los arcos de una capa. `min_tool_mm` (0,02 por defecto) fija la herramienta más fina que puede tener cualquier ajuste de herramienta, y una por debajo se rechaza con el nombre del ajuste; `rapid_mm_min` (0 por defecto, sin estimación) es la velocidad de los movimientos rápidos, con la que `info` añade una estimación del tiempo del trabajo (corte, bajada, desplazamientos; la espera del husillo y los cambios de herramienta a mano no se cuentan).
 
 ## 🧩 Papel en EH3D
 
@@ -204,7 +204,7 @@ Para sacar una captura de la ventana sin abrirla a mano, ejecútelo con `--shot 
 
 ## 🧪 Pruebas
 
-El conjunto tiene 323 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 327 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 
