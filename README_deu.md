@@ -17,7 +17,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 313 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 323 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.0.8` |
 | Reifegrad | Gerüst |
-| Tests | 313 |
+| Tests | 323 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -48,7 +48,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Dateien und Anordnung | 🟡 | liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, setzt Passlöcher und prüft die Entwurfsregeln mit dem Ort jedes Befunds; auf einem Computer getestet, nicht mit Dateien anderer Programme und nicht auf einer Maschine. |
 | Erzwungene Isolation, Korrektur, Maske | 🟡 | erzwungene Pfade durch Lücken, in die das Werkzeug nicht passt, leichtere Bahnen, Skalierung und Korrektur mit Referenzpunkten, die Öffnungen der Lötstoppmaske, Einheiten und die Vorschau der Durchgänge; auf einem Computer mit erzeugten Lagen und beschädigten Eingaben getestet, nie mit echten Platinen und nie auf einer Maschine, und die Korrektur wurde nicht mit echten Kameramessungen verglichen. |
 | Kommandozeile | 🟡 | `eh3d-isocam` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 313 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
+| Tests | 🟡 | 323 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`): Ebene öffnen oder hineinziehen, Zoom und Verschieben, die wichtigsten Parameter ändern, exportieren; die Logik ist getestet, aber noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -129,6 +129,7 @@ eh3d-isocam kind FILE...                        say what kind of file each one i
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 eh3d-isocam [gui] [LAYER.gtl]                    the window (a build with --features gui); with no arguments it opens
+eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|light] [--wait N] [--lang CODE] [--replace]   a picture of the window
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
@@ -151,6 +152,7 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
 │   ├── preview.rs                               die Durchgänge als SVG oder Text
+│   ├── shot.rs                                  der Bildmodus des Fensters (--shot): seine Argumente, ohne Bildschirm gelesen und geprüft
 │   ├── viewport.rs                              Zoom und Verschiebung des Bildes, in einfachen Zahlen
 │   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Ebene, Parameter, Bahnen, Export und Status
 ├── tests/
@@ -195,11 +197,14 @@ cargo build --release
 cargo test
 cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 cargo run --release --features gui   # the window
+cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # a picture of the window
 ```
+
+Um ein Bild des Fensters aufzunehmen, ohne es von Hand zu öffnen, starten Sie es mit `--shot DATEI.png` (auch `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`): Es öffnet sich in dieser Größe, speichert das PNG, behält keine Einstellungen und schließt sich selbst (Exit-Code 0, wenn die Datei geschrieben wurde, 1, wenn nicht, 2 bei falschen Argumenten).
 
 ## 🧪 Tests
 
-Die Suite hat 313 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 323 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -235,6 +240,7 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
 │   ├── preview.rs                               die Durchgänge als SVG oder Text
+│   ├── shot.rs                                  der Bildmodus des Fensters (--shot): seine Argumente, ohne Bildschirm gelesen und geprüft
 │   ├── viewport.rs                              Zoom und Verschiebung des Bildes, in einfachen Zahlen
 │   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Ebene, Parameter, Bahnen, Export und Status
 ├── tests/

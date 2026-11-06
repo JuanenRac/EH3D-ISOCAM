@@ -17,7 +17,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 313 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 323 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versión | `0.0.8` |
 | Madurez | Andamiaje |
-| Pruebas | 313 |
+| Pruebas | 323 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -48,7 +48,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Ficheros y disposición | 🟡 | lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, añade agujeros de alineación y comprueba las reglas de diseño con la posición de cada hallazgo; probado en un ordenador, no con ficheros escritos por otros programas ni en una máquina. |
 | Aislamiento forzado, corrección, máscara | 🟡 | caminos forzados por los huecos donde no cabe la herramienta, trayectorias más ligeras, escala y corrección con puntos de referencia, las aberturas de la máscara de soldadura, unidades y vista previa de las pasadas; probado en un ordenador con capas generadas y entradas dañadas, nunca con placas reales ni en una máquina, y la corrección no se ha comparado con mediciones reales de una cámara. |
 | Línea de comandos | 🟡 | `eh3d-isocam` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 313 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
+| Pruebas | 🟡 | 323 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🟠 | Escrita (egui, `--features gui`): abrir o soltar una capa, zoom y desplazamiento, editar los parámetros principales, exportar; su lógica está probada, pero todavía no se ha compilado ni visto en una pantalla. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -129,6 +129,7 @@ eh3d-isocam kind FILE...                        say what kind of file each one i
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 eh3d-isocam [gui] [LAYER.gtl]                    the window (a build with --features gui); with no arguments it opens
+eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|light] [--wait N] [--lang CODE] [--replace]   a picture of the window
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
@@ -151,6 +152,7 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   la biblioteca: lo que usa cada orden
 │   ├── main.rs                                  la línea de comandos
 │   ├── preview.rs                               las pasadas dibujadas en SVG o texto
+│   ├── shot.rs                                  el modo de captura de la ventana (--shot): sus argumentos, leídos y comprobados sin pantalla
 │   ├── viewport.rs                              zoom y desplazamiento de la imagen, en números simples
 │   └── window.rs                                el estado de la ventana sin pantalla: capa, parámetros, trayectorias, exportación y estado
 ├── tests/
@@ -195,11 +197,14 @@ cargo build --release
 cargo test
 cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 cargo run --release --features gui   # the window
+cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # a picture of the window
 ```
+
+Para sacar una captura de la ventana sin abrirla a mano, ejecútelo con `--shot FICHERO.png` (también `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`): se abre con ese tamaño, guarda el PNG, no guarda ajustes y se cierra solo (código de salida 0 si se escribió el fichero, 1 si no, 2 si los argumentos están mal).
 
 ## 🧪 Pruebas
 
-El conjunto tiene 313 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 323 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 
@@ -235,6 +240,7 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   la biblioteca: lo que usa cada orden
 │   ├── main.rs                                  la línea de comandos
 │   ├── preview.rs                               las pasadas dibujadas en SVG o texto
+│   ├── shot.rs                                  el modo de captura de la ventana (--shot): sus argumentos, leídos y comprobados sin pantalla
 │   ├── viewport.rs                              zoom y desplazamiento de la imagen, en números simples
 │   └── window.rs                                el estado de la ventana sin pantalla: capa, parámetros, trayectorias, exportación y estado
 ├── tests/

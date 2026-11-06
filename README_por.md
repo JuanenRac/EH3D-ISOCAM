@@ -17,7 +17,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 313 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 323 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versão | `0.0.8` |
 | Maturidade | Estrutura inicial |
-| Testes | 313 |
+| Testes | 323 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -48,7 +48,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ficheiros e disposição | 🟡 | lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, acrescenta furos de alinhamento e verifica as regras de projeto com a posição de cada achado; testado num computador, não com ficheiros escritos por outros programas nem numa máquina. |
 | Isolamento forçado, correção, máscara | 🟡 | percursos forçados nos espaços onde a ferramenta não cabe, percursos mais leves, escala e correção com pontos de referência, aberturas da máscara de soldadura, unidades e pré-visualização das passagens; testado num computador com camadas geradas e entradas danificadas, nunca com placas reais nem numa máquina, e a correção não foi comparada com medições reais de uma câmara. |
 | Linha de comandos | 🟡 | `eh3d-isocam` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 313 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 323 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🟠 | Escrita (egui, `--features gui`): abrir ou largar uma camada, zoom e deslocamento, editar os parâmetros principais, exportar; a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -129,6 +129,7 @@ eh3d-isocam kind FILE...                        say what kind of file each one i
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 eh3d-isocam [gui] [LAYER.gtl]                    the window (a build with --features gui); with no arguments it opens
+eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|light] [--wait N] [--lang CODE] [--replace]   a picture of the window
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
@@ -151,6 +152,7 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   a biblioteca: o que cada comando usa
 │   ├── main.rs                                  a linha de comandos
 │   ├── preview.rs                               as passagens desenhadas em SVG ou texto
+│   ├── shot.rs                                  o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã
 │   ├── viewport.rs                              zoom e deslocamento da imagem, em números simples
 │   └── window.rs                                o estado da janela sem ecrã: camada, parâmetros, trajetórias, exportação e estado
 ├── tests/
@@ -195,11 +197,14 @@ cargo build --release
 cargo test
 cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 cargo run --release --features gui   # the window
+cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # a picture of the window
 ```
+
+Para tirar uma captura da janela sem a abrir à mão, execute-o com `--shot FICHEIRO.png` (também `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`): abre-se com esse tamanho, guarda o PNG, não guarda definições e fecha-se sozinho (código de saída 0 se o ficheiro foi escrito, 1 se não, 2 se os argumentos estiverem errados).
 
 ## 🧪 Testes
 
-O conjunto tem 313 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 323 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -235,6 +240,7 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   a biblioteca: o que cada comando usa
 │   ├── main.rs                                  a linha de comandos
 │   ├── preview.rs                               as passagens desenhadas em SVG ou texto
+│   ├── shot.rs                                  o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã
 │   ├── viewport.rs                              zoom e deslocamento da imagem, em números simples
 │   └── window.rs                                o estado da janela sem ecrã: camada, parâmetros, trajetórias, exportação e estado
 ├── tests/

@@ -17,7 +17,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有313个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它有一个窗口（用 `--features gui` 构建），可打开层、钻孔文件、板框、阻焊层和基准点表，翻转电路板并在拼板上重复，绘制铜箔、孔、板框和路径，并写出与命令行相同的文件，但窗口尚未在屏幕上看过，没有在机器上试过，也没有用一批真实文件检验过。
+**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有323个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它有一个窗口（用 `--features gui` 构建），可打开层、钻孔文件、板框、阻焊层和基准点表，翻转电路板并在拼板上重复，绘制铜箔、孔、板框和路径，并写出与命令行相同的文件，但窗口尚未在屏幕上看过，没有在机器上试过，也没有用一批真实文件检验过。
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | 版本 | `0.0.8` |
 | 成熟度 | 脚手架 |
-| 测试 | 313 |
+| 测试 | 323 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -48,7 +48,7 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 313 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
+| 测试 | 🟡 | 323 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`）：打开或拖入层、缩放和平移、编辑主要参数、导出；其逻辑已测试，但尚未构建，也尚未在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -129,6 +129,7 @@ eh3d-isocam kind FILE...                        say what kind of file each one i
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 eh3d-isocam [gui] [LAYER.gtl]                    the window (a build with --features gui); with no arguments it opens
+eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|light] [--wait N] [--lang CODE] [--replace]   a picture of the window
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
@@ -151,6 +152,7 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
 │   ├── preview.rs                               以 SVG 或文本绘制各遍路径
+│   ├── shot.rs                                  窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数
 │   ├── viewport.rs                              图像的缩放和平移（纯数值）
 │   └── window.rs                                无需屏幕的窗口状态：层、参数、路径、导出和状态
 ├── tests/
@@ -195,11 +197,14 @@ cargo build --release
 cargo test
 cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 cargo run --release --features gui   # the window
+cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # a picture of the window
 ```
+
+要在不手动打开窗口的情况下截取窗口图像，请使用 `--shot FILE.png` 运行（还可用 `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`）：它按该尺寸打开，保存 PNG，不保留任何设置并自动关闭（写入文件成功时退出码为 0，否则为 1，参数错误时为 2）。
 
 ## 🧪 测试
 
-测试套件有 313 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 323 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -235,6 +240,7 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
 │   ├── preview.rs                               以 SVG 或文本绘制各遍路径
+│   ├── shot.rs                                  窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数
 │   ├── viewport.rs                              图像的缩放和平移（纯数值）
 │   └── window.rs                                无需屏幕的窗口状态：层、参数、路径、导出和状态
 ├── tests/

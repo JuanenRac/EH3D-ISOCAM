@@ -47,6 +47,7 @@ const HELP: &str = "eh3d-isocam: isolation milling of copper from a Gerber layer
   eh3d-isocam kind FILE...                       say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
   eh3d-isocam config                             every setting with its default, as a configuration file
   eh3d-isocam [gui] [LAYER.gtl]                  the window (a build with --features gui): with no arguments, or with a single layer, it opens; the commands above never open it
+  eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|light] [--wait N] [--lang CODE] [--replace]   a picture of the window (a build with --features gui)
 
 Every option is a setting of the configuration file: --config FILE reads one, and --fine-tool-mm 0.15 is fine_tool_mm = 0.15 (the old --tool, --passes, --stepover, --res,
 --depth, --feed, --plunge, --safe and --rpm still work). A length may carry its unit (--fine-tool-mm 8mil, --depth-mm 0.002in); a bare number is in --input-units (mm, mil or
@@ -926,8 +927,44 @@ fn open_window(layer: Option<String>) -> ExitCode {
     }
 }
 
+/// The picture mode: `--shot FILE.png` opens the window, saves what it draws as a PNG file and closes. The exit code is 0 when the file was written, 1 when it was not and 2 when the
+/// arguments are wrong.
+#[cfg(feature = "gui")]
+fn take_picture(args: &[String]) -> ExitCode {
+    let parsed = match eh3d_isocam::shot::parse_window_args(args, 1) {
+        Ok(parsed) => parsed,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let Some(request) = parsed.shot else {
+        eprintln!("error: --shot needs a file to write");
+        return ExitCode::from(2);
+    };
+    let lang = parsed
+        .lang
+        .unwrap_or_else(eh3d_isocam::lang::Lang::from_env);
+    match eh3d_isocam::gui::run_shot(parsed.files, lang, request) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: the picture could not be taken: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
+    if eh3d_isocam::shot::wants_picture(&args) {
+        #[cfg(feature = "gui")]
+        return take_picture(&args);
+        #[cfg(not(feature = "gui"))]
+        {
+            eprintln!("error: this build has no window: build it with --features gui");
+            return ExitCode::from(1);
+        }
+    }
     #[cfg(feature = "gui")]
     if let Some(layer) = window_request(&args) {
         return open_window(layer);

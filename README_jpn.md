@@ -17,7 +17,7 @@
 
 ---
 
-**正直さの確認 - 現在実際に動くもの：** Rustライブラリとコマンドラインプログラム（`eh3d-isocam`）で、コンピュータ上で動くテストが313件あります。Gerberレイヤーの銅の周囲に1本または複数のミリング工具の経路を描き、残りの銅を除去し、切削の向き・開始点・順序を選び、ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、設計ルールを確認し、GコードまたはHP-GLを書き出します。ウィンドウ（`--features gui` でビルド）ではレイヤー、ドリルファイル、基板外形、マスクレイヤー、基準点の表を開き、基板を裏返してパネルに並べ、銅・穴・外形・経路を描画し、コマンドラインと同じファイルを書き出せますが、画面ではまだ確認しておらず、実機では試しておらず、実際のファイル群での確認もしていません。
+**正直さの確認 - 現在実際に動くもの：** Rustライブラリとコマンドラインプログラム（`eh3d-isocam`）で、コンピュータ上で動くテストが323件あります。Gerberレイヤーの銅の周囲に1本または複数のミリング工具の経路を描き、残りの銅を除去し、切削の向き・開始点・順序を選び、ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、設計ルールを確認し、GコードまたはHP-GLを書き出します。ウィンドウ（`--features gui` でビルド）ではレイヤー、ドリルファイル、基板外形、マスクレイヤー、基準点の表を開き、基板を裏返してパネルに並べ、銅・穴・外形・経路を描画し、コマンドラインと同じファイルを書き出せますが、画面ではまだ確認しておらず、実機では試しておらず、実際のファイル群での確認もしていません。
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | バージョン | `0.0.8` |
 | 成熟度 | 足場 |
-| テスト | 313 |
+| テスト | 323 |
 | 技術スタック | Rust |
 | 実機での動作 | 未試験：ここにあるものは機械で動かしたことがありません |
 
@@ -48,7 +48,7 @@
 | ファイルと配置 | 🟡 | ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、位置合わせ穴を追加し、設計ルールを検出位置つきで確認します。コンピュータ上でテスト済みで、他のプログラムが書いたファイルや実機では試していません。 |
 | 強制アイソレーション・補正・マスク | 🟡 | 工具が入らない隙間に沿う強制経路、軽い経路、基準点によるスケールと補正、ソルダーマスクの開口部、単位とパスのプレビュー。生成したレイヤーと破損入力でコンピュータ上でテストしましたが、実際の基板や機械では試しておらず、補正はカメラの実測値と比較していません。 |
 | コマンドライン | 🟡 | `eh3d-isocam` はライブラリと同じ関数を実行して結果を表示します。エラーはメッセージと 0 以外の終了コードで返ります。 |
-| テスト | 🟡 | 313 件のテストが通ります（`cargo test`）。通常ケース、境界ケース、破損入力を含みます。 |
+| テスト | 🟡 | 323 件のテストが通ります（`cargo test`）。通常ケース、境界ケース、破損入力を含みます。 |
 | セキュリティ | 🟡 | 安全な Rust のみ（`forbid(unsafe_code)`）。受け取ったファイルでパニックせず、不正な値は理由付きのエラーになります。独立したレビューはありません。 |
 | ウィンドウ | 🟠 | 作成済み（egui、`--features gui`）：レイヤーを開くかドロップ、拡大縮小と移動、主なパラメーターの編集、書き出し。ロジックはテスト済みですが、まだビルドも画面での確認もしていません。 |
 | 実機 | 🔴 | 未試験：ここにあるものは機械で実行したことがありません。 |
@@ -129,6 +129,7 @@ eh3d-isocam kind FILE...                        say what kind of file each one i
 eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F] openings of the solder mask, from the mask layer or the pads
 eh3d-isocam config                               every setting with its default, as a file
 eh3d-isocam [gui] [LAYER.gtl]                    the window (a build with --features gui); with no arguments it opens
+eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|light] [--wait N] [--lang CODE] [--replace]   a picture of the window
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
@@ -151,6 +152,7 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   ライブラリ：各コマンドが使うもの
 │   ├── main.rs                                  コマンドライン
 │   ├── preview.rs                               パスを SVG またはテキストで描画
+│   ├── shot.rs                                  ウィンドウの画像モード（--shot）：画面なしで読み取り・検証される引数
 │   ├── viewport.rs                              画像の拡大縮小と移動（単純な数値）
 │   └── window.rs                                画面なしのウィンドウの状態：レイヤー、パラメーター、パス、書き出し、ステータス
 ├── tests/
@@ -195,11 +197,14 @@ cargo build --release
 cargo test
 cargo run --release -- isolate examples/sample.gtl examples/sample.nc --passes 2
 cargo run --release --features gui   # the window
+cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # a picture of the window
 ```
+
+手動で開かずにウィンドウの画像を撮るには、`--shot FILE.png` を付けて実行します（`--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace` も使えます）。指定のサイズで開き、PNG を保存し、設定は保持せず、自動で閉じます（終了コードは、ファイルを書き込めたら 0、書けなければ 1、引数が誤りなら 2）。
 
 ## 🧪 テスト
 
-テストは 313 件あります（`cargo test`、CI では Windows と Linux で実行）。通常ケース、境界ケース、破損入力を確認し、空のファイル、ゴミデータ、途中で切れたファイルでもパニックしません。CI は `cargo fmt --check`、警告をエラーにした `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
+テストは 323 件あります（`cargo test`、CI では Windows と Linux で実行）。通常ケース、境界ケース、破損入力を確認し、空のファイル、ゴミデータ、途中で切れたファイルでもパニックしません。CI は `cargo fmt --check`、警告をエラーにした `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
 
 ## 🏗️ ビルドとリリース
 
@@ -235,6 +240,7 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   ライブラリ：各コマンドが使うもの
 │   ├── main.rs                                  コマンドライン
 │   ├── preview.rs                               パスを SVG またはテキストで描画
+│   ├── shot.rs                                  ウィンドウの画像モード（--shot）：画面なしで読み取り・検証される引数
 │   ├── viewport.rs                              画像の拡大縮小と移動（単純な数値）
 │   └── window.rs                                画面なしのウィンドウの状態：レイヤー、パラメーター、パス、書き出し、ステータス
 ├── tests/
