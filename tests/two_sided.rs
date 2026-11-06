@@ -434,7 +434,7 @@ fn the_settings_name_the_thinnest_tool_and_the_speed_of_the_rapid_moves() {
         ("rapid_mm_min = 50\n", "rapid_mm_min is 50"),
         ("rapid_mm_min = -1\n", "rapid_mm_min is -1"),
         (
-            "min_tool_mm = 0.05\nfine_tool_mm = 0.03\n",
+            "min_tool_mm = 0.05\nfine_tool_mm = 0.04\n",
             "fine_tool_mm is 0.04",
         ),
         (
