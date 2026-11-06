@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.9] - Minimum tool, estimated time of the job, resolution of the plot file and the picture mode
+
 - **The resolution of the HP-GL plots is a setting:** `hpgl_units_per_mm` (40 by default, from 10 to 1000) sets the units of a plot file to the millimetre, for the isolation plot, the cut round the outline and the plot of the holes alike; 4000 units are 100 mm at 40 and 40 mm at 100. The check that refuses a coordinate beyond 32767 units follows it and says the resolution in its message (327 mm at 100). Nothing changes while it is left at 40.
 
 - **The thinnest tool is a setting, and `info` can estimate the time:** `min_tool_mm` (0.02 by default, from 0.02 to 10) is the thinnest tool any tool setting may name (`fine_tool_mm`, `coarse_tool_mm` and `rubout_tool_mm` when they are on, `net_tool_mm`, `rubout_lines_tool_mm`); a tool below it is refused with the name of the setting, and the gap that counts as a conflict and the tolerance that must leave a tool follow it. `rapid_mm_min` (0 by default, which gives no estimate; otherwise 100 to 100000) is the speed of the rapid moves, and with it `info` prints an estimate of the time of the job (cutting at the feed, going down at the plunge feed, and the travel and the rise at the rapid speed; the spindle wait and the tool changes by hand are not counted). Nothing changes while the two are left as they are.
