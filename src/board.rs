@@ -9,7 +9,9 @@ use crate::drill::{
 };
 use crate::fiducial::{apply_to_holes, apply_to_passes, Fit};
 use crate::filetype;
-use crate::hpgl::{isocam_style, set_pen_speed, write_holes_at, write_opts, PenBy, PlotOptions};
+use crate::hpgl::{
+    isocam_style, set_pen_speed, write_holes_scaled, write_opts, PenBy, PlotOptions,
+};
 use crate::isolate::Pass;
 use crate::mask;
 use crate::order::{arrange, Cut};
@@ -195,6 +197,7 @@ pub fn plot_options(s: &Settings, whole: &Bounds) -> PlotOptions {
         keep_negative: !s.hpgl_shift_negative,
         pen_of_pass: Vec::new(),
         origin: plot_origin(s, whole),
+        units_per_mm: s.hpgl_units_per_mm,
     }
 }
 
@@ -317,11 +320,12 @@ pub fn drills_job(
     let text = if plot {
         finish_plot(
             s,
-            write_holes_at(
+            write_holes_scaled(
                 &holes,
                 &s.hpgl_pen_map,
                 !s.hpgl_shift_negative,
                 plot_origin(s, whole),
+                s.hpgl_units_per_mm,
             ),
         )?
     } else {

@@ -17,7 +17,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 327 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 330 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.0.8` |
 | Maturity | Scaffolding |
-| Tests | 327 |
+| Tests | 330 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -48,7 +48,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 327 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 330 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`): open or drop a layer, zoom and pan, edit the main parameters, export; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -75,7 +75,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **Solder mask** (`mask`): the openings are written as a Gerber layer, from the mask layer of the design or from the pads of the copper, each grown by `mask_margin_mm`; tracks stay covered.
 * **Units and preview** (`eh3d-raster`, `src/preview.rs`): a length may carry `mm`, `mil` or `in`, the G-code can be written in inches, and `preview` draws the passes over the copper as an SVG drawing or as text.
 * **Old-style Gerber layers** (`legacy`): a layer with no format statement (RS-274D, as many older programs write it) is read when its list of apertures is given (`--apertures`, one D code and its size per line) together with its format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); it is rewritten as extended Gerber and goes through the normal reader. Tested with hand-written layers, not with files from other programs.
-* **Reading and notices by code (command line):** files are read with a size limit (`--max-bytes N` or `max_input_mb`, 64 MiB by default) and text that is not UTF-8 is read as Latin-1 with a warning (`input-not-utf8`); the notices of the Gerber reader are shown with their stable code and `--hide CODE[,CODE]` leaves out those codes. The note about the lighter paths and the one about the bridges of the cut are printed only when they changed something. `arc_tolerance_mm` sets how closely the arcs of a layer are followed. `min_tool_mm` (0.02 by default) names the thinnest tool any tool setting may have, and a tool below it is refused with the name of the setting; `rapid_mm_min` (0 by default, no estimate) is the speed of the rapid moves, with which `info` adds an estimate of the time of the job (cutting, going down, moving; the spindle wait and the tool changes by hand are not counted).
+* **Reading and notices by code (command line):** files are read with a size limit (`--max-bytes N` or `max_input_mb`, 64 MiB by default) and text that is not UTF-8 is read as Latin-1 with a warning (`input-not-utf8`); the notices of the Gerber reader are shown with their stable code and `--hide CODE[,CODE]` leaves out those codes. The note about the lighter paths and the one about the bridges of the cut are printed only when they changed something. `arc_tolerance_mm` sets how closely the arcs of a layer are followed. `min_tool_mm` (0.02 by default) names the thinnest tool any tool setting may have, and a tool below it is refused with the name of the setting; `rapid_mm_min` (0 by default, no estimate) is the speed of the rapid moves, with which `info` adds an estimate of the time of the job (cutting, going down, moving; the spindle wait and the tool changes by hand are not counted). `hpgl_units_per_mm` (40 by default, from 10 to 1000) sets the units of a plot file to the millimetre; the range check of 32767 units follows it (327 mm at 100).
 
 ## 🧩 Role in EH3D
 
@@ -204,7 +204,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 327 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 330 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 

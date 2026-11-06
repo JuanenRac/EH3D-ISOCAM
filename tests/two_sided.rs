@@ -46,8 +46,7 @@ fn a_plot_keeps_its_negative_coordinates_when_asked() {
         PenBy::Pass,
         &PlotOptions {
             keep_negative: true,
-            pen_of_pass: Vec::new(),
-            origin: None,
+            ..PlotOptions::default()
         },
     )
     .unwrap();
@@ -64,9 +63,8 @@ fn the_pen_of_a_pass_can_be_chosen() {
         &Order::default(),
         PenBy::Pass,
         &PlotOptions {
-            keep_negative: false,
             pen_of_pass: vec![1, 4],
-            origin: None,
+            ..PlotOptions::default()
         },
     )
     .unwrap();
@@ -453,4 +451,101 @@ fn the_settings_name_the_thinnest_tool_and_the_speed_of_the_rapid_moves() {
     }
     // a tool that is switched off (0) is not a tool below the limit
     assert!(Settings::parse("min_tool_mm = 0.1\ncoarse_tool_mm = 0\nrubout_tool_mm = 0\n").is_ok());
+}
+
+// ---- the resolution of a plot ---------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn a_plot_is_written_with_the_units_to_the_millimetre_that_are_asked_for() {
+    use eh3d_isocam::hpgl::write_holes_scaled;
+    let holes = vec![Hole {
+        tool: 1,
+        x_mm: 100.0,
+        y_mm: 50.0,
+        diameter_mm: 0.8,
+    }];
+    // 100 mm = 4000 units and 50 mm = 2000 units at 40 to the millimetre; 10000 and 5000 at 100
+    let usual = write_holes_at(&holes, &[], false, None).unwrap();
+    assert!(usual.contains("PU4000,2000;PD;PU;"), "{usual}");
+    assert_eq!(
+        write_holes_scaled(&holes, &[], false, None, 40.0).unwrap(),
+        usual
+    );
+    let fine = write_holes_scaled(&holes, &[], false, None, 100.0).unwrap();
+    assert!(fine.contains("PU10000,5000;PD;PU;"), "{fine}");
+    // the paths: 5 mm = 200 units and 3 mm = 120 at 40; 500 and 300 at 100
+    let p = pass(vec![vec![(0.0, 0.0), (5.0, 0.0), (5.0, 3.0)]]);
+    let order = Order::default();
+    let at40 = write_opts(
+        std::slice::from_ref(&p),
+        &order,
+        PenBy::Pass,
+        &PlotOptions::default(),
+    )
+    .unwrap();
+    assert!(at40.contains("200,0") && at40.contains("200,120"), "{at40}");
+    let at100 = write_opts(
+        std::slice::from_ref(&p),
+        &order,
+        PenBy::Pass,
+        &PlotOptions {
+            units_per_mm: 100.0,
+            ..PlotOptions::default()
+        },
+    )
+    .unwrap();
+    assert!(
+        at100.contains("500,0") && at100.contains("500,300"),
+        "{at100}"
+    );
+    // a resolution that is not above zero is refused
+    for bad in [0.0, -40.0, f64::NAN] {
+        assert!(write_holes_scaled(&holes, &[], false, None, bad).is_err());
+    }
+}
+
+#[test]
+fn the_range_of_a_plot_follows_its_resolution() {
+    // 400 mm is 16000 units at 40 to the millimetre, which a plotter takes, and 40000 at 100, which it does not (32767 at the most = 327 mm)
+    let p = pass(vec![vec![(0.0, 0.0), (400.0, 0.0), (400.0, 10.0)]]);
+    let order = Order::default();
+    let ok = write_opts(
+        std::slice::from_ref(&p),
+        &order,
+        PenBy::Pass,
+        &PlotOptions::default(),
+    );
+    assert!(ok.is_ok());
+    let e = write_opts(
+        std::slice::from_ref(&p),
+        &order,
+        PenBy::Pass,
+        &PlotOptions {
+            units_per_mm: 100.0,
+            ..PlotOptions::default()
+        },
+    )
+    .unwrap_err();
+    assert!(
+        e.contains("beyond 32767 units (328 mm at 100 units to the millimetre)"),
+        "{e}"
+    );
+}
+
+#[test]
+fn the_settings_name_the_resolution_of_a_plot() {
+    assert_eq!(Settings::default().hpgl_units_per_mm, 40.0);
+    let s = Settings::parse("hpgl_units_per_mm = 100\n").unwrap();
+    assert_eq!(s.hpgl_units_per_mm, 100.0);
+    assert_eq!(Settings::parse(&s.to_text()).unwrap(), s);
+    for text in [
+        "hpgl_units_per_mm = 9\n",
+        "hpgl_units_per_mm = 1001\n",
+        "hpgl_units_per_mm = many\n",
+    ] {
+        let e = Settings::parse(text).unwrap_err();
+        assert!(e.contains("hpgl_units_per_mm"), "{text:?} gave {e:?}");
+    }
+    assert!(Settings::parse("hpgl_units_per_mm = 10\n").is_ok());
+    assert!(Settings::parse("hpgl_units_per_mm = 1000\n").is_ok());
 }

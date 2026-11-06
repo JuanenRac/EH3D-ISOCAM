@@ -135,6 +135,8 @@ pub struct Settings {
     pub hpgl_shift_negative: bool,
     /// With `hpgl_shift_negative`, the plot is moved by the box of the board minus this margin, the same for every plot of a job, so that the isolation and the holes stay aligned; the margin covers the reach of the tool outside the board.
     pub hpgl_margin_mm: f64,
+    /// Units of a plot file to the millimetre (40 by default, the resolution of the Bungard routing programs); a board must stay within 32767 units.
+    pub hpgl_units_per_mm: f64,
     /// Seconds to wait after the spindle is started (`G4`) before the tool goes down; 0 writes no wait.
     pub spindle_wait_s: f64,
     /// The largest input file, in MiB, that is read; a larger one is refused before it is read into memory (`--max-bytes` on the command line wins over it).
@@ -243,6 +245,7 @@ impl Default for Settings {
             hpgl_isocam_style: true,
             hpgl_shift_negative: true,
             hpgl_margin_mm: 1.0,
+            hpgl_units_per_mm: 40.0,
             spindle_wait_s: 2.0,
             max_input_mb: 64.0,
             min_tool_mm: 0.02,
@@ -441,6 +444,7 @@ impl Settings {
             "hpgl_margin_mm" => self.hpgl_margin_mm = num(key, v)?,
             "spindle_wait_s" => self.spindle_wait_s = num(key, v)?,
             "max_input_mb" => self.max_input_mb = num(key, v)?,
+            "hpgl_units_per_mm" => self.hpgl_units_per_mm = num(key, v)?,
             "min_tool_mm" => self.min_tool_mm = num(key, v)?,
             "rapid_mm_min" => self.rapid_mm_min = num(key, v)?,
             "arc_tolerance_mm" => self.arc_tolerance_mm = num(key, v)?,
@@ -544,6 +548,7 @@ hpgl_isolation_pen = {}
 ncd_isocam_style = {}
 ncd_digits = {}
 hpgl_margin_mm = {}
+hpgl_units_per_mm = {}
 spindle_wait_s = {}
 max_input_mb = {}
 min_tool_mm = {}
@@ -563,6 +568,7 @@ excellon_format = {}
             self.ncd_isocam_style,
             self.ncd_digits,
             self.hpgl_margin_mm,
+            self.hpgl_units_per_mm,
             self.spindle_wait_s,
             self.max_input_mb,
             self.min_tool_mm,
@@ -775,6 +781,7 @@ excellon_format = {}
         }
         range("mask_margin_mm", self.mask_margin_mm, -1.0, 1.0)?;
         range("hpgl_margin_mm", self.hpgl_margin_mm, 0.0, 50.0)?;
+        range("hpgl_units_per_mm", self.hpgl_units_per_mm, 10.0, 1000.0)?;
         range("spindle_wait_s", self.spindle_wait_s, 0.0, 60.0)?;
         range("max_input_mb", self.max_input_mb, 1.0, 4096.0)?;
         range("arc_tolerance_mm", self.arc_tolerance_mm, 0.0001, 1.0)?;

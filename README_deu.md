@@ -17,7 +17,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 327 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 330 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.0.8` |
 | Reifegrad | Gerüst |
-| Tests | 327 |
+| Tests | 330 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -48,7 +48,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Dateien und Anordnung | 🟡 | liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, setzt Passlöcher und prüft die Entwurfsregeln mit dem Ort jedes Befunds; auf einem Computer getestet, nicht mit Dateien anderer Programme und nicht auf einer Maschine. |
 | Erzwungene Isolation, Korrektur, Maske | 🟡 | erzwungene Pfade durch Lücken, in die das Werkzeug nicht passt, leichtere Bahnen, Skalierung und Korrektur mit Referenzpunkten, die Öffnungen der Lötstoppmaske, Einheiten und die Vorschau der Durchgänge; auf einem Computer mit erzeugten Lagen und beschädigten Eingaben getestet, nie mit echten Platinen und nie auf einer Maschine, und die Korrektur wurde nicht mit echten Kameramessungen verglichen. |
 | Kommandozeile | 🟡 | `eh3d-isocam` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 327 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
+| Tests | 🟡 | 330 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`): Ebene öffnen oder hineinziehen, Zoom und Verschieben, die wichtigsten Parameter ändern, exportieren; die Logik ist getestet, aber noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -75,7 +75,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 * **Lötstoppmaske** (`mask`): die Öffnungen werden als Gerber-Lage geschrieben, aus der Maskenlage des Entwurfs oder aus den Pads des Kupfers, jede um `mask_margin_mm` vergrößert; Leiterbahnen bleiben bedeckt.
 * **Einheiten und Vorschau** (`eh3d-raster`, `src/preview.rs`): eine Länge kann `mm`, `mil` oder `in` tragen, der G-Code kann in Zoll geschrieben werden, und `preview` zeichnet die Durchgänge über das Kupfer als SVG-Zeichnung oder als Text.
 * **Alte Gerber-Ebenen** (`legacy`): eine Ebene ohne Formatangabe (RS-274D, wie viele ältere Programme sie schreiben) wird gelesen, wenn ihre Aperturliste (`--apertures`, ein D-Code und seine Größe pro Zeile) zusammen mit ihrem Format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`) angegeben wird; sie wird als erweitertes Gerber neu geschrieben und läuft durch den normalen Leser. Getestet mit von Hand geschriebenen Ebenen, nicht mit Dateien anderer Programme.
-* **Lesen und Meldungen nach Code (Kommandozeile):** Dateien werden mit einem Größenlimit gelesen (`--max-bytes N` or `max_input_mb`, standardmäßig 64 MiB), und Text ohne UTF-8 wird mit einer Warnung (`input-not-utf8`) als Latin-1 gelesen; die Meldungen des Gerber-Lesers erscheinen mit ihrem stabilen Code, und `--hide CODE[,CODE]` lässt diese Codes weg. Der Hinweis zu den leichteren Pfaden und der zu den Stegen des Schnitts erscheinen nur, wenn sie etwas geändert haben. `arc_tolerance_mm` legt fest, wie genau die Bögen einer Ebene nachgezeichnet werden. `min_tool_mm` (standardmäßig 0,02) legt das dünnste Werkzeug fest, das eine Werkzeugeinstellung haben darf; ein dünneres wird mit dem Namen der Einstellung abgelehnt; `rapid_mm_min` (standardmäßig 0, keine Schätzung) ist die Geschwindigkeit der Eilgänge, mit der `info` eine Schätzung der Auftragszeit ergänzt (Schneiden, Eintauchen, Fahren; die Wartezeit der Spindel und Werkzeugwechsel von Hand zählen nicht).
+* **Lesen und Meldungen nach Code (Kommandozeile):** Dateien werden mit einem Größenlimit gelesen (`--max-bytes N` or `max_input_mb`, standardmäßig 64 MiB), und Text ohne UTF-8 wird mit einer Warnung (`input-not-utf8`) als Latin-1 gelesen; die Meldungen des Gerber-Lesers erscheinen mit ihrem stabilen Code, und `--hide CODE[,CODE]` lässt diese Codes weg. Der Hinweis zu den leichteren Pfaden und der zu den Stegen des Schnitts erscheinen nur, wenn sie etwas geändert haben. `arc_tolerance_mm` legt fest, wie genau die Bögen einer Ebene nachgezeichnet werden. `min_tool_mm` (standardmäßig 0,02) legt das dünnste Werkzeug fest, das eine Werkzeugeinstellung haben darf; ein dünneres wird mit dem Namen der Einstellung abgelehnt; `rapid_mm_min` (standardmäßig 0, keine Schätzung) ist die Geschwindigkeit der Eilgänge, mit der `info` eine Schätzung der Auftragszeit ergänzt (Schneiden, Eintauchen, Fahren; die Wartezeit der Spindel und Werkzeugwechsel von Hand zählen nicht). `hpgl_units_per_mm` (standardmäßig 40, von 10 bis 1000) legt die Einheiten einer Plotdatei je Millimeter fest; die Bereichsprüfung von 32767 Einheiten folgt ihm (327 mm bei 100).
 
 ## 🧩 Rolle in EH3D
 
@@ -204,7 +204,7 @@ Um ein Bild des Fensters aufzunehmen, ohne es von Hand zu öffnen, starten Sie e
 
 ## 🧪 Tests
 
-Die Suite hat 327 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 330 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 

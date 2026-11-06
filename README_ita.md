@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 327 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 330 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.0.8` |
 | Maturità | Impalcatura |
-| Test | 327 |
+| Test | 330 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,7 +48,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 327 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 330 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata, ma non è ancora stata compilata né vista su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -75,7 +75,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **Maschera di saldatura** (`mask`): le aperture sono scritte come livello Gerber, dal livello maschera del progetto o dai pad del rame, ciascuna ingrandita di `mask_margin_mm`; le piste restano coperte.
 * **Unità e anteprima** (`eh3d-raster`, `src/preview.rs`): una lunghezza può portare `mm`, `mil` o `in`, il G-code può essere scritto in pollici, e `preview` disegna le passate sul rame come disegno SVG o come testo.
 * **Livelli Gerber vecchio stile** (`legacy`): un livello senza istruzione di formato (RS-274D, come lo scrivono molti programmi più vecchi) viene letto quando si indica il suo elenco di aperture (`--apertures`, un codice D e la sua dimensione per riga) insieme al suo formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); viene riscritto come Gerber esteso e passa dal lettore normale. Provato con livelli scritti a mano, non con file di altri programmi.
-* **Lettura e avvisi per codice (riga di comando):** i file sono letti con un limite di dimensione (`--max-bytes N` or `max_input_mb`, 64 MiB di default) e il testo non UTF-8 viene letto come Latin-1 con un avviso (`input-not-utf8`); gli avvisi del lettore Gerber sono mostrati con il loro codice stabile e `--hide CODE[,CODE]` omette quei codici. La nota sui percorsi alleggeriti e quella sui ponti del taglio compaiono solo quando hanno cambiato qualcosa. `arc_tolerance_mm` stabilisce con quale precisione si seguono gli archi di un livello. `min_tool_mm` (0,02 di default) stabilisce l'utensile più sottile che può avere un'impostazione di utensile, e uno più sottile viene rifiutato con il nome dell'impostazione; `rapid_mm_min` (0 di default, nessuna stima) è la velocità dei movimenti rapidi, con cui `info` aggiunge una stima del tempo del lavoro (taglio, discesa, spostamenti; l'attesa del mandrino e i cambi utensile a mano non sono contati).
+* **Lettura e avvisi per codice (riga di comando):** i file sono letti con un limite di dimensione (`--max-bytes N` or `max_input_mb`, 64 MiB di default) e il testo non UTF-8 viene letto come Latin-1 con un avviso (`input-not-utf8`); gli avvisi del lettore Gerber sono mostrati con il loro codice stabile e `--hide CODE[,CODE]` omette quei codici. La nota sui percorsi alleggeriti e quella sui ponti del taglio compaiono solo quando hanno cambiato qualcosa. `arc_tolerance_mm` stabilisce con quale precisione si seguono gli archi di un livello. `min_tool_mm` (0,02 di default) stabilisce l'utensile più sottile che può avere un'impostazione di utensile, e uno più sottile viene rifiutato con il nome dell'impostazione; `rapid_mm_min` (0 di default, nessuna stima) è la velocità dei movimenti rapidi, con cui `info` aggiunge una stima del tempo del lavoro (taglio, discesa, spostamenti; l'attesa del mandrino e i cambi utensile a mano non sono contati). `hpgl_units_per_mm` (40 di default, da 10 a 1000) imposta le unità di un file di tracciato per millimetro; il controllo dell'intervallo di 32767 unità lo segue (327 mm con 100).
 
 ## 🧩 Ruolo in EH3D
 
@@ -204,7 +204,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 327 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 330 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

@@ -23,7 +23,13 @@ pub enum PenBy {
 pub const MAX_UNITS: i64 = 32767;
 
 /// Fails when a coordinate of the plot is beyond [`MAX_UNITS`]: the plotter or the routing program would wrap it round or stop, and cut the board in another place.
+/// The message counts the millimetres at the usual 40 units to the millimetre; see [`check_range_at`].
 pub fn check_range(plot: &str) -> Result<(), String> {
+    check_range_at(plot, UNITS_PER_MM)
+}
+
+/// The same for a plot written with `units_per_mm` units to the millimetre (`hpgl_units_per_mm`).
+pub fn check_range_at(plot: &str, units_per_mm: f64) -> Result<(), String> {
     for (n, line) in plot.lines().enumerate() {
         let Some(rest) = line.strip_prefix("PU").or_else(|| line.strip_prefix("PD")) else {
             continue;
@@ -34,9 +40,9 @@ pub fn check_range(plot: &str) -> Result<(), String> {
         {
             if number.parse::<i64>().map_or(true, |v| v.abs() > MAX_UNITS) {
                 return Err(format!(
-                    "line {} of the plot has the coordinate {number}, beyond {MAX_UNITS} units ({:.0} mm at {UNITS_PER_MM} units to the millimetre): the board is too large for this format",
+                    "line {} of the plot has the coordinate {number}, beyond {MAX_UNITS} units ({:.0} mm at {units_per_mm} units to the millimetre): the board is too large for this format",
                     n + 1,
-                    MAX_UNITS as f64 / UNITS_PER_MM
+                    MAX_UNITS as f64 / units_per_mm
                 ));
             }
         }
@@ -44,8 +50,8 @@ pub fn check_range(plot: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn units(v: f64) -> i64 {
-    (v * UNITS_PER_MM).round() as i64
+fn units(v: f64, per_mm: f64) -> i64 {
+    (v * per_mm).round() as i64
 }
 
 /// The passes as HP-GL, one pen for each pass, in the default order (the path whose first point is nearest next). Coordinates may not be negative in a plot file, so the paths
@@ -64,7 +70,7 @@ pub fn write_with(passes: &[Pass], order: &Order, pens: PenBy) -> Result<String,
 }
 
 /// How a plot differs from the usual one.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PlotOptions {
     /// Keep the coordinates as they are, negative ones included, instead of moving the plot so that none is negative.
     pub keep_negative: bool,
@@ -73,6 +79,19 @@ pub struct PlotOptions {
     /// The smallest X and Y the whole job reaches, the same for every plot of the job (the isolation and the holes), so that the shift of one plot is the shift of the others;
     /// `None` takes the smallest coordinate of this plot.
     pub origin: Option<(f64, f64)>,
+    /// Units of the plot to the millimetre (`hpgl_units_per_mm`, 40 by default).
+    pub units_per_mm: f64,
+}
+
+impl Default for PlotOptions {
+    fn default() -> Self {
+        PlotOptions {
+            keep_negative: false,
+            pen_of_pass: Vec::new(),
+            origin: None,
+            units_per_mm: UNITS_PER_MM,
+        }
+    }
 }
 
 /// The passes as HP-GL with the paths in the order of `order`, the pens of `pens` and the changes of `opts`.
@@ -110,6 +129,10 @@ pub fn write_opts(
             min_y = min_y.min(q.1);
         }
     }
+    let per_mm = opts.units_per_mm;
+    if !(per_mm.is_finite() && per_mm > 0.0) {
+        return Err("the units of the plot to the millimetre must be above 0".into());
+    }
     let (min_x, min_y) = opts.origin.unwrap_or((min_x, min_y));
     let (dx, dy) = if opts.keep_negative {
         (0.0, 0.0)
@@ -134,20 +157,20 @@ pub fn write_opts(
         for cut in &cuts {
             s.push_str(&format!(
                 "PU{},{};\nPD",
-                units(cut.pts[0].0 + dx),
-                units(cut.pts[0].1 + dy)
+                units(cut.pts[0].0 + dx, per_mm),
+                units(cut.pts[0].1 + dy, per_mm)
             ));
             let mut pts: Vec<String> = cut
                 .pts
                 .iter()
                 .skip(1)
-                .map(|q| format!("{},{}", units(q.0 + dx), units(q.1 + dy)))
+                .map(|q| format!("{},{}", units(q.0 + dx, per_mm), units(q.1 + dy, per_mm)))
                 .collect();
             if cut.closed {
                 pts.push(format!(
                     "{},{}",
-                    units(cut.pts[0].0 + dx),
-                    units(cut.pts[0].1 + dy)
+                    units(cut.pts[0].0 + dx, per_mm),
+                    units(cut.pts[0].1 + dy, per_mm)
                 ));
             }
             s.push_str(&pts.join(","));
@@ -156,7 +179,7 @@ pub fn write_opts(
         at = end;
     }
     s.push_str("PU0,0;SP0;\n");
-    check_range(&s)?;
+    check_range_at(&s, per_mm)?;
     Ok(s)
 }
 
@@ -315,6 +338,20 @@ pub fn write_holes_at(
     keep_negative: bool,
     origin: Option<(f64, f64)>,
 ) -> Result<String, String> {
+    write_holes_scaled(holes, map, keep_negative, origin, UNITS_PER_MM)
+}
+
+/// The same with `per_mm` units of the plot to the millimetre (`hpgl_units_per_mm`).
+pub fn write_holes_scaled(
+    holes: &[Hole],
+    map: &[(u8, u8)],
+    keep_negative: bool,
+    origin: Option<(f64, f64)>,
+    per_mm: f64,
+) -> Result<String, String> {
+    if !(per_mm.is_finite() && per_mm > 0.0) {
+        return Err("the units of the plot to the millimetre must be above 0".into());
+    }
     if holes.is_empty() {
         return Err("there are no holes to write".into());
     }
@@ -345,12 +382,12 @@ pub fn write_holes_at(
         for h in holes.iter().filter(|h| h.tool == tool) {
             s.push_str(&format!(
                 "PU{},{};PD;PU;\n",
-                units(h.x_mm + dx),
-                units(h.y_mm + dy)
+                units(h.x_mm + dx, per_mm),
+                units(h.y_mm + dy, per_mm)
             ));
         }
     }
     s.push_str("PU0,0;SP0;\n");
-    check_range(&s)?;
+    check_range_at(&s, per_mm)?;
     Ok(s)
 }
