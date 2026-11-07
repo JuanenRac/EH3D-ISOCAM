@@ -8,6 +8,7 @@ use eh3d_isocam::board::{
     route_job,
 };
 use eh3d_isocam::config::Settings;
+use eh3d_isocam::crib;
 use eh3d_isocam::drc;
 use eh3d_isocam::drill::{read_drills_with_format, read_outline};
 use eh3d_isocam::dxf;
@@ -70,7 +71,10 @@ hpgl_shift_negative = no keeps the coordinates of the board in a plot, negative 
 the coordinates with zeros in front (5 for whole mils in five digits).
 --excellon-format 2.4 (excellon_format = 2.4) reads and writes the coordinates of a drill file, and writes those of the routing file of route, as two digits before the point and four after, six digits in inches (X012340 is 1.2340 in),
 with the zeros as the header says (INCH,TZ or INCH,LZ); a file that states its own format (a FILE_FORMAT comment or INCH,TZ,00.0000) keeps it. The default, auto, is what the file says and whole mils
-for inches that say nothing. The plain style of ncd_isocam_style is whole mils only.";
+for inches that say nothing. The plain style of ncd_isocam_style is whole mils only.
+--crib FILE (crib_file) reads the CSV table that eh3d-tools exports (the tool crib) and --crib-fine N, --crib-coarse N and --crib-route N (crib_fine, crib_coarse, crib_route) take the tools with
+those numbers from it: the width an end mill, a V-bit or an engraver cuts with at depth_mm becomes fine_tool_mm or coarse_tool_mm (a V-bit cuts 2 * depth * tan(angle / 2) + crib_vbit_flat_mm wide,
+at most its diameter) and the diameter of an end mill becomes route_tool_mm; each replacement is told on the standard error. 0 (the default) leaves the setting as it is.";
 
 #[derive(Clone)]
 struct Cli {
@@ -589,6 +593,21 @@ fn build_passes(
     Ok((passes, unfixed))
 }
 
+/// The tools of the crib that the settings name, put into the settings (see `crib::apply`); the table is only read when a tool is chosen.
+fn apply_crib(cli: &mut Cli) -> Result<(), String> {
+    let s = &cli.settings;
+    if s.crib_fine == 0 && s.crib_coarse == 0 && s.crib_route == 0 {
+        return Ok(());
+    }
+    let file = s.crib_file.clone();
+    let text = read(cli, &file)?;
+    let tools = crib::parse_csv(&text).map_err(|e| format!("{file}: {e}"))?;
+    for note in crib::apply(&mut cli.settings, &tools).map_err(|e| format!("{file}: {e}"))? {
+        eprintln!("note: {note}");
+    }
+    cli.settings.validate()
+}
+
 fn run(mut args: Vec<String>) -> Result<(), String> {
     if args.is_empty() || matches!(args[0].as_str(), "help" | "--help" | "-h") {
         println!("{HELP}");
@@ -600,6 +619,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         return Err("this build has no window: build it with --features gui".into());
     }
     let mut cli = parse_cli(args)?;
+    if cmd != "config" {
+        apply_crib(&mut cli)?;
+    }
     // one net by itself: the tool of the net is the only tool, whatever the plan said
     if cli.net.is_some() && matches!(cmd.as_str(), "isolate" | "info" | "preview") {
         let s = &mut cli.settings;

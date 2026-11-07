@@ -160,6 +160,16 @@ pub struct Settings {
     /// The format of the coordinates of a drill file (read and written) and of a routing file (written) that have no decimal point: `auto` (what the file says; whole mils for inches that say nothing) or `2.4` (two digits before the
     /// point and four after, read and written).
     pub excellon_format: ExcellonFormat,
+    /// A CSV table of the tool crib of EH3D-TOOL-MANAGER (`--crib FILE`); empty reads none. Only read when a tool of it is chosen.
+    pub crib_file: String,
+    /// The number of the crib tool that is the fine tool (replaces `fine_tool_mm`); 0 takes `fine_tool_mm`.
+    pub crib_fine: u32,
+    /// The number of the crib tool that is the coarse tool (replaces `coarse_tool_mm`); 0 takes `coarse_tool_mm`.
+    pub crib_coarse: u32,
+    /// The number of the crib end mill that cuts out the board (replaces `route_tool_mm`); 0 takes `route_tool_mm`.
+    pub crib_route: u32,
+    /// The width of the flat tip, in mm, with which the width of a crib V-bit or engraver at the depth of the cut is worked out.
+    pub crib_vbit_flat_mm: f64,
 }
 
 impl Default for Settings {
@@ -257,6 +267,11 @@ impl Default for Settings {
             ncd_isocam_style: false,
             ncd_digits: 0,
             excellon_format: ExcellonFormat::Auto,
+            crib_file: String::new(),
+            crib_fine: 0,
+            crib_coarse: 0,
+            crib_route: 0,
+            crib_vbit_flat_mm: 0.1,
         }
     }
 }
@@ -304,6 +319,7 @@ impl Settings {
         let key = key.trim().trim_start_matches('-').replace('-', "_");
         let key = match key.as_str() {
             "tool" => "fine_tool_mm",
+            "crib" => "crib_file",
             "passes" => "fine_passes",
             "stepover" => "fine_stepover_mm",
             "res" => "res_mm",
@@ -462,6 +478,25 @@ impl Settings {
                 self.ncd_digits = n as u8;
             }
             "excellon_format" => self.excellon_format = ExcellonFormat::parse(v)?,
+            "crib_file" => {
+                if v.contains(['#', '\n', '\r']) {
+                    return Err(format!(
+                        "{key} '{}': a file name cannot hold # or a line break",
+                        v.trim()
+                    ));
+                }
+                self.crib_file = v.trim().to_string();
+            }
+            "crib_fine" | "crib_coarse" | "crib_route" => {
+                let n = u32::try_from(count(key, v)?)
+                    .map_err(|_| format!("{key} '{v}' is too large"))?;
+                match key {
+                    "crib_fine" => self.crib_fine = n,
+                    "crib_coarse" => self.crib_coarse = n,
+                    _ => self.crib_route = n,
+                }
+            }
+            "crib_vbit_flat_mm" => self.crib_vbit_flat_mm = num(key, v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -555,6 +590,11 @@ min_tool_mm = {}
 rapid_mm_min = {}
 arc_tolerance_mm = {}
 excellon_format = {}
+crib_file = {}
+crib_fine = {}
+crib_coarse = {}
+crib_route = {}
+crib_vbit_flat_mm = {}
 ",
             self.conflict_tolerance_scope.name(),
             self.rubout_fill_margin_mm,
@@ -574,7 +614,12 @@ excellon_format = {}
             self.min_tool_mm,
             self.rapid_mm_min,
             self.arc_tolerance_mm,
-            self.excellon_format.name()
+            self.excellon_format.name(),
+            self.crib_file,
+            self.crib_fine,
+            self.crib_coarse,
+            self.crib_route,
+            self.crib_vbit_flat_mm
         ));
         for p in &self.fiducials {
             extra.push_str(&format!(
@@ -704,6 +749,23 @@ excellon_format = {}
         range("panel_gap_mm", self.panel_gap_mm, 0.0, 100.0)?;
         range("start_x_mm", self.start_x_mm, -10_000.0, 10_000.0)?;
         range("start_y_mm", self.start_y_mm, -10_000.0, 10_000.0)?;
+        range(
+            "crib_vbit_flat_mm",
+            self.crib_vbit_flat_mm,
+            crate::crib::FLAT_LIMITS.0,
+            crate::crib::FLAT_LIMITS.1,
+        )?;
+        for (name, id) in [
+            ("crib_fine", self.crib_fine),
+            ("crib_coarse", self.crib_coarse),
+            ("crib_route", self.crib_route),
+        ] {
+            if id != 0 && self.crib_file.is_empty() {
+                return Err(format!(
+                    "{name} is {id}: a tool of the crib needs crib_file, the table of the crib"
+                ));
+            }
+        }
         if self.ncd_isocam_style && self.excellon_format != ExcellonFormat::Auto {
             return Err(format!(
                 "excellon_format {}: the plain style of the Bungard programs (ncd_isocam_style) is written in whole mils",

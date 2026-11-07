@@ -7,6 +7,7 @@
 pub mod board;
 pub mod browse;
 pub mod config;
+pub mod crib;
 pub mod draw;
 pub mod drill;
 pub mod dxf;

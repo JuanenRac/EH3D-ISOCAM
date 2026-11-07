@@ -1,0 +1,5 @@
+id,name,kind,diameter_mm,flutes,length_mm,tip_angle_deg,shank_mm,material,hours,meters,holes,max_hours,max_holes
+1,End mill 0.2 mm,end-mill,0.2,2,3,,3.175,carbide,0.5,0,0,10,0
+2,V-bit 30 deg,v-bit,0.5,1,10,30,3.175,carbide,1.2,0,0,10,0
+3,End mill 1.0 mm,end-mill,1,2,12,,3.175,carbide,2.4,0,0,10,0
+4,Drill 0.8 mm,drill,0.8,2,12,,3.175,carbide,2.1,0,520,10,2000
