@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 330 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 352 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.0.9` |
 | Maturità | Impalcatura |
-| Test | 330 |
+| Test | 352 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,9 +48,9 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 330 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 352 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
-| Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata, ma non è ancora stata compilata né vista su uno schermo. |
+| Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata e il programma di una versione la disegna in un'immagine (`--shot`), ma nessuno l'ha ancora usata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
 | Documentazione | 🟡 | README in otto lingue, il changelog e le due immagini disegnate da `docs/`. |
 
@@ -75,7 +75,8 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **Maschera di saldatura** (`mask`): le aperture sono scritte come livello Gerber, dal livello maschera del progetto o dai pad del rame, ciascuna ingrandita di `mask_margin_mm`; le piste restano coperte.
 * **Unità e anteprima** (`eh3d-raster`, `src/preview.rs`): una lunghezza può portare `mm`, `mil` o `in`, il G-code può essere scritto in pollici, e `preview` disegna le passate sul rame come disegno SVG o come testo.
 * **Livelli Gerber vecchio stile** (`legacy`): un livello senza istruzione di formato (RS-274D, come lo scrivono molti programmi più vecchi) viene letto quando si indica il suo elenco di aperture (`--apertures`, un codice D e la sua dimensione per riga) insieme al suo formato (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); viene riscritto come Gerber esteso e passa dal lettore normale. Provato con livelli scritti a mano, non con file di altri programmi.
-* **Lettura e avvisi per codice (riga di comando):** i file sono letti con un limite di dimensione (`--max-bytes N` or `max_input_mb`, 64 MiB di default) e il testo non UTF-8 viene letto come Latin-1 con un avviso (`input-not-utf8`); gli avvisi del lettore Gerber sono mostrati con il loro codice stabile e `--hide CODE[,CODE]` omette quei codici. La nota sui percorsi alleggeriti e quella sui ponti del taglio compaiono solo quando hanno cambiato qualcosa. `arc_tolerance_mm` stabilisce con quale precisione si seguono gli archi di un livello. `min_tool_mm` (0,02 di default) stabilisce l'utensile più sottile che può avere un'impostazione di utensile, e uno più sottile viene rifiutato con il nome dell'impostazione; `rapid_mm_min` (0 di default, nessuna stima) è la velocità dei movimenti rapidi, con cui `info` aggiunge una stima del tempo del lavoro (taglio, discesa, spostamenti; l'attesa del mandrino e i cambi utensile a mano non sono contati). `hpgl_units_per_mm` (40 di default, da 10 a 1000) imposta le unità di un file di tracciato per millimetro; il controllo dell'intervallo di 32767 unità lo segue (327 mm con 100).
+* **Lettura e avvisi per codice (riga di comando):** i file sono letti con un limite di dimensione (`--max-bytes N` o `max_input_mb`, 64 MiB di default) e il testo non UTF-8 viene letto come Latin-1 con un avviso (`input-not-utf8`); gli avvisi del lettore Gerber sono mostrati con il loro codice stabile e `--hide CODE[,CODE]` omette quei codici. La nota sui percorsi alleggeriti e quella sui ponti del taglio compaiono solo quando hanno cambiato qualcosa. `arc_tolerance_mm` stabilisce con quale precisione si seguono gli archi di un livello. `min_tool_mm` (0,02 di default) stabilisce l'utensile più sottile che può avere un'impostazione di utensile, e uno più sottile viene rifiutato con il nome dell'impostazione; `rapid_mm_min` (0 di default, nessuna stima) è la velocità dei movimenti rapidi, con cui `info` aggiunge una stima del tempo del lavoro (taglio, discesa, spostamenti; l'attesa del mandrino e i cambi utensile a mano non sono contati). `hpgl_units_per_mm` (40 di default, da 10 a 1000) imposta le unità di un file di tracciato per millimetro; il controllo dell'intervallo di 32767 unità lo segue (327 mm con 100).
+* **Utensili dal magazzino** (`src/crib.rs`): `--crib FILE` (o `crib_file`) legge la tabella CSV che esporta `eh3d-tools`, e `--crib-fine N`, `--crib-coarse N` e `--crib-route N` ne prendono gli utensili con quei numeri: la larghezza con cui taglia una fresa, una fresa a V o un incisore a `depth_mm` diventa `fine_tool_mm` o `coarse_tool_mm` (una fresa a V taglia `2 * profondità * tan(angolo / 2) + crib_vbit_flat_mm` di larghezza, al massimo il suo diametro, arrotondata per difetto al decimillesimo di millimetro) e il diametro di una fresa diventa `route_tool_mm`; ogni sostituzione è segnalata sull'uscita degli errori, una punta da foratura, un laser o un ugello viene rifiutato, e un utensile troppo sottile per `min_tool_mm` viene rifiutato con il nome dell'impostazione. La tabella viene letta solo quando si sceglie un utensile.
 
 ## 🧩 Ruolo in EH3D
 
@@ -89,6 +90,14 @@ EH3D-ISOCAM è un programma della EH3D Fabrication Suite. Funziona come libreria
 
 
 Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da cosa dipende. L'immagine è disegnata da `docs/architecture.json` e verificata con il codice.
+
+## 🖼️ Schermate
+
+<p align="center">
+  <img src="images/screens/isocam-window.png" alt="la finestra con il livello di esempio dopo il calcolo dei percorsi" width="100%">
+</p>
+
+<p align="center"><em>La finestra con il livello di esempio di `examples/`, dopo il calcolo dei percorsi: il rame in oro, i percorsi dell'utensile intorno in arancione, i parametri e i fori a sinistra. L'immagine è stata scritta dalla modalità immagine (`--shot`) del programma pubblicato, con i parametri predefiniti; nessuno ha ancora usato la finestra su uno schermo.</em></p>
 
 ## ✨ Funzionalità
 
@@ -133,6 +142,7 @@ eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|ligh
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
+tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting)
 ```
 
 ```text
@@ -141,6 +151,7 @@ EH3D-ISOCAM/
 │   ├── board.rs                                 i passi condivisi da riga di comando e finestra
 │   ├── browse.rs                                l'elenco dei file della finestra che apre un file
 │   ├── config.rs                                tutti i valori regolabili, da un file di impostazioni
+│   ├── crib.rs                                  gli utensili del magazzino e la larghezza di taglio di ciascuno
 │   ├── draw.rs                                  ciò che disegna la finestra: le forme e i triangoli delle regioni
 │   ├── drill.rs                                 fori e contorno della scheda, letti e scritti
 │   ├── dxf.rs                                   le passate come disegno DXF
@@ -158,6 +169,7 @@ EH3D-ISOCAM/
 ├── tests/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice
+│   ├── crib.rs                                  test degli utensili presi dal magazzino
 │   ├── excellon_format.rs                       test del formato 2.4 delle coordinate di un file di foratura
 │   ├── files.rs                                 test dei file di foratura e contorno
 │   ├── isocam.rs                                test della libreria e della riga di comando
@@ -168,13 +180,14 @@ EH3D-ISOCAM/
 │   ├── readme.rs                                test che eseguono ciò che promettono il README e gli script run
 │   └── window_cli.rs                            test che una compilazione senza la funzione gui resti una riga di comando
 ├── examples/
+│   ├── crib.csv                                 un magazzino di esempio (CSV) per provare --crib
 │   ├── isocam.cfg                               tutte le impostazioni con il valore predefinito, da copiare e modificare
 │   └── sample.gtl                               un esempio per provare il programma
 ├── docs/
 │   ├── architecture.json                        dati dell'immagine di Architettura
 │   └── structure.json                           dati dell'immagine di Struttura
 ├── tools/                                       controllo della CI e del README e strumenti per le immagini
-├── images/                                      banner e le immagini di Architettura e Struttura del repository
+├── images/                                      banner, schermate della finestra e le immagini di Architettura e Struttura
 ├── .github/                                     workflow di CI e di rilascio, modelli di issue e pull request
 ├── eh3d.project.json                            manifesto: versione, ruolo, maturità e comando di compilazione
 ├── Cargo.toml Cargo.lock                        il workspace e le sue dipendenze bloccate
@@ -204,7 +217,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 330 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 352 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
@@ -229,6 +242,7 @@ EH3D-ISOCAM/
 │   ├── board.rs                                 i passi condivisi da riga di comando e finestra
 │   ├── browse.rs                                l'elenco dei file della finestra che apre un file
 │   ├── config.rs                                tutti i valori regolabili, da un file di impostazioni
+│   ├── crib.rs                                  gli utensili del magazzino e la larghezza di taglio di ciascuno
 │   ├── draw.rs                                  ciò che disegna la finestra: le forme e i triangoli delle regioni
 │   ├── drill.rs                                 fori e contorno della scheda, letti e scritti
 │   ├── dxf.rs                                   le passate come disegno DXF
@@ -246,6 +260,7 @@ EH3D-ISOCAM/
 ├── tests/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice
+│   ├── crib.rs                                  test degli utensili presi dal magazzino
 │   ├── excellon_format.rs                       test del formato 2.4 delle coordinate di un file di foratura
 │   ├── files.rs                                 test dei file di foratura e contorno
 │   ├── isocam.rs                                test della libreria e della riga di comando
@@ -256,13 +271,14 @@ EH3D-ISOCAM/
 │   ├── readme.rs                                test che eseguono ciò che promettono il README e gli script run
 │   └── window_cli.rs                            test che una compilazione senza la funzione gui resti una riga di comando
 ├── examples/
+│   ├── crib.csv                                 un magazzino di esempio (CSV) per provare --crib
 │   ├── isocam.cfg                               tutte le impostazioni con il valore predefinito, da copiare e modificare
 │   └── sample.gtl                               un esempio per provare il programma
 ├── docs/
 │   ├── architecture.json                        dati dell'immagine di Architettura
 │   └── structure.json                           dati dell'immagine di Struttura
 ├── tools/                                       controllo della CI e del README e strumenti per le immagini
-├── images/                                      banner e le immagini di Architettura e Struttura del repository
+├── images/                                      banner, schermate della finestra e le immagini di Architettura e Struttura
 ├── .github/                                     workflow di CI e di rilascio, modelli di issue e pull request
 ├── eh3d.project.json                            manifesto: versione, ruolo, maturità e comando di compilazione
 ├── Cargo.toml Cargo.lock                        il workspace e le sue dipendenze bloccate
@@ -286,6 +302,7 @@ EH3D-ISOCAM/
 * I tratti omessi per un utensile più fine sono decisi su una griglia con due celle di margine; si preferisce tagliare un tratto due volte che lasciarlo non tagliato.
 * I file di foratura sono scritti in millesimi di pollice interi (convenzione dei programmi Bungard): un diametro `T1C0.8` senza unità è letto come millimetri da 0,2 in su e come pollici al di sotto; i file con asole o percorsi di fresatura li lasciano fuori con una nota. I file scritti sono stati riletti solo dai lettori di questa suite, non da altri programmi o macchine.
 * Le regole di progetto non arrotondano gli angoli di un pad quadrato e non controllano il rame rispetto al bordo della scheda né alla solder mask; il controllo degli anelli prende il pad come disegnato nel livello Gerber.
+* Gli utensili del magazzino si leggono dalla sua tabella CSV, non dal file JSON, e la finestra non usa il magazzino; la larghezza di una fresa a V si calcola dall'angolo, dalla profondità e da una punta piana impostata a mano, non si misura.
 
 **Prossimi passi**
 

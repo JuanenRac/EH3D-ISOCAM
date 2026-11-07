@@ -17,7 +17,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 330 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 352 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.0.9` |
 | Maturity | Scaffolding |
-| Tests | 330 |
+| Tests | 352 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -48,9 +48,9 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 330 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 352 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
-| Window | 🟠 | Written (egui, `--features gui`): open or drop a layer, zoom and pan, edit the main parameters, export; its logic is tested, but it has not been built or looked at on a screen yet. |
+| Window | 🟠 | Written (egui, `--features gui`): open or drop a layer, zoom and pan, edit the main parameters, export; its logic is tested and the program of a release draws it to a picture (`--shot`), but nobody has used it on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
 | Documentation | 🟡 | README in eight languages, the changelog and the two pictures drawn from `docs/`. |
 
@@ -76,6 +76,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **Units and preview** (`eh3d-raster`, `src/preview.rs`): a length may carry `mm`, `mil` or `in`, the G-code can be written in inches, and `preview` draws the passes over the copper as an SVG drawing or as text.
 * **Old-style Gerber layers** (`legacy`): a layer with no format statement (RS-274D, as many older programs write it) is read when its list of apertures is given (`--apertures`, one D code and its size per line) together with its format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); it is rewritten as extended Gerber and goes through the normal reader. Tested with hand-written layers, not with files from other programs.
 * **Reading and notices by code (command line):** files are read with a size limit (`--max-bytes N` or `max_input_mb`, 64 MiB by default) and text that is not UTF-8 is read as Latin-1 with a warning (`input-not-utf8`); the notices of the Gerber reader are shown with their stable code and `--hide CODE[,CODE]` leaves out those codes. The note about the lighter paths and the one about the bridges of the cut are printed only when they changed something. `arc_tolerance_mm` sets how closely the arcs of a layer are followed. `min_tool_mm` (0.02 by default) names the thinnest tool any tool setting may have, and a tool below it is refused with the name of the setting; `rapid_mm_min` (0 by default, no estimate) is the speed of the rapid moves, with which `info` adds an estimate of the time of the job (cutting, going down, moving; the spindle wait and the tool changes by hand are not counted). `hpgl_units_per_mm` (40 by default, from 10 to 1000) sets the units of a plot file to the millimetre; the range check of 32767 units follows it (327 mm at 100).
+* **Tools from the tool crib** (`src/crib.rs`): `--crib FILE` (or `crib_file`) reads the CSV table that `eh3d-tools` exports, and `--crib-fine N`, `--crib-coarse N` and `--crib-route N` take the tools with those numbers from it: the width an end mill, a V-bit or an engraver cuts with at `depth_mm` becomes `fine_tool_mm` or `coarse_tool_mm` (a V-bit cuts `2 * depth * tan(angle / 2) + crib_vbit_flat_mm` wide, at most its diameter, cut down to a ten-thousandth of a millimetre) and the diameter of an end mill becomes `route_tool_mm`; each replacement is told on the standard error, a drill, a laser or a nozzle is refused, and a tool that is too thin for `min_tool_mm` is refused by the name of the setting. The table is read only when a tool is chosen.
 
 ## 🧩 Role in EH3D
 
@@ -89,6 +90,14 @@ EH3D-ISOCAM is one program of the EH3D Fabrication Suite. It works as a library 
 
 
 How the parts of this repository fit together: who uses it, what it holds and what it depends on. The picture is drawn from `docs/architecture.json` and checked against the code.
+
+## 🖼️ Screenshots
+
+<p align="center">
+  <img src="images/screens/isocam-window.png" alt="the window with the sample layer after Compute paths" width="100%">
+</p>
+
+<p align="center"><em>The window with the sample layer of `examples/`, after Compute paths: the copper in gold, the paths of the tool round it in orange, the parameters and the drills at the left. The picture was written by the picture mode (`--shot`) of the published program, with the default parameters; nobody has used the window on a screen yet.</em></p>
 
 ## ✨ Features
 
@@ -133,6 +142,7 @@ eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|ligh
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
+tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting)
 ```
 
 ```text
@@ -141,6 +151,7 @@ EH3D-ISOCAM/
 │   ├── board.rs                                 the steps the command line and the window share
 │   ├── browse.rs                                the list of files of the window that opens a file
 │   ├── config.rs                                every tunable value, from one settings file
+│   ├── crib.rs                                  the tools of the tool crib and the width each cuts with
 │   ├── draw.rs                                  what the window draws: the shapes and the triangles of the regions
 │   ├── drill.rs                                 holes and board outline, read and written
 │   ├── dxf.rs                                   the passes as a DXF drawing
@@ -158,6 +169,7 @@ EH3D-ISOCAM/
 ├── tests/
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── cli_reading.rs                           tests of reading files: the size limit, text that is not UTF-8, notices by code
+│   ├── crib.rs                                  tests of the tools taken from the crib
 │   ├── excellon_format.rs                       tests of the 2.4 format of the coordinates of a drill file
 │   ├── files.rs                                 tests of the drill and outline files
 │   ├── isocam.rs                                tests of the library and the command line
@@ -168,13 +180,14 @@ EH3D-ISOCAM/
 │   ├── readme.rs                                tests that run what the README and the run scripts promise
 │   └── window_cli.rs                            tests that a build without the gui feature stays a command line
 ├── examples/
+│   ├── crib.csv                                 a sample tool crib (CSV) to try --crib with
 │   ├── isocam.cfg                               every setting with its default, to copy and change
 │   └── sample.gtl                               a sample to try the program with
 ├── docs/
 │   ├── architecture.json                        data of the Architecture picture
 │   └── structure.json                           data of the Repository Structure picture
 ├── tools/                                       CI check, README check and the picture tools
-├── images/                                      banner and the Architecture and Repository Structure pictures
+├── images/                                      banner, window screenshots and the Architecture and Structure pictures
 ├── .github/                                     CI and release workflows, issue and pull-request templates
 ├── eh3d.project.json                            manifest: version, role, maturity and build command
 ├── Cargo.toml Cargo.lock                        the workspace and its locked dependencies
@@ -204,7 +217,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 330 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 352 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -229,6 +242,7 @@ EH3D-ISOCAM/
 │   ├── board.rs                                 the steps the command line and the window share
 │   ├── browse.rs                                the list of files of the window that opens a file
 │   ├── config.rs                                every tunable value, from one settings file
+│   ├── crib.rs                                  the tools of the tool crib and the width each cuts with
 │   ├── draw.rs                                  what the window draws: the shapes and the triangles of the regions
 │   ├── drill.rs                                 holes and board outline, read and written
 │   ├── dxf.rs                                   the passes as a DXF drawing
@@ -246,6 +260,7 @@ EH3D-ISOCAM/
 ├── tests/
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── cli_reading.rs                           tests of reading files: the size limit, text that is not UTF-8, notices by code
+│   ├── crib.rs                                  tests of the tools taken from the crib
 │   ├── excellon_format.rs                       tests of the 2.4 format of the coordinates of a drill file
 │   ├── files.rs                                 tests of the drill and outline files
 │   ├── isocam.rs                                tests of the library and the command line
@@ -256,13 +271,14 @@ EH3D-ISOCAM/
 │   ├── readme.rs                                tests that run what the README and the run scripts promise
 │   └── window_cli.rs                            tests that a build without the gui feature stays a command line
 ├── examples/
+│   ├── crib.csv                                 a sample tool crib (CSV) to try --crib with
 │   ├── isocam.cfg                               every setting with its default, to copy and change
 │   └── sample.gtl                               a sample to try the program with
 ├── docs/
 │   ├── architecture.json                        data of the Architecture picture
 │   └── structure.json                           data of the Repository Structure picture
 ├── tools/                                       CI check, README check and the picture tools
-├── images/                                      banner and the Architecture and Repository Structure pictures
+├── images/                                      banner, window screenshots and the Architecture and Structure pictures
 ├── .github/                                     CI and release workflows, issue and pull-request templates
 ├── eh3d.project.json                            manifest: version, role, maturity and build command
 ├── Cargo.toml Cargo.lock                        the workspace and its locked dependencies
@@ -286,6 +302,7 @@ EH3D-ISOCAM/
 * The stretches left out for a narrower tool are decided on a grid with two cells of margin; it prefers cutting a stretch twice to leaving it uncut.
 * Drill files are written in whole mils (the convention of the Bungard programs): a diameter `T1C0.8` with no unit is read as millimetres from 0.2 up and as inches below it; files with slots or routed paths have those left out, with a note. The files written have only been read back by the readers of this suite, not by other programs or machines.
 * The design rules do not round off the corners of a square pad and do not check the copper against the board edge or the solder mask; the check of the rings takes the pad as drawn in the Gerber layer.
+* The tools of the crib are read from its CSV table, not from its JSON file, and the window does not use the crib; the width of a V-bit is worked out from its angle, the depth and a flat set by hand, it is not measured.
 
 **Next**
 

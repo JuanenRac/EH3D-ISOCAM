@@ -67,6 +67,19 @@
           }
         },
         {
+          "name": "crib.rs",
+          "desc": {
+            "en": "the tools of the tool crib and the width each cuts with",
+            "es": "las herramientas del almacén y el ancho con que corta cada una",
+            "de": "die Werkzeuge des Lagers und die Schnittbreite jedes einzelnen",
+            "fr": "les outils du magasin et la largeur de coupe de chacun",
+            "it": "gli utensili del magazzino e la larghezza di taglio di ciascuno",
+            "ja": "工具庫の工具と、それぞれの切削幅",
+            "zh": "刀具库中的刀具及每把刀的切削宽度",
+            "pt": "as ferramentas do armazém e a largura com que cada uma corta"
+          }
+        },
+        {
           "name": "draw.rs",
           "desc": {
             "en": "what the window draws: the shapes and the triangles of the regions",
@@ -282,6 +295,19 @@
           }
         },
         {
+          "name": "crib.rs",
+          "desc": {
+            "en": "tests of the tools taken from the crib",
+            "es": "tests de las herramientas tomadas del almacén",
+            "de": "Tests der aus dem Lager genommenen Werkzeuge",
+            "fr": "tests des outils pris dans le magasin",
+            "it": "test degli utensili presi dal magazzino",
+            "ja": "工具庫から取る工具のテスト",
+            "zh": "取自刀具库的刀具测试",
+            "pt": "testes das ferramentas tiradas do armazém"
+          }
+        },
+        {
           "name": "excellon_format.rs",
           "desc": {
             "en": "tests of the 2.4 format of the coordinates of a drill file",
@@ -406,6 +432,19 @@
       "accent": "d",
       "rows": [
         {
+          "name": "crib.csv",
+          "desc": {
+            "en": "a sample tool crib (CSV) to try --crib with",
+            "es": "un almacén de muestra (CSV) para probar --crib",
+            "de": "ein Beispiel-Lager (CSV) zum Ausprobieren von --crib",
+            "fr": "un magasin d'exemple (CSV) pour essayer --crib",
+            "it": "un magazzino di esempio (CSV) per provare --crib",
+            "ja": "--crib を試すための工具庫のサンプル（CSV）",
+            "zh": "试用 --crib 的示例刀具库（CSV）",
+            "pt": "um armazém de exemplo (CSV) para experimentar --crib"
+          }
+        },
+        {
           "name": "isocam.cfg",
           "desc": {
             "en": "every setting with its default, to copy and change",
@@ -497,14 +536,14 @@
         {
           "name": "images/",
           "desc": {
-            "en": "banner and the Architecture and Repository Structure pictures",
-            "es": "banner y las imágenes de Arquitectura y Estructura del repositorio",
-            "de": "Banner und die Bilder von Architektur und Repository-Struktur",
-            "fr": "bannière et images d'Architecture et de Structure du dépôt",
-            "it": "banner e le immagini di Architettura e Struttura del repository",
-            "ja": "バナーとアーキテクチャ・リポジトリ構成の図",
-            "zh": "横幅图以及架构和仓库结构图片",
-            "pt": "banner e as imagens de Arquitetura e Estrutura do repositório"
+            "en": "banner, window screenshots and the Architecture and Structure pictures",
+            "es": "banner, capturas de la ventana y las imágenes de Arquitectura y Estructura",
+            "de": "Banner, Fenster-Screenshots und die Bilder von Architektur und Struktur",
+            "fr": "bannière, captures de la fenêtre et images d'Architecture et de Structure",
+            "it": "banner, schermate della finestra e le immagini di Architettura e Struttura",
+            "ja": "バナー、ウィンドウのスクリーンショット、アーキテクチャと構成の図",
+            "zh": "横幅图、窗口截图以及架构和结构图片",
+            "pt": "banner, capturas de ecrã da janela e as imagens de Arquitetura e Estrutura"
           }
         },
         {
