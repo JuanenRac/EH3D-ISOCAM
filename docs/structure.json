@@ -269,6 +269,19 @@
       "accent": "d",
       "rows": [
         {
+          "name": "fuzz.rs",
+          "desc": {
+            "en": "fuzz tests with a fixed seed: damaged files, cuts and odd numbers",
+            "es": "pruebas con semilla fija: ficheros dañados, cortes y números raros",
+            "de": "Tests mit festem Startwert: beschädigte Dateien, Abschnitte und seltsame Zahlen",
+            "fr": "tests à graine fixe : fichiers abîmés, coupures et nombres étranges",
+            "it": "test con seme fisso: file danneggiati, tagli e numeri strani",
+            "ja": "固定シードのテスト：壊れたファイル、途中切れ、異常な数値",
+            "zh": "固定种子的测试：损坏的文件、截断和异常数字",
+            "pt": "testes com semente fixa: ficheiros danificados, cortes e números estranhos"
+          }
+        },
+        {
           "name": "advanced.rs",
           "desc": {
             "en": "forced isolation, correction, mask, units, preview",

@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- Tests with a fixed seed read damaged drill files, outlines, settings and tool tables (every cut and many copies with bytes changed) without a panic.
+
 - The exit code follows the convention of the suite on the command line: 64 for a wrong use (an unknown command, option or setting, or something that is missing), 1 for a failure of the work.
 
 - **Tools from the tool crib:** `--crib FILE` (`crib_file`) reads the CSV table that `eh3d-tools` exports (the five columns it needs, `id`, `name`, `kind`, `diameter_mm` and `tip_angle_deg`, in any order; the others are ignored; a byte order mark, Windows line ends, quoted names and the quote mark the crib puts before a name that starts like a formula are read), and `--crib-fine N`, `--crib-coarse N` and `--crib-route N` (`crib_fine`, `crib_coarse`, `crib_route`, 0 by default) take the tools with those numbers from it: the width an end mill, a V-bit or an engraver cuts with becomes `fine_tool_mm` or `coarse_tool_mm`, and the diameter of an end mill becomes `route_tool_mm`. Each replacement is told on the standard error. The table is read only when a tool is chosen; a drill, a laser or a nozzle, a number the table does not have, a V-bit for the cut round the board, a table with a missing column, a repeated number, a diameter outside 0 to 50 mm or an angle outside 10 to 170 degrees, and a tool number without `crib_file` are refused with the row or the setting named, and a crib tool that is too thin for `min_tool_mm` is refused by the name of the setting. `config` prints the settings as they are, without reading the table.
