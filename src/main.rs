@@ -1013,7 +1013,24 @@ fn main() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("error: {e}");
-            ExitCode::from(1)
+            ExitCode::from(exit_code(&e))
         }
+    }
+}
+
+/// The exit code of the convention of the suite for a run that ended badly: 64 when the command line was used wrongly (an unknown command, option or setting, or something it needs that is missing), 1 for a failure of the work itself.
+fn exit_code(message: &str) -> u8 {
+    const USAGE: [&str; 6] = [
+        "unknown command",
+        "unknown option",
+        "unknown setting",
+        " needs ",
+        "(usage:",
+        "(see help)",
+    ];
+    if USAGE.iter().any(|m| message.contains(m)) {
+        64
+    } else {
+        1
     }
 }
