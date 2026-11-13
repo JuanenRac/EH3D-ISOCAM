@@ -97,7 +97,7 @@ jobs:
       - name: Check out the sibling repositories named in depends_on of the manifest
         shell: bash
         env:
-          SIBLING_REFS: "EH3D-COMMON=v0.2.0 EH3D-CORE-LIBS=v0.0.8 EH3D-GERBERVIEWER=v0.0.6"
+          SIBLING_REFS: "EH3D-COMMON=v0.2.1 EH3D-CORE-LIBS=v0.0.9 EH3D-GERBERVIEWER=v0.0.6"
         run: |
           python3 - <<'PY'
           import json
