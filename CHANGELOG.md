@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.0] - Tool crib, width of a V-bit at depth and exit codes
+
 - Tests with a fixed seed read damaged drill files, outlines, settings and tool tables (every cut and many copies with bytes changed) without a panic.
 
 - The exit code follows the convention of the suite on the command line: 64 for a wrong use (an unknown command, option or setting, or something that is missing), 1 for a failure of the work.
