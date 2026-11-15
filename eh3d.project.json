@@ -16,7 +16,7 @@
   ],
   "deployment_target": "user-pc",
   "maturity": "functional",
-  "evidence": "host-test",
+  "evidence": "simulator",
   "hardware_bound": false,
   "min_common": "0.2.1",
   "family": "CNC Workflow Tools",
