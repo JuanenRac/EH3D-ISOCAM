@@ -226,3 +226,21 @@ fn info_estimates_the_time_only_when_the_settings_give_the_rapid_speed() {
     assert!(!ok && err.contains("rapid_mm_min is 50"), "{err}");
     let _ = fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_settings_file_over_a_mebibyte_is_refused_and_a_normal_one_is_read() {
+    let dir = folder("cfg_limit");
+    let board = dir.join("b.gtl");
+    fs::write(&board, BOARD).unwrap();
+    let big = dir.join("big.cfg");
+    let padding = "# padding padding padding\n".repeat(50_000);
+    fs::write(&big, format!("{padding}max_input_mb = 1\n")).unwrap();
+    let b = board.to_str().unwrap();
+    let (ok, _, err) = run(&["info", b, "--config", big.to_str().unwrap()]);
+    assert!(!ok && err.contains("is refused"), "{err}");
+    let small = dir.join("small.cfg");
+    fs::write(&small, "max_input_mb = 1\n").unwrap();
+    let (ok, _, err) = run(&["info", b, "--config", small.to_str().unwrap()]);
+    assert!(ok, "{err}");
+    let _ = fs::remove_dir_all(&dir);
+}

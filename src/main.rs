@@ -136,7 +136,7 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
         let file = args
             .get(i + 1)
             .ok_or_else(|| "--config needs a file".to_string())?;
-        let text = fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
+        let text = read_settings_file(file)?;
         cli.settings = Settings::parse(&text).map_err(|e| format!("{file}: {e}"))?;
         cli.max_bytes = (cli.settings.max_input_mb * 1_048_576.0) as usize;
     }
@@ -268,6 +268,24 @@ fn scene_of(cli: &Cli, file: &eh3d_parser_gerber::GerberFile) -> eh3d_gerberview
             arc_tolerance_mm: cli.settings.arc_tolerance_mm,
         },
     )
+}
+
+/// The most a settings file may hold; a file of settings is a few lines, so a larger one is not one.
+const MAX_SETTINGS_BYTES: u64 = 1 << 20;
+
+/// The text of a settings file, read with a limit like every other file of the program.
+fn read_settings_file(file: &str) -> Result<String, String> {
+    use std::io::Read;
+    let mut text = String::new();
+    fs::File::open(file)
+        .and_then(|f| f.take(MAX_SETTINGS_BYTES + 1).read_to_string(&mut text))
+        .map_err(|e| format!("{file}: {e}"))?;
+    if text.len() as u64 > MAX_SETTINGS_BYTES {
+        return Err(format!(
+            "{file}: a settings file above {MAX_SETTINGS_BYTES} bytes is refused"
+        ));
+    }
+    Ok(text)
 }
 
 /// The text of a file, read the way the readers of the suite read bytes: a file over the size limit is refused, UTF-8 (with or without a byte order mark) is taken as it is, and
