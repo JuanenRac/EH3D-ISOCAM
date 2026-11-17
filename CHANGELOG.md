@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A settings file given with `--config` is read with a size limit of one mebibyte:** a larger file is refused instead of being read whole, like every other file the program reads.
 - **Simulation of a Bungard machine with the travel of its table:** add `tests/machine_travel.rs`, a twin of a Bungard CCD that runs the G-code of the program and halts with an alarm at the first move that leaves its table, saying the line, where it was and how many moves it had made. The sizes are the ones written in the documents of EH3D-DRILLPRO: 495 x 325 mm for the CCD MTC and 325 x 270 mm for the CCD/2 MTC; the position of the home switches and the margin the real machine keeps around them are not documented there, so none is assumed. Six tests cover a board that fits, a board that fits one table and not the smaller, boards left of the origin or beyond the far edge, putting the board back inside as the way back (and a board larger than the table, which has none), the agreement of the twin with the geometry for 120 boards from a seeded generator, and the same run every time. The manifest now says `evidence: simulator`; nothing has run on a machine.
 
 - **The shared validation tools are updated:** the validator also runs the workflow and lessons checks of the suite with their latest rules, including a check to run before every push.
