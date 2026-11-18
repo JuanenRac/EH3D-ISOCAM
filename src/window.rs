@@ -8,7 +8,6 @@ use crate::contour::Loop;
 use crate::draw::Drawing;
 use crate::drill::Hole;
 use crate::forced::{forced_passes, insert};
-use crate::gcode::write_in;
 use crate::isolate::{plan_with_pads, Pass};
 use crate::lang::{fill, Lang, Msg};
 use crate::optimize::optimize_passes;
@@ -1165,7 +1164,7 @@ impl Window {
             }
             "dxf" => dxf::write(&self.passes),
             _ => {
-                let g = write_in(&self.passes, &s.job(), &s.order(), s.output_units)?;
+                let (g, _) = board::gcode_program(&self.passes, s, self.force)?;
                 Ok(format!("{}{g}", gcode_header(&layer.path, s)))
             }
         }

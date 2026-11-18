@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Machine profile and safe limits for the G-code:** `machine_profile` (`none` by default; `ccd-mtc` is the 495 x 325 mm table of the Bungard CCD MTC and `ccd2-mtc` the 325 x 270 mm table of the CCD/2 MTC), `machine_x_mm` and `machine_y_mm` (a table of your own, or another size for the profile; 0 takes the profile), `machine_margin_mm` (the distance kept from every edge, 0 by default), `machine_max_depth_mm` and `machine_max_rpm` (the deepest cut and the fastest spindle; 0 does not check them). `isolate`, `rubout-area` and the window walk the G-code move by move with the interpreter of the suite before it is saved and refuse it with the line, the place and the number of moves made when a move leaves the table or comes nearer to an edge than the margin, the tool goes deeper than the limit or the spindle runs faster than it; `--force` writes it anyway and tells the reason on the standard error. A depth or a spindle speed of the job above the limits is refused when the settings are read. All of it is off by default, so nothing changes until a machine is described. The sizes of the tables are the ones of the documents of EH3D-DRILLPRO, the origin of the table is taken at a corner, and nothing has run on a machine. Seventeen tests (`src/machine.rs` and `tests/job_safety.rs`) cover the profiles, inches, relative moves, the margin, the limits, the settings file and the command line.
+
 ## [0.1.1] - A size limit for the settings file and a simulation of a Bungard machine with its table travel
 
 - **A settings file given with `--config` is read with a size limit of one mebibyte:** a larger file is refused instead of being read whole, like every other file the program reads.

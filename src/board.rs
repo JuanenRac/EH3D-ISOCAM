@@ -9,10 +9,12 @@ use crate::drill::{
 };
 use crate::fiducial::{apply_to_holes, apply_to_passes, Fit};
 use crate::filetype;
+use crate::gcode::write_in;
 use crate::hpgl::{
     isocam_style, set_pen_speed, write_holes_scaled, write_opts, PenBy, PlotOptions,
 };
 use crate::isolate::Pass;
+use crate::machine::check_program;
 use crate::mask;
 use crate::order::{arrange, Cut};
 use crate::transform::{alignment_pattern, lay_out, Axis, Board};
@@ -209,6 +211,27 @@ pub fn finish_plot(s: &Settings, text: Result<String, String>) -> Result<String,
     } else {
         text
     })
+}
+
+/// The G-code of the passes as the settings say, walked against the limits of the machine (its table, the margin kept from the edges, the deepest cut and the fastest spindle). A
+/// program that breaks a limit is refused with the line, unless `force` is given: then it is written and the notice comes back with it, to be shown.
+pub fn gcode_program(
+    passes: &[Pass],
+    s: &Settings,
+    force: bool,
+) -> Result<(String, Vec<String>), String> {
+    let g = write_in(passes, &s.job(), &s.order(), s.output_units)?;
+    let limits = s.machine_limits();
+    let mut notes = Vec::new();
+    if !limits.is_off() {
+        if let Err(why) = check_program(&g, &limits) {
+            if !force {
+                return Err(format!("{why}; --force writes it anyway"));
+            }
+            notes.push(why);
+        }
+    }
+    Ok((g, notes))
 }
 
 /// The isolation passes (already moved by the scale and the reference points) as a plot file. With `plot_outline` the cut round the outline goes first, on its own pen.

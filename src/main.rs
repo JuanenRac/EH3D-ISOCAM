@@ -4,8 +4,8 @@
 
 use eh3d_gerberviewer::scene::{from_gerber_with, SceneOptions};
 use eh3d_isocam::board::{
-    centre_of, drills_job, finish_plot, isolation_plot, mark_rows, mask_job, plot_options,
-    route_job,
+    centre_of, drills_job, finish_plot, gcode_program, isolation_plot, mark_rows, mask_job,
+    plot_options, route_job,
 };
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::crib;
@@ -16,7 +16,6 @@ use eh3d_isocam::fiducial::apply_to_passes;
 use eh3d_isocam::filetype;
 use eh3d_isocam::fill::{rubout_contours, Fill};
 use eh3d_isocam::forced::{forced_passes, insert};
-use eh3d_isocam::gcode::write_in;
 use eh3d_isocam::hpgl::{write_opts, PenBy};
 use eh3d_isocam::isolate::{net_scene, plan_with_pads, rubout_lines, Pass};
 use eh3d_isocam::optimize::optimize_passes;
@@ -773,13 +772,15 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 return Ok(());
             }
             let out = arg(&cli, 1, "isolate needs an output file")?;
-            let order = s.order();
             let text = if is_plot(out) {
                 isolation_plot(&passes, s, &whole, &board.outline)?
             } else if is_dxf(out) {
                 dxf::write(&passes)?
             } else {
-                let g = write_in(&passes, &s.job(), &order, s.output_units)?;
+                let (g, notes) = gcode_program(&passes, s, cli.force)?;
+                for n in notes {
+                    eprintln!("warning: {n}");
+                }
                 format!(
                     "{}{g}",
                     gcode_header(&cli, cli.positional.first().map(String::as_str))
@@ -859,12 +860,10 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             } else if is_dxf(out) {
                 dxf::write(std::slice::from_ref(&pass))?
             } else {
-                let g = write_in(
-                    std::slice::from_ref(&pass),
-                    &s.job(),
-                    &order,
-                    s.output_units,
-                )?;
+                let (g, notes) = gcode_program(std::slice::from_ref(&pass), s, cli.force)?;
+                for n in notes {
+                    eprintln!("warning: {n}");
+                }
                 format!("{}{g}", gcode_header(&cli, cli.contour.as_deref()))
             };
             write_text(&cli, 0, out, text)?;

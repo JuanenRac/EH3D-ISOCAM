@@ -17,6 +17,7 @@ pub mod gcode;
 pub mod gui;
 pub mod hpgl;
 pub mod lang;
+pub mod machine;
 pub mod preview;
 pub mod shot;
 pub mod viewport;

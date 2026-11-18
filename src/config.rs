@@ -8,6 +8,7 @@ use crate::forced::Forced;
 use crate::gcode::Job;
 use crate::isolate::{Plan, Rubout, Tool};
 use crate::legacy::{self, Format, Zeros};
+use crate::machine::{Limits as MachineLimits, Profile};
 use crate::optimize::Optimize;
 use crate::order::{Direction, LoopStart, Order, Strategy};
 use crate::problems::ProblemRules;
@@ -170,6 +171,17 @@ pub struct Settings {
     pub crib_route: u32,
     /// The width of the flat tip, in mm, with which the width of a crib V-bit or engraver at the depth of the cut is worked out.
     pub crib_vbit_flat_mm: f64,
+    /// The machine the program is for (`none`, `ccd-mtc` or `ccd2-mtc`): its table is the travel a G-code program may not leave.
+    pub machine_profile: Profile,
+    /// The size of the table in X and Y, in mm; above 0 it replaces the one of the profile (and is a profile of its own when there is none). 0 takes the profile.
+    pub machine_x_mm: f64,
+    pub machine_y_mm: f64,
+    /// The distance kept from every edge of the table.
+    pub machine_margin_mm: f64,
+    /// The deepest cut the machine may be sent, in mm; 0 does not check it.
+    pub machine_max_depth_mm: f64,
+    /// The fastest spindle speed the machine may be sent; 0 does not check it.
+    pub machine_max_rpm: f64,
 }
 
 impl Default for Settings {
@@ -272,6 +284,12 @@ impl Default for Settings {
             crib_coarse: 0,
             crib_route: 0,
             crib_vbit_flat_mm: 0.1,
+            machine_profile: Profile::Off,
+            machine_x_mm: 0.0,
+            machine_y_mm: 0.0,
+            machine_margin_mm: 0.0,
+            machine_max_depth_mm: 0.0,
+            machine_max_rpm: 0.0,
         }
     }
 }
@@ -497,6 +515,12 @@ impl Settings {
                 }
             }
             "crib_vbit_flat_mm" => self.crib_vbit_flat_mm = num(key, v)?,
+            "machine_profile" | "machine" => self.machine_profile = Profile::parse(v)?,
+            "machine_x_mm" => self.machine_x_mm = num(key, v)?,
+            "machine_y_mm" => self.machine_y_mm = num(key, v)?,
+            "machine_margin_mm" => self.machine_margin_mm = num(key, v)?,
+            "machine_max_depth_mm" => self.machine_max_depth_mm = num(key, v)?,
+            "machine_max_rpm" => self.machine_max_rpm = num(key, v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -595,6 +619,12 @@ crib_fine = {}
 crib_coarse = {}
 crib_route = {}
 crib_vbit_flat_mm = {}
+machine_profile = {}
+machine_x_mm = {}
+machine_y_mm = {}
+machine_margin_mm = {}
+machine_max_depth_mm = {}
+machine_max_rpm = {}
 ",
             self.conflict_tolerance_scope.name(),
             self.rubout_fill_margin_mm,
@@ -619,7 +649,13 @@ crib_vbit_flat_mm = {}
             self.crib_fine,
             self.crib_coarse,
             self.crib_route,
-            self.crib_vbit_flat_mm
+            self.crib_vbit_flat_mm,
+            self.machine_profile.name(),
+            self.machine_x_mm,
+            self.machine_y_mm,
+            self.machine_margin_mm,
+            self.machine_max_depth_mm,
+            self.machine_max_rpm
         ));
         for p in &self.fiducials {
             extra.push_str(&format!(
@@ -743,6 +779,56 @@ crib_vbit_flat_mm = {}
                 "conflict_tolerance_mm is {}: it must leave a tool of at least {} mm (the finest tool is {} mm)",
                 self.conflict_tolerance_mm, self.min_tool_mm, self.fine_tool_mm
             ));
+        }
+        // the machine: a size is 0 (take the profile) or a believable table; the two sides come together; the margin leaves room on the table; the limits of the cut are above 0 or off
+        for (name, v) in [
+            ("machine_x_mm", self.machine_x_mm),
+            ("machine_y_mm", self.machine_y_mm),
+        ] {
+            if v != 0.0 {
+                range(name, v, 10.0, 5_000.0)?;
+            }
+        }
+        let table = self.machine_table();
+        if self.machine_profile == Profile::Off
+            && (self.machine_x_mm != 0.0) != (self.machine_y_mm != 0.0)
+        {
+            return Err(
+                "machine_x_mm and machine_y_mm must both be set (or neither) when there is no machine_profile"
+                    .into(),
+            );
+        }
+        range("machine_margin_mm", self.machine_margin_mm, 0.0, 100.0)?;
+        if let Some((w, d)) = table {
+            if self.machine_margin_mm * 2.0 >= w.min(d) {
+                return Err(format!(
+                    "machine_margin_mm is {}: it leaves no room on a table of {w} x {d} mm",
+                    self.machine_margin_mm
+                ));
+            }
+        }
+        if self.machine_max_depth_mm != 0.0 {
+            range(
+                "machine_max_depth_mm",
+                self.machine_max_depth_mm,
+                0.005,
+                50.0,
+            )?;
+            if self.depth_mm > self.machine_max_depth_mm {
+                return Err(format!(
+                    "depth_mm is {}: it is deeper than machine_max_depth_mm ({})",
+                    self.depth_mm, self.machine_max_depth_mm
+                ));
+            }
+        }
+        if self.machine_max_rpm != 0.0 {
+            range("machine_max_rpm", self.machine_max_rpm, 1000.0, 200_000.0)?;
+            if self.spindle_rpm > self.machine_max_rpm {
+                return Err(format!(
+                    "spindle_rpm is {}: it is faster than machine_max_rpm ({})",
+                    self.spindle_rpm, self.machine_max_rpm
+                ));
+            }
         }
         range("alignment_hole_mm", self.alignment_hole_mm, 0.3, 10.0)?;
         range("alignment_margin_mm", self.alignment_margin_mm, 0.5, 100.0)?;
@@ -957,6 +1043,32 @@ crib_vbit_flat_mm = {}
             res_mm: self.res_mm,
             trim: self.trim_fine,
         })
+    }
+
+    /// The table of the machine in mm: the size the settings give, else the one of the profile, else none (the travel is not checked).
+    pub fn machine_table(&self) -> Option<(f64, f64)> {
+        let (px, py) = self.machine_profile.table_mm().unwrap_or((0.0, 0.0));
+        let x = if self.machine_x_mm > 0.0 {
+            self.machine_x_mm
+        } else {
+            px
+        };
+        let y = if self.machine_y_mm > 0.0 {
+            self.machine_y_mm
+        } else {
+            py
+        };
+        (x > 0.0 && y > 0.0).then_some((x, y))
+    }
+
+    /// What a G-code program may not go beyond: the table, the margin, the deepest cut and the fastest spindle.
+    pub fn machine_limits(&self) -> MachineLimits {
+        MachineLimits {
+            table_mm: self.machine_table(),
+            margin_mm: self.machine_margin_mm,
+            max_depth_mm: self.machine_max_depth_mm,
+            max_rpm: self.machine_max_rpm,
+        }
     }
 
     pub fn job(&self) -> Job {

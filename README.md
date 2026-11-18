@@ -17,7 +17,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 367 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 385 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.1.1` |
 | Maturity | Scaffolding |
-| Tests | 367 |
+| Tests | 385 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -48,7 +48,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 367 tests pass (`cargo test`), with normal cases, edge cases and damaged input. They include a seeded simulation of a Bungard machine with the travel of its table with injected faults and recovery. |
+| Tests | 🟡 | 385 tests pass (`cargo test`), with normal cases, edge cases and damaged input. They include a seeded simulation of a Bungard machine with the travel of its table with injected faults and recovery. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`): open or drop a layer, zoom and pan, edit the main parameters, export; its logic is tested and the program of a release draws it to a picture (`--shot`), but nobody has used it on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -77,6 +77,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **Old-style Gerber layers** (`legacy`): a layer with no format statement (RS-274D, as many older programs write it) is read when its list of apertures is given (`--apertures`, one D code and its size per line) together with its format (`--gerber-format 2.3`, `--gerber-zeros`, `--gerber-units`); it is rewritten as extended Gerber and goes through the normal reader. Tested with hand-written layers, not with files from other programs.
 * **Reading and notices by code (command line):** files are read with a size limit (`--max-bytes N` or `max_input_mb`, 64 MiB by default) and text that is not UTF-8 is read as Latin-1 with a warning (`input-not-utf8`); the notices of the Gerber reader are shown with their stable code and `--hide CODE[,CODE]` leaves out those codes. The note about the lighter paths and the one about the bridges of the cut are printed only when they changed something. `arc_tolerance_mm` sets how closely the arcs of a layer are followed. `min_tool_mm` (0.02 by default) names the thinnest tool any tool setting may have, and a tool below it is refused with the name of the setting; `rapid_mm_min` (0 by default, no estimate) is the speed of the rapid moves, with which `info` adds an estimate of the time of the job (cutting, going down, moving; the spindle wait and the tool changes by hand are not counted). `hpgl_units_per_mm` (40 by default, from 10 to 1000) sets the units of a plot file to the millimetre; the range check of 32767 units follows it (327 mm at 100).
 * **Tools from the tool crib** (`src/crib.rs`): `--crib FILE` (or `crib_file`) reads the CSV table that `eh3d-tools` exports, and `--crib-fine N`, `--crib-coarse N` and `--crib-route N` take the tools with those numbers from it: the width an end mill, a V-bit or an engraver cuts with at `depth_mm` becomes `fine_tool_mm` or `coarse_tool_mm` (a V-bit cuts `2 * depth * tan(angle / 2) + crib_vbit_flat_mm` wide, at most its diameter, cut down to a ten-thousandth of a millimetre) and the diameter of an end mill becomes `route_tool_mm`; each replacement is told on the standard error, a drill, a laser or a nozzle is refused, and a tool that is too thin for `min_tool_mm` is refused by the name of the setting. The table is read only when a tool is chosen.
+* **Limits of the machine** (`src/machine.rs`): `machine_profile` (`ccd-mtc`: 495 x 325 mm, `ccd2-mtc`: 325 x 270 mm) or `machine_x_mm` and `machine_y_mm` give the table, `machine_margin_mm` the distance kept from its edges, `machine_max_depth_mm` and `machine_max_rpm` the deepest cut and the fastest spindle. The G-code is walked move by move before it is saved and refused with its line when a move leaves the table, goes too deep or runs the spindle too fast (`--force` writes it anyway and says why); a depth or a speed of the job above the limits is refused when the settings are read. Everything is off by default.
 
 ## 🧩 Role in EH3D
 
@@ -119,7 +120,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 | A number that makes no sense (negative, not finite, absurdly large) | refused with an error that names the value; nothing is rounded into something plausible |
 | Unsafe memory use | plain safe Rust with `forbid(unsafe_code)` |
 
-**What is not defended:** a result that was produced cleanly is not a verified result. Nothing here knows the limits of a machine, and the program has had no independent review. Report a vulnerability privately (see [SECURITY.md](SECURITY.md)).
+**What is not defended:** a result that was produced cleanly is not a verified result. Unless a machine profile or limits are set, nothing here knows the limits of a machine, and the program has had no independent review. Report a vulnerability privately (see [SECURITY.md](SECURITY.md)).
 
 ## 🔌 Interfaces
 
@@ -145,6 +146,7 @@ options: --config FILE  --outline FILE  --drills FILE  --force  and every settin
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
 tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting)
+machine limits: --machine-profile none|ccd-mtc|ccd2-mtc  --machine-x-mm N  --machine-y-mm N  --machine-margin-mm N  --machine-max-depth-mm N  --machine-max-rpm N   (0 = not checked)
 ```
 
 ```text
@@ -162,6 +164,7 @@ EH3D-ISOCAM/
 │   ├── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
 │   ├── hpgl.rs                                  the paths as an HP-GL plot file
 │   ├── lang.rs                                  the words of the window in the eight languages
+│   ├── machine.rs                               the machine's table, margin, depth and spindle limits, and the check of a program against them
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
 │   ├── preview.rs                               the passes drawn as SVG or text
@@ -176,6 +179,7 @@ EH3D-ISOCAM/
 │   ├── excellon_format.rs                       tests of the 2.4 format of the coordinates of a drill file
 │   ├── files.rs                                 tests of the drill and outline files
 │   ├── isocam.rs                                tests of the library and the command line
+│   ├── job_safety.rs                            tests of the limits of the machine: settings, refused programs and --force
 │   ├── kinds.rs                                 tolerance for pads, contour fills, file kinds, pens, DXF
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
 │   ├── multi.rs                                 tests of tools, rubout, direction, order and settings
@@ -220,7 +224,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 367 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 385 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -254,6 +258,7 @@ EH3D-ISOCAM/
 │   ├── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
 │   ├── hpgl.rs                                  the paths as an HP-GL plot file
 │   ├── lang.rs                                  the words of the window in the eight languages
+│   ├── machine.rs                               the machine's table, margin, depth and spindle limits, and the check of a program against them
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
 │   ├── preview.rs                               the passes drawn as SVG or text
@@ -261,12 +266,14 @@ EH3D-ISOCAM/
 │   ├── viewport.rs                              zoom and pan of the picture, in plain numbers
 │   └── window.rs                                the state of the window without a screen: layer, parameters, paths, export and status
 ├── tests/
+│   ├── fuzz.rs                                  fuzz tests with a fixed seed: damaged files, cuts and odd numbers
 │   ├── advanced.rs                              forced isolation, correction, mask, units, preview
 │   ├── cli_reading.rs                           tests of reading files: the size limit, text that is not UTF-8, notices by code
 │   ├── crib.rs                                  tests of the tools taken from the crib
 │   ├── excellon_format.rs                       tests of the 2.4 format of the coordinates of a drill file
 │   ├── files.rs                                 tests of the drill and outline files
 │   ├── isocam.rs                                tests of the library and the command line
+│   ├── job_safety.rs                            tests of the limits of the machine: settings, refused programs and --force
 │   ├── kinds.rs                                 tolerance for pads, contour fills, file kinds, pens, DXF
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
 │   ├── multi.rs                                 tests of tools, rubout, direction, order and settings

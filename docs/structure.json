@@ -184,6 +184,19 @@
           }
         },
         {
+          "name": "machine.rs",
+          "desc": {
+            "en": "the machine's table, margin, depth and spindle limits, and the check of a program against them",
+            "es": "la mesa, el margen y los límites de profundidad y husillo de la máquina, y la comprobación de un programa contra ellos",
+            "de": "Tisch, Rand sowie Tiefen- und Spindelgrenzen der Maschine und die Prüfung eines Programms dagegen",
+            "fr": "la table, la marge et les limites de profondeur et de broche de la machine, et la vérification d'un programme contre elles",
+            "it": "il piano, il margine e i limiti di profondità e mandrino della macchina, e il controllo di un programma rispetto a essi",
+            "ja": "機械のテーブル・余白・深さと回転数の上限、およびそれらに対するプログラムの検査",
+            "zh": "机器的工作台、边距、深度与主轴限制，以及按这些限制检查程序",
+            "pt": "a mesa, a margem e os limites de profundidade e de fuso da máquina, e a verificação de um programa contra eles"
+          }
+        },
+        {
           "name": "lib.rs",
           "desc": {
             "en": "the library: what every command uses",
@@ -357,6 +370,19 @@
             "ja": "ライブラリとコマンドラインのテスト",
             "zh": "库和命令行的测试",
             "pt": "testes da biblioteca e da linha de comandos"
+          }
+        },
+        {
+          "name": "job_safety.rs",
+          "desc": {
+            "en": "tests of the limits of the machine: settings, refused programs and --force",
+            "es": "tests de los límites de la máquina: ajustes, programas rechazados y --force",
+            "de": "Tests der Maschinengrenzen: Einstellungen, abgelehnte Programme und --force",
+            "fr": "tests des limites de la machine : réglages, programmes refusés et --force",
+            "it": "test dei limiti della macchina: impostazioni, programmi rifiutati e --force",
+            "ja": "機械の限界のテスト：設定、拒否されるプログラム、--force",
+            "zh": "机器限制的测试：设置、被拒绝的程序和 --force",
+            "pt": "testes dos limites da máquina: definições, programas recusados e --force"
           }
         },
         {
