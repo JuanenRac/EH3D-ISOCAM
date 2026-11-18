@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 416 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 421 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.1.1` |
 | Maturità | Impalcatura |
-| Test | 416 |
+| Test | 421 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,7 +48,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 416 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
+| Test | 🟡 | 421 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata e il programma di una versione la disegna in un'immagine (`--shot`), ma nessuno l'ha ancora usata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -80,6 +80,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **Limiti della macchina** (`src/machine.rs`): `machine_profile` (`ccd-mtc`: 495 x 325 mm, `ccd2-mtc`: 325 x 270 mm) oppure `machine_x_mm` e `machine_y_mm` danno il piano, `machine_margin_mm` la distanza tenuta dai suoi bordi, `machine_max_depth_mm` e `machine_max_rpm` il taglio più profondo e il mandrino più veloce. Il G-code viene percorso movimento per movimento prima di essere salvato e rifiutato con la sua riga quando un movimento esce dal piano, scende troppo o fa girare il mandrino troppo in fretta (`--force` lo scrive comunque e dice perché); una profondità o una velocità del lavoro oltre i limiti viene rifiutata alla lettura delle impostazioni. Tutto è disattivato di default.
 * **Una prova a vuoto di un programma** (`src/simulate.rs`): `eh3d-isocam simulate PROGRAMMA.nc` percorre qualsiasi programma G-code movimento per movimento e stampa la sua lunghezza, il percorso coperto, il taglio più profondo e il tempo (taglio all'avanzamento, discesa all'avanzamento di affondo, rapidi a `rapid_mm_min`, attese `G4`), ed elenca con le loro righe un rapido che entra nel materiale, un taglio con il mandrino fermo o senza avanzamento, un programma che non finisce e i limiti della macchina che infrange; qualsiasi rilievo dà il codice di uscita 1. Il rapporto è nelle otto lingue.
 * **Passate di profondità e mappa delle altezze** (`src/heightmap.rs`): `depth_step_mm` ritaglia ogni percorso a ogni profondità (uno chiuso rifà il giro, uno aperto viene tagliato al ritorno, senza sollevare), e `--height-map FILE` (`heightmap_file`) legge la mappa di EH3D-AUTOLEVEL in modo che la Z di ogni taglio sia la profondità sotto il piano in quel punto, con i movimenti divisi in pezzi di al più `heightmap_max_segment_mm`; una mappa con un punto mancante o un piano troppo lontano dall'essere piatto (`heightmap_max_range_mm`) viene rifiutata. Entrambe sono disattivate di default.
+* **La profondità per una larghezza di pista** (`src/crib.rs`): `--crib-fine-width-mm W` calcola la profondità a cui la fresa a V o l'incisore del magazzino taglia una pista larga `W` e la usa come `depth_mm`; una larghezza che l'utensile non può tagliare, o una fresa cilindrica, viene rifiutata.
 
 ## 🧩 Ruolo in EH3D
 
@@ -147,7 +148,7 @@ eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|ligh
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
-tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting)
+tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N  --crib-fine-width-mm W   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting; W = the width the V-bit is to cut, the depth follows)
 machine limits: --machine-profile none|ccd-mtc|ccd2-mtc  --machine-x-mm N  --machine-y-mm N  --machine-margin-mm N  --machine-max-depth-mm N  --machine-max-rpm N   (0 = not checked)
 dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time, box, deepest cut, findings with their lines; exit code 1 on any finding)
 depth and surface: --depth-step-mm N  --height-map FILE  --heightmap-ref-x-mm N  --heightmap-ref-y-mm N  --heightmap-max-segment-mm N  --heightmap-max-range-mm N   (the map is the text file of EH3D-AUTOLEVEL)
@@ -231,7 +232,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 416 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 421 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

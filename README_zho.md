@@ -17,7 +17,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有416个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它有一个窗口（用 `--features gui` 构建），可打开层、钻孔文件、板框、阻焊层和基准点表，翻转电路板并在拼板上重复，绘制铜箔、孔、板框和路径，并写出与命令行相同的文件，但窗口尚未在屏幕上看过，没有在机器上试过，也没有用一批真实文件检验过。
+**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有421个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它有一个窗口（用 `--features gui` 构建），可打开层、钻孔文件、板框、阻焊层和基准点表，翻转电路板并在拼板上重复，绘制铜箔、孔、板框和路径，并写出与命令行相同的文件，但窗口尚未在屏幕上看过，没有在机器上试过，也没有用一批真实文件检验过。
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | 版本 | `0.1.1` |
 | 成熟度 | 脚手架 |
-| 测试 | 416 |
+| 测试 | 421 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -48,7 +48,7 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 416 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
+| 测试 | 🟡 | 421 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`）：打开或拖入层、缩放和平移、编辑主要参数、导出；其逻辑已测试，发布版程序可将其绘制为图片（`--shot`），但还没有人在屏幕上实际使用过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -80,6 +80,7 @@
 * **机器的限制**（`src/machine.rs`）：`machine_profile`（`ccd-mtc`：495 x 325 mm，`ccd2-mtc`：325 x 270 mm）或 `machine_x_mm` 与 `machine_y_mm` 给出工作台，`machine_margin_mm` 是与台面边缘保持的距离，`machine_max_depth_mm` 和 `machine_max_rpm` 是最深的切削和最快的主轴。G 代码在保存前逐个动作走一遍，当某个动作超出工作台、下刀过深或主轴转速过高时，连同行号一起被拒绝（`--force` 仍会写出并说明原因）；作业的深度或转速超过限制的设置在读取设置时被拒绝。一切默认关闭。
 * **程序的空运行**（`src/simulate.rs`）：`eh3d-isocam simulate 程序.nc` 逐个动作走完任意 G 代码程序，输出长度、移动范围、最深切削和时间（按进给切削、按下刀进给下降、快速移动按 `rapid_mm_min`、`G4` 等待），并连同行号列出进入材料的快速移动、主轴停止或没有进给的切削、不会结束的程序以及违反的机器限制；有任何发现退出码即为 1。报告以八种语言给出。
 * **分层下刀与高度图**（`src/heightmap.rs`）：`depth_step_mm` 让每条路径在每个深度重新切一遍（闭合路径再绕一圈，开放路径沿原路返回切削，中途不抬刀）；`--height-map 文件`（`heightmap_file`）读取 EH3D-AUTOLEVEL 的高度图，使每次切削的 Z 为该点台面之下的深度，动作被切成不超过 `heightmap_max_segment_mm` 的小段；缺少测量点的高度图，或台面偏离平面过大（`heightmap_max_range_mm`）都会被拒绝。两者默认关闭。
+* **按走线宽度确定深度**（`src/crib.rs`）：`--crib-fine-width-mm W` 计算刀具库中的 V 形刀或雕刻刀切出宽度为 `W` 的走线所需的深度，并将其用作 `depth_mm`；刀具切不出的宽度或立铣刀会被拒绝。
 
 ## 🧩 在 EH3D 中的角色
 
@@ -147,7 +148,7 @@ eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|ligh
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
-tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting)
+tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N  --crib-fine-width-mm W   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting; W = the width the V-bit is to cut, the depth follows)
 machine limits: --machine-profile none|ccd-mtc|ccd2-mtc  --machine-x-mm N  --machine-y-mm N  --machine-margin-mm N  --machine-max-depth-mm N  --machine-max-rpm N   (0 = not checked)
 dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time, box, deepest cut, findings with their lines; exit code 1 on any finding)
 depth and surface: --depth-step-mm N  --height-map FILE  --heightmap-ref-x-mm N  --heightmap-ref-y-mm N  --heightmap-max-segment-mm N  --heightmap-max-range-mm N   (the map is the text file of EH3D-AUTOLEVEL)
@@ -231,7 +232,7 @@ cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # 
 
 ## 🧪 测试
 
-测试套件有 416 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 421 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 

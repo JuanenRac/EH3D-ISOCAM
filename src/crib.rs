@@ -245,6 +245,41 @@ pub fn cutting_width_mm(tool: &CribTool, depth_mm: f64, flat_mm: f64) -> Result<
     }
 }
 
+/// The depth at which a V-bit or an engraver cuts a track `width_mm` wide: `(width - flat) / (2 * tan(angle / 2))`, to a ten-thousandth of a millimetre. The width must be above the
+/// flat, at least `MIN_WIDTH_MM` and no more than the diameter of the tool. A tool that is not a V-bit or an engraver cuts the same width at any depth and is refused.
+pub fn depth_for_width_mm(tool: &CribTool, width_mm: f64, flat_mm: f64) -> Result<f64, String> {
+    if !matches!(tool.kind, Kind::VBit | Kind::Engraver) {
+        return Err(format!(
+            "the tool {} ({}) is a {}: only a V-bit or an engraver cuts a width that depends on the depth",
+            tool.id,
+            tool.name,
+            tool.kind.key()
+        ));
+    }
+    if !flat_mm.is_finite() || !(FLAT_LIMITS.0..=FLAT_LIMITS.1).contains(&flat_mm) {
+        return Err(format!(
+            "the flat is {flat_mm}: it must be from {} to {} mm",
+            FLAT_LIMITS.0, FLAT_LIMITS.1
+        ));
+    }
+    if !width_mm.is_finite() || width_mm < MIN_WIDTH_MM || width_mm > tool.diameter_mm {
+        return Err(format!(
+            "the width is {width_mm}: it must be from {MIN_WIDTH_MM} mm to the diameter of the tool ({} mm)",
+            tool.diameter_mm
+        ));
+    }
+    if width_mm <= flat_mm {
+        return Err(format!(
+            "the width is {width_mm} mm and the flat tip alone is {flat_mm} mm wide: a V-bit cannot cut so narrow a track"
+        ));
+    }
+    let angle = tool
+        .tip_angle_deg
+        .ok_or_else(|| format!("the tool {} has no tip_angle_deg", tool.id))?;
+    let depth = (width_mm - flat_mm) / (2.0 * (angle.to_radians() / 2.0).tan());
+    Ok((depth * PARTS_PER_MM).round() / PARTS_PER_MM)
+}
+
 fn find(tools: &[CribTool], id: u32, setting: &str) -> Result<usize, String> {
     tools
         .iter()
@@ -257,8 +292,24 @@ fn find(tools: &[CribTool], id: u32, setting: &str) -> Result<usize, String> {
 /// each replacement; the settings are not validated here.
 pub fn apply(settings: &mut Settings, tools: &[CribTool]) -> Result<Vec<String>, String> {
     let mut notes = Vec::new();
-    let depth = settings.depth_mm;
     let flat = settings.crib_vbit_flat_mm;
+    // a width asked for the fine tool sets the depth, which the other tools then cut at
+    if settings.crib_fine_width_mm > 0.0 {
+        if settings.crib_fine == 0 {
+            return Err(
+                "crib_fine_width_mm needs crib_fine, the tool of the crib that cuts it".into(),
+            );
+        }
+        let tool = &tools[find(tools, settings.crib_fine, "crib_fine")?];
+        let depth = depth_for_width_mm(tool, settings.crib_fine_width_mm, flat)
+            .map_err(|e| format!("crib_fine_width_mm {}: {e}", settings.crib_fine_width_mm))?;
+        settings.depth_mm = depth;
+        notes.push(format!(
+            "depth_mm = {depth} from the crib: tool {} ({}) cuts {} mm wide at that depth",
+            tool.id, tool.name, settings.crib_fine_width_mm
+        ));
+    }
+    let depth = settings.depth_mm;
     let wanted = [
         ("crib_fine", settings.crib_fine, "fine_tool_mm"),
         ("crib_coarse", settings.crib_coarse, "coarse_tool_mm"),

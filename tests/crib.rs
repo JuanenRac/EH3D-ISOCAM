@@ -1,7 +1,7 @@
 //! The tools of the crib of EH3D-TOOL-MANAGER as the tools of a job (`--crib FILE --crib-fine N`): the table is read, the width a V-bit cuts with is worked out and the settings take it.
 
 use eh3d_isocam::config::Settings;
-use eh3d_isocam::crib::{apply, cutting_width_mm, parse_csv, CribTool, Kind};
+use eh3d_isocam::crib::{apply, cutting_width_mm, depth_for_width_mm, parse_csv, CribTool, Kind};
 use std::process::Command;
 
 const HEAD: &str = "id,name,kind,diameter_mm,flutes,length_mm,tip_angle_deg,shank_mm,material,hours,meters,holes,max_hours,max_holes";
@@ -461,4 +461,140 @@ fn a_tool_from_the_crib_that_is_too_thin_for_the_limit_of_the_file_is_refused() 
         !ok && err.contains("0.1321") && err.contains("min_tool_mm"),
         "{err}"
     );
+}
+
+// ---- the depth for a width --------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn the_depth_for_a_width_undoes_the_width_for_a_depth() {
+    let v = vbit(30.0, 0.5);
+    // (0.2 - 0.1) / (2 * tan 15 degrees)
+    let d = depth_for_width_mm(&v, 0.2, 0.1).unwrap();
+    assert!((d - 0.1866).abs() < 1e-9, "{d}");
+    // and back: the width at that depth is the wanted one to a ten-thousandth or two
+    let w = cutting_width_mm(&v, d, 0.1).unwrap();
+    assert!((w - 0.2).abs() < 2e-4, "{w}");
+    for (angle, width, flat) in [(60.0, 0.3, 0.05), (90.0, 0.12, 0.0), (20.0, 0.25, 0.2)] {
+        let v = vbit(angle, 0.5);
+        let d = depth_for_width_mm(&v, width, flat).unwrap();
+        let w = cutting_width_mm(&v, d, flat).unwrap();
+        assert!((w - width).abs() < 3e-4, "{angle} deg: {w} for {width}");
+    }
+}
+
+#[test]
+fn a_width_a_tool_cannot_cut_is_refused_with_the_reason() {
+    let v = vbit(30.0, 0.5);
+    for (width, flat, part) in [
+        (0.1, 0.1, "flat tip alone"),
+        (0.05, 0.1, "flat tip alone"),
+        (0.6, 0.1, "diameter of the tool (0.5 mm)"),
+        (0.005, 0.0, "from 0.01 mm"),
+        (f64::NAN, 0.1, "must be from"),
+        (0.2, 6.0, "the flat is 6"),
+    ] {
+        let e = depth_for_width_mm(&v, width, flat).unwrap_err();
+        assert!(e.contains(part), "{width} {flat}: {e}");
+    }
+    let mill = CribTool {
+        kind: Kind::EndMill,
+        tip_angle_deg: None,
+        ..vbit(30.0, 0.5)
+    };
+    let e = depth_for_width_mm(&mill, 0.2, 0.1).unwrap_err();
+    assert!(e.contains("only a V-bit or an engraver"), "{e}");
+}
+
+#[test]
+fn the_width_asked_for_sets_the_depth_the_other_tools_cut_at() {
+    let tools = parse_csv(&std::fs::read_to_string(CRIB).unwrap()).unwrap();
+    let mut s = Settings {
+        crib_file: "crib.csv".into(),
+        crib_fine: 2,
+        crib_fine_width_mm: 0.2,
+        ..Settings::default()
+    };
+    let notes = apply(&mut s, &tools).unwrap();
+    assert!((s.depth_mm - 0.1866).abs() < 1e-9, "{}", s.depth_mm);
+    assert!((s.fine_tool_mm - 0.2).abs() < 2e-4, "{}", s.fine_tool_mm);
+    assert!(
+        notes[0].starts_with("depth_mm = 0.1866 from the crib: tool 2"),
+        "{notes:?}"
+    );
+    s.validate().unwrap();
+    // the coarse tool, a V-bit too, cuts at the new depth
+    let mut c = Settings {
+        crib_file: "crib.csv".into(),
+        crib_fine: 2,
+        crib_fine_width_mm: 0.2,
+        crib_coarse: 2,
+        ..Settings::default()
+    };
+    apply(&mut c, &tools).unwrap();
+    assert!(near(c.coarse_tool_mm, c.fine_tool_mm));
+    // an end mill has no width to choose
+    let mut m = Settings {
+        crib_file: "crib.csv".into(),
+        crib_fine: 1,
+        crib_fine_width_mm: 0.2,
+        ..Settings::default()
+    };
+    let e = apply(&mut m, &tools).unwrap_err();
+    assert!(
+        e.contains("crib_fine_width_mm 0.2") && e.contains("only a V-bit"),
+        "{e}"
+    );
+}
+
+#[test]
+fn the_width_setting_needs_a_crib_tool_and_a_believable_number() {
+    let mut s = Settings::default();
+    s.set("crib_fine_width_mm", "0.2").unwrap();
+    assert!(s.validate().unwrap_err().contains("needs crib_fine"));
+    s.crib_file = "crib.csv".into();
+    s.crib_fine = 2;
+    s.validate().unwrap();
+    assert_eq!(Settings::parse(&s.to_text()).unwrap(), s);
+    assert!(s.to_text().contains("crib_fine_width_mm = 0.2\n"));
+    s.crib_fine_width_mm = 0.001;
+    assert!(s
+        .validate()
+        .unwrap_err()
+        .contains("crib_fine_width_mm is 0.001"));
+    assert!(Settings::default()
+        .to_text()
+        .contains("crib_fine_width_mm = 0\n"));
+}
+
+#[test]
+fn the_command_line_cuts_at_the_depth_the_width_needs() {
+    let out = tmp("width_depth.nc");
+    let (ok, _, err) = run(&[
+        "isolate",
+        SAMPLE,
+        &out,
+        "--crib",
+        CRIB,
+        "--crib-fine",
+        "2",
+        "--crib-fine-width-mm",
+        "0.2",
+    ]);
+    assert!(ok, "{err}");
+    assert!(err.contains("depth_mm = 0.1866 from the crib"), "{err}");
+    let g = std::fs::read_to_string(&out).unwrap();
+    assert!(g.contains("G1 Z-0.187 F60"), "{g}");
+    // a width the tool cannot cut stops the run
+    let (ok, _, err) = run(&[
+        "isolate",
+        SAMPLE,
+        &out,
+        "--crib",
+        CRIB,
+        "--crib-fine",
+        "2",
+        "--crib-fine-width-mm",
+        "0.7",
+    ]);
+    assert!(!ok && err.contains("diameter of the tool"), "{err}");
 }

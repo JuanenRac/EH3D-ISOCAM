@@ -193,6 +193,8 @@ pub struct Settings {
     pub heightmap_max_segment_mm: f64,
     /// The most the table may be above or below its height at the zero, in mm; a map beyond it is refused.
     pub heightmap_max_range_mm: f64,
+    /// The width, in mm, the fine crib tool (a V-bit or an engraver) is to cut: the depth is worked out from it and replaces `depth_mm`; 0 keeps `depth_mm`.
+    pub crib_fine_width_mm: f64,
 }
 
 impl Default for Settings {
@@ -307,6 +309,7 @@ impl Default for Settings {
             heightmap_ref_y_mm: 0.0,
             heightmap_max_segment_mm: 2.0,
             heightmap_max_range_mm: 0.5,
+            crib_fine_width_mm: 0.0,
         }
     }
 }
@@ -553,6 +556,7 @@ impl Settings {
             "heightmap_ref_y_mm" => self.heightmap_ref_y_mm = num(key, v)?,
             "heightmap_max_segment_mm" => self.heightmap_max_segment_mm = num(key, v)?,
             "heightmap_max_range_mm" => self.heightmap_max_range_mm = num(key, v)?,
+            "crib_fine_width_mm" => self.crib_fine_width_mm = num(key, v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -663,6 +667,7 @@ heightmap_ref_x_mm = {}
 heightmap_ref_y_mm = {}
 heightmap_max_segment_mm = {}
 heightmap_max_range_mm = {}
+crib_fine_width_mm = {}
 ",
             self.conflict_tolerance_scope.name(),
             self.rubout_fill_margin_mm,
@@ -699,7 +704,8 @@ heightmap_max_range_mm = {}
             self.heightmap_ref_x_mm,
             self.heightmap_ref_y_mm,
             self.heightmap_max_segment_mm,
-            self.heightmap_max_range_mm
+            self.heightmap_max_range_mm,
+            self.crib_fine_width_mm
         ));
         for p in &self.fiducials {
             extra.push_str(&format!(
@@ -909,6 +915,19 @@ heightmap_max_range_mm = {}
             crate::crib::FLAT_LIMITS.0,
             crate::crib::FLAT_LIMITS.1,
         )?;
+        if self.crib_fine_width_mm != 0.0 {
+            range(
+                "crib_fine_width_mm",
+                self.crib_fine_width_mm,
+                crate::crib::MIN_WIDTH_MM,
+                crate::crib::MAX_DIAMETER_MM,
+            )?;
+            if self.crib_fine == 0 {
+                return Err(
+                    "crib_fine_width_mm needs crib_fine, the tool of the crib that cuts it".into(),
+                );
+            }
+        }
         for (name, id) in [
             ("crib_fine", self.crib_fine),
             ("crib_coarse", self.crib_coarse),

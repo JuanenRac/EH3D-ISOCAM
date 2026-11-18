@@ -17,7 +17,7 @@
 
 ---
 
-**正直さの確認 - 現在実際に動くもの：** Rustライブラリとコマンドラインプログラム（`eh3d-isocam`）で、コンピュータ上で動くテストが416件あります。Gerberレイヤーの銅の周囲に1本または複数のミリング工具の経路を描き、残りの銅を除去し、切削の向き・開始点・順序を選び、ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、設計ルールを確認し、GコードまたはHP-GLを書き出します。ウィンドウ（`--features gui` でビルド）ではレイヤー、ドリルファイル、基板外形、マスクレイヤー、基準点の表を開き、基板を裏返してパネルに並べ、銅・穴・外形・経路を描画し、コマンドラインと同じファイルを書き出せますが、画面ではまだ確認しておらず、実機では試しておらず、実際のファイル群での確認もしていません。
+**正直さの確認 - 現在実際に動くもの：** Rustライブラリとコマンドラインプログラム（`eh3d-isocam`）で、コンピュータ上で動くテストが421件あります。Gerberレイヤーの銅の周囲に1本または複数のミリング工具の経路を描き、残りの銅を除去し、切削の向き・開始点・順序を選び、ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、設計ルールを確認し、GコードまたはHP-GLを書き出します。ウィンドウ（`--features gui` でビルド）ではレイヤー、ドリルファイル、基板外形、マスクレイヤー、基準点の表を開き、基板を裏返してパネルに並べ、銅・穴・外形・経路を描画し、コマンドラインと同じファイルを書き出せますが、画面ではまだ確認しておらず、実機では試しておらず、実際のファイル群での確認もしていません。
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | バージョン | `0.1.1` |
 | 成熟度 | 足場 |
-| テスト | 416 |
+| テスト | 421 |
 | 技術スタック | Rust |
 | 実機での動作 | 未試験：ここにあるものは機械で動かしたことがありません |
 
@@ -48,7 +48,7 @@
 | ファイルと配置 | 🟡 | ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、位置合わせ穴を追加し、設計ルールを検出位置つきで確認します。コンピュータ上でテスト済みで、他のプログラムが書いたファイルや実機では試していません。 |
 | 強制アイソレーション・補正・マスク | 🟡 | 工具が入らない隙間に沿う強制経路、軽い経路、基準点によるスケールと補正、ソルダーマスクの開口部、単位とパスのプレビュー。生成したレイヤーと破損入力でコンピュータ上でテストしましたが、実際の基板や機械では試しておらず、補正はカメラの実測値と比較していません。 |
 | コマンドライン | 🟡 | `eh3d-isocam` はライブラリと同じ関数を実行して結果を表示します。エラーはメッセージと 0 以外の終了コードで返ります。 |
-| テスト | 🟡 | 416 件のテストが通ります（`cargo test`）。通常ケース、境界ケース、破損入力を含みます。固定シードによるテーブルの移動範囲を持つ Bungard 機のシミュレーション（障害の注入と復旧を含む）も含まれます。 |
+| テスト | 🟡 | 421 件のテストが通ります（`cargo test`）。通常ケース、境界ケース、破損入力を含みます。固定シードによるテーブルの移動範囲を持つ Bungard 機のシミュレーション（障害の注入と復旧を含む）も含まれます。 |
 | セキュリティ | 🟡 | 安全な Rust のみ（`forbid(unsafe_code)`）。受け取ったファイルでパニックせず、不正な値は理由付きのエラーになります。独立したレビューはありません。 |
 | ウィンドウ | 🟠 | 作成済み（egui、`--features gui`）：レイヤーを開くかドロップ、拡大縮小と移動、主なパラメーターの編集、書き出し。ロジックはテスト済みで、リリース版のプログラムが画像に描き出します（`--shot`）が、画面で実際に使った人はまだいません。 |
 | 実機 | 🔴 | 未試験：ここにあるものは機械で実行したことがありません。 |
@@ -80,6 +80,7 @@
 * **機械の限界**（`src/machine.rs`）：`machine_profile`（`ccd-mtc`：495 x 325 mm、`ccd2-mtc`：325 x 270 mm）または `machine_x_mm` と `machine_y_mm` がテーブルを、`machine_margin_mm` が縁から保つ距離を、`machine_max_depth_mm` と `machine_max_rpm` が最も深い切削と最も速いスピンドルを決めます。G-code は保存の前に動きを一つずつたどり、動きがテーブルから出る、深すぎる、スピンドルが速すぎるときは行番号つきで拒否されます（`--force` なら理由を示して書き出します）。作業の深さや回転数が限界を超える設定は、設定の読み込み時に拒否されます。すべて初期状態では無効です。
 * **プログラムの空運転**（`src/simulate.rs`）：`eh3d-isocam simulate プログラム.nc` は任意の G-code プログラムを動作ごとにたどり、長さ、動く範囲、最も深い切削、時間（送りでの切削、切り込み送りでの下降、`rapid_mm_min` での早送り、`G4` の待ち）を表示し、材料へ入る早送り、スピンドルが止まった切削や送りのない切削、終わらないプログラム、破った機械の限界を行番号つきで挙げます。指摘があれば終了コードは 1 です。報告は 8 言語で出ます。
 * **深さの段階と高さマップ**（`src/heightmap.rs`）：`depth_step_mm` は各経路を深さごとに切り直し（閉じた経路はもう一周、開いた経路は戻りながら、工具を持ち上げずに）、`--height-map ファイル`（`heightmap_file`）は EH3D-AUTOLEVEL のマップを読み、各切削の Z をその点でのテーブルの下の深さにし、動きは `heightmap_max_segment_mm` 以下の断片に分けます。測定されていない点があるマップや、平らから離れすぎたテーブル（`heightmap_max_range_mm`）は拒否されます。どちらも初期状態では無効です。
+* **トラック幅から決める深さ**（`src/crib.rs`）：`--crib-fine-width-mm W` は、工具庫の V ビットや彫刻刃が幅 `W` のトラックを切る深さを求めて `depth_mm` とします。工具が切れない幅やエンドミルは拒否されます。
 
 ## 🧩 EH3D での役割
 
@@ -147,7 +148,7 @@ eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|ligh
 options: --config FILE  --outline FILE  --drills FILE  --force  and every setting by its name (--fine-tool-mm 0.15, --fine-tool-mm 8mil, --forced-isolation yes, --fiducial "0,0,0.1,0.05")
 old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  --gerber-zeros leading|trailing  --gerber-units inch|mm  --aperture-units mil|mm|inch
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
-tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting)
+tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N  --crib-fine-width-mm W   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting; W = the width the V-bit is to cut, the depth follows)
 machine limits: --machine-profile none|ccd-mtc|ccd2-mtc  --machine-x-mm N  --machine-y-mm N  --machine-margin-mm N  --machine-max-depth-mm N  --machine-max-rpm N   (0 = not checked)
 dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time, box, deepest cut, findings with their lines; exit code 1 on any finding)
 depth and surface: --depth-step-mm N  --height-map FILE  --heightmap-ref-x-mm N  --heightmap-ref-y-mm N  --heightmap-max-segment-mm N  --heightmap-max-range-mm N   (the map is the text file of EH3D-AUTOLEVEL)
@@ -231,7 +232,7 @@ cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # 
 
 ## 🧪 テスト
 
-テストは 416 件あります（`cargo test`、CI では Windows と Linux で実行）。通常ケース、境界ケース、破損入力を確認し、空のファイル、ゴミデータ、途中で切れたファイルでもパニックしません。CI は `cargo fmt --check`、警告をエラーにした `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
+テストは 421 件あります（`cargo test`、CI では Windows と Linux で実行）。通常ケース、境界ケース、破損入力を確認し、空のファイル、ゴミデータ、途中で切れたファイルでもパニックしません。CI は `cargo fmt --check`、警告をエラーにした `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
 
 ## 🏗️ ビルドとリリース
 
