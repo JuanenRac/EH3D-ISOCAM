@@ -2,7 +2,7 @@
 //! keys as options (`--fine-tool-mm 0.15` is `fine_tool_mm = 0.15`), so nothing tuned is hidden in the code.
 
 use crate::drc::Rules;
-use crate::drill::ExcellonFormat;
+use crate::drill::{DrillOrder, ExcellonFormat};
 use crate::fiducial::{fit, Affine, Fit, Limits, Model, Pair};
 use crate::forced::Forced;
 use crate::gcode::Job;
@@ -195,6 +195,8 @@ pub struct Settings {
     pub heightmap_max_range_mm: f64,
     /// The width, in mm, the fine crib tool (a V-bit or an engraver) is to cut: the depth is worked out from it and replaces `depth_mm`; 0 keeps `depth_mm`.
     pub crib_fine_width_mm: f64,
+    /// The order the holes of a drill file or a plot are drilled in (`file`, `nearest` or `optimized`); within each tool, from the starting point of the tool.
+    pub drill_order: DrillOrder,
 }
 
 impl Default for Settings {
@@ -310,6 +312,7 @@ impl Default for Settings {
             heightmap_max_segment_mm: 2.0,
             heightmap_max_range_mm: 0.5,
             crib_fine_width_mm: 0.0,
+            drill_order: DrillOrder::File,
         }
     }
 }
@@ -557,6 +560,7 @@ impl Settings {
             "heightmap_max_segment_mm" => self.heightmap_max_segment_mm = num(key, v)?,
             "heightmap_max_range_mm" => self.heightmap_max_range_mm = num(key, v)?,
             "crib_fine_width_mm" => self.crib_fine_width_mm = num(key, v)?,
+            "drill_order" => self.drill_order = DrillOrder::parse(v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -668,6 +672,7 @@ heightmap_ref_y_mm = {}
 heightmap_max_segment_mm = {}
 heightmap_max_range_mm = {}
 crib_fine_width_mm = {}
+drill_order = {}
 ",
             self.conflict_tolerance_scope.name(),
             self.rubout_fill_margin_mm,
@@ -705,7 +710,8 @@ crib_fine_width_mm = {}
             self.heightmap_ref_y_mm,
             self.heightmap_max_segment_mm,
             self.heightmap_max_range_mm,
-            self.crib_fine_width_mm
+            self.crib_fine_width_mm,
+            self.drill_order.name()
         ));
         for p in &self.fiducials {
             extra.push_str(&format!(

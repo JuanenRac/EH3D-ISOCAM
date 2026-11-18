@@ -503,3 +503,110 @@ fn the_drill_file_says_that_its_coordinates_are_whole_mils_and_still_reads_back(
     assert_eq!(back.holes.len(), 1);
     assert!((back.holes[0].x_mm - 25.4).abs() < 1e-9 && (back.holes[0].y_mm - 12.7).abs() < 1e-9);
 }
+
+// ---- the order of the holes -------------------------------------------------------------------------------------------------------------------------------
+
+fn run_cli(args: &[&str]) -> (bool, String, String) {
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_eh3d-isocam"))
+        .args(args)
+        .output()
+        .expect("the program runs");
+    (
+        out.status.success(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+fn scrambled_drill_file() -> &'static str {
+    // whole mils: 0.2 in is 5.08 mm; the holes of tool 1 are scrambled along a line, tool 2 has two
+    "M48\nINCH\nT1C0.0315\nT2C0.0394\n%\nT1\nX800Y0\nX200Y0\nX600Y0\nX400Y0\nT2\nX1000Y0\nX100Y0\nM30\n"
+}
+
+#[test]
+fn the_order_of_the_drill_file_is_kept_unless_the_settings_ask_for_another() {
+    let dir = env!("CARGO_TARGET_TMPDIR");
+    let input = format!("{dir}/order_in.ncd");
+    let (plain, near) = (
+        format!("{dir}/order_plain.ncd"),
+        format!("{dir}/order_near.ncd"),
+    );
+    std::fs::write(&input, scrambled_drill_file()).unwrap();
+    let (ok, _, err) = run_cli(&["drills", &input, &plain]);
+    assert!(ok, "{err}");
+    assert!(!err.contains("drill_order"), "{err}");
+    let kept = read_drills(&std::fs::read_to_string(&plain).unwrap()).unwrap();
+    let xs: Vec<i64> = kept
+        .holes
+        .iter()
+        .map(|h| (h.x_mm / 25.4 * 1000.0).round() as i64)
+        .collect();
+    assert_eq!(xs, vec![800, 200, 600, 400, 1000, 100]);
+
+    let (ok, _, err) = run_cli(&["drills", &input, &near, "--drill-order", "nearest"]);
+    assert!(ok, "{err}");
+    assert!(
+        err.contains("note: with drill_order = nearest the drill travels"),
+        "{err}"
+    );
+    let ordered = read_drills(&std::fs::read_to_string(&near).unwrap()).unwrap();
+    let xs: Vec<i64> = ordered
+        .holes
+        .iter()
+        .map(|h| (h.x_mm / 25.4 * 1000.0).round() as i64)
+        .collect();
+    // tool 1 from the start (0, 0) outwards, then tool 2 from where it ended
+    assert_eq!(xs, vec![200, 400, 600, 800, 1000, 100]);
+    assert_eq!(
+        ordered.holes.iter().map(|h| h.tool).collect::<Vec<_>>(),
+        vec![1, 1, 1, 1, 2, 2]
+    );
+}
+
+#[test]
+fn the_drill_travel_is_told_and_the_start_of_the_tool_counts() {
+    let dir = env!("CARGO_TARGET_TMPDIR");
+    let input = format!("{dir}/order_in2.ncd");
+    let out = format!("{dir}/order_out2.ncd");
+    std::fs::write(&input, scrambled_drill_file()).unwrap();
+    let (ok, _, err) = run_cli(&["drills", &input, &out, "--drill-order", "optimized"]);
+    assert!(ok, "{err}");
+    // 6 holes on a line: the file order travels 20.32 + 15.24 + ... more than the 25.4 mm of the sweep
+    let note = err.lines().find(|l| l.contains("drill_order")).unwrap();
+    assert!(note.contains("instead of"), "{note}");
+    // starting at the far end changes which hole comes first
+    let (ok, _, err) = run_cli(&[
+        "drills",
+        &input,
+        &out,
+        "--drill-order",
+        "nearest",
+        "--start-x-mm",
+        "25.4",
+    ]);
+    assert!(ok, "{err}");
+    let back = read_drills(&std::fs::read_to_string(&out).unwrap()).unwrap();
+    // tool 1 holes are at 5.08, 10.16, 15.24 and 20.32 mm: from 25.4 the nearest is the one at 20.32
+    assert!(
+        (back.holes[0].x_mm - 20.32).abs() < 0.01,
+        "{}",
+        back.holes[0].x_mm
+    );
+    let (ok, _, err) = run_cli(&["drills", &input, &out, "--drill-order", "random"]);
+    assert!(!ok && err.contains("drill_order 'random'"), "{err}");
+}
+
+#[test]
+fn the_drill_order_setting_is_written_and_read_back() {
+    use eh3d_isocam::config::Settings;
+    use eh3d_isocam::drill::DrillOrder;
+    let s = Settings::default();
+    assert_eq!(s.drill_order, DrillOrder::File);
+    assert!(s.to_text().contains("drill_order = file\n"));
+    let t = Settings::parse("drill_order = optimized\n").unwrap();
+    assert_eq!(t.drill_order, DrillOrder::Optimized);
+    assert_eq!(Settings::parse(&t.to_text()).unwrap(), t);
+    assert!(Settings::parse("drill_order = x\n")
+        .unwrap_err()
+        .contains("line 1"));
+}

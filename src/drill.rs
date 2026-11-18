@@ -781,3 +781,271 @@ pub fn add_tabs(pass: &mut Pass, tool_mm: f64, t: &Tabs) -> Result<TabReport, St
     pass.open.extend(runs);
     Ok(report)
 }
+
+/// The order the holes of a drill file are drilled in: the order of the file, or each tool's holes one after the other along a short path.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum DrillOrder {
+    /// The order the holes come in.
+    #[default]
+    File,
+    /// From where the drill stands, the nearest hole of the tool next.
+    Nearest,
+    /// The nearest-hole path of every tool, shortened by turning stretches of it round while that makes it shorter.
+    Optimized,
+}
+
+impl DrillOrder {
+    /// The value of the setting `drill_order`: `file`, `nearest` or `optimized`.
+    pub fn parse(v: &str) -> Result<DrillOrder, String> {
+        match v.trim().to_ascii_lowercase().as_str() {
+            "file" | "original" => Ok(DrillOrder::File),
+            "nearest" => Ok(DrillOrder::Nearest),
+            "optimized" | "optimised" => Ok(DrillOrder::Optimized),
+            _ => Err(format!(
+                "drill_order '{}' must be file, nearest or optimized",
+                v.trim()
+            )),
+        }
+    }
+
+    /// The value as the setting is written.
+    pub fn name(self) -> &'static str {
+        match self {
+            DrillOrder::File => "file",
+            DrillOrder::Nearest => "nearest",
+            DrillOrder::Optimized => "optimized",
+        }
+    }
+}
+
+/// The most holes of one tool the shortening of a path looks at (its cost grows with the square of the number of holes); more are left in the nearest-hole order.
+pub const OPTIMIZE_MAX_HOLES: usize = 600;
+
+fn gap(a: (f64, f64), b: (f64, f64)) -> f64 {
+    (a.0 - b.0).hypot(a.1 - b.1)
+}
+
+/// The distance the drill travels over the holes in the order given, from `start`, in mm (the move from the last hole of a tool to the first of the next counts, the change of tool
+/// does not).
+pub fn drill_travel_mm(holes: &[Hole], start: (f64, f64)) -> f64 {
+    let mut at = start;
+    let mut sum = 0.0;
+    for h in holes {
+        sum += gap(at, (h.x_mm, h.y_mm));
+        at = (h.x_mm, h.y_mm);
+    }
+    sum
+}
+
+/// The holes of one tool from `start` by the nearest hole next (the lowest index wins a tie), and with `improve` the path shortened by reversing stretches of it (2-opt with the
+/// start kept in place).
+fn path_of(group: &[Hole], start: (f64, f64), improve: bool) -> Vec<Hole> {
+    let mut left: Vec<Hole> = group.to_vec();
+    let mut path: Vec<Hole> = Vec::with_capacity(left.len());
+    let mut at = start;
+    while !left.is_empty() {
+        let mut best = 0;
+        let mut best_d = f64::INFINITY;
+        for (i, h) in left.iter().enumerate() {
+            let d = gap(at, (h.x_mm, h.y_mm));
+            if d < best_d {
+                best = i;
+                best_d = d;
+            }
+        }
+        let h = left.remove(best);
+        at = (h.x_mm, h.y_mm);
+        path.push(h);
+    }
+    if improve && path.len() >= 3 && path.len() <= OPTIMIZE_MAX_HOLES {
+        let mut changed = true;
+        let mut rounds = 0;
+        while changed && rounds < 50 {
+            changed = false;
+            rounds += 1;
+            // reversing path[i..=j] changes the join before i and the join after j; the end of the path has no join after it
+            for i in 0..path.len() - 1 {
+                for j in i + 1..path.len() {
+                    let p = |k: usize| (path[k].x_mm, path[k].y_mm);
+                    let before = if i == 0 { start } else { p(i - 1) };
+                    let (old_tail, new_tail) = if j + 1 < path.len() {
+                        (gap(p(j), p(j + 1)), gap(p(i), p(j + 1)))
+                    } else {
+                        (0.0, 0.0)
+                    };
+                    let old = gap(before, p(i)) + old_tail;
+                    let new = gap(before, p(j)) + new_tail;
+                    if new + 1e-9 < old {
+                        path[i..=j].reverse();
+                        changed = true;
+                    }
+                }
+            }
+        }
+    }
+    path
+}
+
+/// The holes in the order asked for. The tools stay in the order they first appear in and the holes of a tool stay together (a drill file is written a tool after the other); within a
+/// tool the holes are reordered, each tool starting from where the one before it ended (the first from `start`). `File` returns the holes as they came.
+pub fn order_holes(holes: &[Hole], start: (f64, f64), order: DrillOrder) -> Vec<Hole> {
+    if order == DrillOrder::File {
+        return holes.to_vec();
+    }
+    let mut tools: Vec<u8> = Vec::new();
+    for h in holes {
+        if !tools.contains(&h.tool) {
+            tools.push(h.tool);
+        }
+    }
+    let mut out = Vec::with_capacity(holes.len());
+    let mut at = start;
+    for t in tools {
+        let group: Vec<Hole> = holes.iter().filter(|h| h.tool == t).copied().collect();
+        let path = path_of(&group, at, order == DrillOrder::Optimized);
+        if let Some(last) = path.last() {
+            at = (last.x_mm, last.y_mm);
+        }
+        out.extend(path);
+    }
+    out
+}
+
+#[cfg(test)]
+mod order_tests {
+    use super::*;
+
+    fn hole(tool: u8, x: f64, y: f64) -> Hole {
+        Hole {
+            tool,
+            x_mm: x,
+            y_mm: y,
+            diameter_mm: 0.8,
+        }
+    }
+
+    /// A line of holes in a scrambled order.
+    fn scrambled() -> Vec<Hole> {
+        [5.0, 1.0, 9.0, 3.0, 7.0, 2.0, 8.0, 4.0, 6.0]
+            .iter()
+            .map(|x| hole(1, *x, 0.0))
+            .collect()
+    }
+
+    fn key(h: &[Hole]) -> Vec<(i64, i64)> {
+        let mut k: Vec<(i64, i64)> = h
+            .iter()
+            .map(|x| ((x.x_mm * 100.0) as i64, (x.y_mm * 100.0) as i64))
+            .collect();
+        k.sort();
+        k
+    }
+
+    #[test]
+    fn the_order_is_read_by_its_names_and_written_back() {
+        for o in [DrillOrder::File, DrillOrder::Nearest, DrillOrder::Optimized] {
+            assert_eq!(DrillOrder::parse(o.name()), Ok(o));
+        }
+        assert_eq!(DrillOrder::parse(" Original "), Ok(DrillOrder::File));
+        assert_eq!(DrillOrder::parse("OPTIMISED"), Ok(DrillOrder::Optimized));
+        assert!(DrillOrder::parse("random")
+            .unwrap_err()
+            .contains("drill_order 'random'"));
+        assert_eq!(DrillOrder::default(), DrillOrder::File);
+    }
+
+    #[test]
+    fn the_file_order_changes_nothing() {
+        let h = scrambled();
+        assert_eq!(order_holes(&h, (0.0, 0.0), DrillOrder::File), h);
+        assert!(order_holes(&[], (0.0, 0.0), DrillOrder::Optimized).is_empty());
+    }
+
+    #[test]
+    fn the_nearest_hole_next_walks_a_line_from_the_start() {
+        let o = order_holes(&scrambled(), (0.0, 0.0), DrillOrder::Nearest);
+        let xs: Vec<f64> = o.iter().map(|h| h.x_mm).collect();
+        assert_eq!(xs, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
+        assert!((drill_travel_mm(&o, (0.0, 0.0)) - 9.0).abs() < 1e-9);
+        assert!(drill_travel_mm(&scrambled(), (0.0, 0.0)) > 30.0);
+    }
+
+    #[test]
+    fn the_tools_keep_their_order_and_each_starts_where_the_one_before_ended() {
+        let h = vec![
+            hole(2, 10.0, 0.0),
+            hole(1, 0.0, 5.0),
+            hole(2, 1.0, 0.0),
+            hole(1, 0.0, 1.0),
+            hole(2, 5.0, 0.0),
+        ];
+        let o = order_holes(&h, (0.0, 0.0), DrillOrder::Nearest);
+        let tools: Vec<u8> = o.iter().map(|x| x.tool).collect();
+        // tool 2 appeared first, so it is drilled first, all of it
+        assert_eq!(tools, vec![2, 2, 2, 1, 1]);
+        let at: Vec<(f64, f64)> = o.iter().map(|x| (x.x_mm, x.y_mm)).collect();
+        assert_eq!(
+            at,
+            vec![(1.0, 0.0), (5.0, 0.0), (10.0, 0.0), (0.0, 1.0), (0.0, 5.0)]
+        );
+        assert_eq!(key(&o), key(&h));
+    }
+
+    #[test]
+    fn the_optimized_path_is_never_longer_than_the_nearest_one() {
+        // a seeded scatter of holes
+        let mut s = 12345u64;
+        let mut next = || {
+            s = s
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            ((s >> 33) % 10_000) as f64 / 100.0
+        };
+        for n in [3usize, 10, 40, 120] {
+            let h: Vec<Hole> = (0..n).map(|_| hole(1, next(), next())).collect();
+            let near = order_holes(&h, (0.0, 0.0), DrillOrder::Nearest);
+            let opt = order_holes(&h, (0.0, 0.0), DrillOrder::Optimized);
+            let (near_len, opt_len) = (
+                drill_travel_mm(&near, (0.0, 0.0)),
+                drill_travel_mm(&opt, (0.0, 0.0)),
+            );
+            let file = drill_travel_mm(&h, (0.0, 0.0));
+            assert!(
+                opt_len <= near_len + 1e-9,
+                "{n} holes: {opt_len} against {near_len}"
+            );
+            assert!(
+                near_len < file,
+                "{n} holes: nearest {near_len} against the file {file}"
+            );
+            // the same holes, only in another order
+            assert_eq!(key(&opt), key(&h));
+        }
+    }
+
+    #[test]
+    fn the_shortening_never_leaves_a_diagonal_across_a_square() {
+        let h = vec![
+            hole(1, 0.0, 0.0),
+            hole(1, 10.0, 10.0),
+            hole(1, 10.0, 0.0),
+            hole(1, 0.0, 10.0),
+        ];
+        let opt = order_holes(&h, (0.0, 0.0), DrillOrder::Optimized);
+        // from the corner where the drill stands, three sides of the square
+        assert!(
+            (drill_travel_mm(&opt, (0.0, 0.0)) - 30.0).abs() < 1e-9,
+            "{opt:?}"
+        );
+    }
+
+    #[test]
+    fn a_tool_with_more_holes_than_the_limit_is_left_in_the_nearest_order() {
+        let h: Vec<Hole> = (0..OPTIMIZE_MAX_HOLES + 5)
+            .map(|i| hole(1, (i * 7 % 101) as f64, (i * 13 % 97) as f64))
+            .collect();
+        let near = order_holes(&h, (0.0, 0.0), DrillOrder::Nearest);
+        let opt = order_holes(&h, (0.0, 0.0), DrillOrder::Optimized);
+        assert_eq!(near, opt);
+    }
+}

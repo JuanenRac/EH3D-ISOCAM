@@ -939,6 +939,14 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let (board, whole) = load_board(&cli2, None)?;
             let job = drills_job(board.holes, &whole, s, cli.align, is_plot(out))?;
             write_text(&cli, 1, out, job.text)?;
+            if s.drill_order != eh3d_isocam::drill::DrillOrder::File {
+                eprintln!(
+                    "note: with drill_order = {} the drill travels {} over the holes instead of {} in the order of the file",
+                    s.drill_order.name(),
+                    len(&cli, job.travel_mm),
+                    len(&cli, job.travel_file_mm)
+                );
+            }
             println!("{} holes written to {out}", job.holes);
             Ok(())
         }

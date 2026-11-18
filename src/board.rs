@@ -4,8 +4,9 @@
 use crate::config::Settings;
 use crate::contour::Loop;
 use crate::drill::{
-    add_tabs, read_drills_with_format, read_outline, route_outline, write_drills_in_format,
-    write_route_excellon_in_format, DrillStyle, Hole, Outline, TabReport, Tabs,
+    add_tabs, drill_travel_mm, order_holes, read_drills_with_format, read_outline, route_outline,
+    write_drills_in_format, write_route_excellon_in_format, DrillOrder, DrillStyle, Hole, Outline,
+    TabReport, Tabs,
 };
 use crate::fiducial::{apply_to_holes, apply_to_passes, Fit};
 use crate::filetype;
@@ -374,6 +375,9 @@ pub fn add_alignment(holes: &mut Vec<Hole>, whole: &Bounds, s: &Settings) -> Res
 pub struct DrillJob {
     pub text: String,
     pub holes: usize,
+    /// The distance the drill travels over the holes in the order of the file and in the order written (the same when `drill_order` is `file`), from the starting point, in mm.
+    pub travel_file_mm: f64,
+    pub travel_mm: f64,
 }
 
 /// The holes (already laid out) as a drill file, or as a plot with a pen for each drill. With `align` the holes that hold the board are added first; the scale and the correction
@@ -392,6 +396,12 @@ pub fn drills_job(
     if !t.is_identity() {
         apply_to_holes(&mut holes, &t)?;
     }
+    let start = (s.start_x_mm, s.start_y_mm);
+    let travel_file_mm = drill_travel_mm(&holes, start);
+    if s.drill_order != DrillOrder::File {
+        holes = order_holes(&holes, start, s.drill_order);
+    }
+    let travel_mm = drill_travel_mm(&holes, start);
     let text = if plot {
         finish_plot(
             s,
@@ -416,6 +426,8 @@ pub fn drills_job(
     Ok(DrillJob {
         text,
         holes: holes.len(),
+        travel_file_mm,
+        travel_mm,
     })
 }
 
