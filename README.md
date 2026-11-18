@@ -17,7 +17,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 385 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 397 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.1.1` |
 | Maturity | Scaffolding |
-| Tests | 385 |
+| Tests | 397 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -48,7 +48,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 385 tests pass (`cargo test`), with normal cases, edge cases and damaged input. They include a seeded simulation of a Bungard machine with the travel of its table with injected faults and recovery. |
+| Tests | 🟡 | 397 tests pass (`cargo test`), with normal cases, edge cases and damaged input. They include a seeded simulation of a Bungard machine with the travel of its table with injected faults and recovery. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`): open or drop a layer, zoom and pan, edit the main parameters, export; its logic is tested and the program of a release draws it to a picture (`--shot`), but nobody has used it on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -78,6 +78,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **Reading and notices by code (command line):** files are read with a size limit (`--max-bytes N` or `max_input_mb`, 64 MiB by default) and text that is not UTF-8 is read as Latin-1 with a warning (`input-not-utf8`); the notices of the Gerber reader are shown with their stable code and `--hide CODE[,CODE]` leaves out those codes. The note about the lighter paths and the one about the bridges of the cut are printed only when they changed something. `arc_tolerance_mm` sets how closely the arcs of a layer are followed. `min_tool_mm` (0.02 by default) names the thinnest tool any tool setting may have, and a tool below it is refused with the name of the setting; `rapid_mm_min` (0 by default, no estimate) is the speed of the rapid moves, with which `info` adds an estimate of the time of the job (cutting, going down, moving; the spindle wait and the tool changes by hand are not counted). `hpgl_units_per_mm` (40 by default, from 10 to 1000) sets the units of a plot file to the millimetre; the range check of 32767 units follows it (327 mm at 100).
 * **Tools from the tool crib** (`src/crib.rs`): `--crib FILE` (or `crib_file`) reads the CSV table that `eh3d-tools` exports, and `--crib-fine N`, `--crib-coarse N` and `--crib-route N` take the tools with those numbers from it: the width an end mill, a V-bit or an engraver cuts with at `depth_mm` becomes `fine_tool_mm` or `coarse_tool_mm` (a V-bit cuts `2 * depth * tan(angle / 2) + crib_vbit_flat_mm` wide, at most its diameter, cut down to a ten-thousandth of a millimetre) and the diameter of an end mill becomes `route_tool_mm`; each replacement is told on the standard error, a drill, a laser or a nozzle is refused, and a tool that is too thin for `min_tool_mm` is refused by the name of the setting. The table is read only when a tool is chosen.
 * **Limits of the machine** (`src/machine.rs`): `machine_profile` (`ccd-mtc`: 495 x 325 mm, `ccd2-mtc`: 325 x 270 mm) or `machine_x_mm` and `machine_y_mm` give the table, `machine_margin_mm` the distance kept from its edges, `machine_max_depth_mm` and `machine_max_rpm` the deepest cut and the fastest spindle. The G-code is walked move by move before it is saved and refused with its line when a move leaves the table, goes too deep or runs the spindle too fast (`--force` writes it anyway and says why); a depth or a speed of the job above the limits is refused when the settings are read. Everything is off by default.
+* **A dry run of a program** (`src/simulate.rs`): `eh3d-isocam simulate PROGRAM.nc` walks any G-code program move by move and prints its length, the box it moves in, the deepest cut and the time (cutting at the feed, going down at the plunge feed, rapid moves at `rapid_mm_min`, `G4` waits), and lists with their lines a rapid move into the material, a cut with the spindle off or with no feed, a program that does not end and the limits of the machine it breaks; any finding gives exit code 1. The report is told in the eight languages.
 
 ## 🧩 Role in EH3D
 
@@ -147,6 +148,7 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
 tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting)
 machine limits: --machine-profile none|ccd-mtc|ccd2-mtc  --machine-x-mm N  --machine-y-mm N  --machine-margin-mm N  --machine-max-depth-mm N  --machine-max-rpm N   (0 = not checked)
+dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time, box, deepest cut, findings with their lines; exit code 1 on any finding)
 ```
 
 ```text
@@ -169,6 +171,7 @@ EH3D-ISOCAM/
 │   ├── main.rs                                  the command line
 │   ├── preview.rs                               the passes drawn as SVG or text
 │   ├── shot.rs                                  the picture mode of the window (--shot): its arguments, read and checked without a screen
+│   ├── simulate.rs                              the dry run of a G-code program: time, box, deepest cut and findings in eight languages
 │   ├── viewport.rs                              zoom and pan of the picture, in plain numbers
 │   └── window.rs                                the state of the window without a screen: layer, parameters, paths, export and status
 ├── tests/
@@ -179,7 +182,7 @@ EH3D-ISOCAM/
 │   ├── excellon_format.rs                       tests of the 2.4 format of the coordinates of a drill file
 │   ├── files.rs                                 tests of the drill and outline files
 │   ├── isocam.rs                                tests of the library and the command line
-│   ├── job_safety.rs                            tests of the limits of the machine: settings, refused programs and --force
+│   ├── job_safety.rs                            tests of the machine limits and of the dry run
 │   ├── kinds.rs                                 tolerance for pads, contour fills, file kinds, pens, DXF
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
 │   ├── multi.rs                                 tests of tools, rubout, direction, order and settings
@@ -224,7 +227,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 385 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 397 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -263,6 +266,7 @@ EH3D-ISOCAM/
 │   ├── main.rs                                  the command line
 │   ├── preview.rs                               the passes drawn as SVG or text
 │   ├── shot.rs                                  the picture mode of the window (--shot): its arguments, read and checked without a screen
+│   ├── simulate.rs                              the dry run of a G-code program: time, box, deepest cut and findings in eight languages
 │   ├── viewport.rs                              zoom and pan of the picture, in plain numbers
 │   └── window.rs                                the state of the window without a screen: layer, parameters, paths, export and status
 ├── tests/
@@ -273,7 +277,7 @@ EH3D-ISOCAM/
 │   ├── excellon_format.rs                       tests of the 2.4 format of the coordinates of a drill file
 │   ├── files.rs                                 tests of the drill and outline files
 │   ├── isocam.rs                                tests of the library and the command line
-│   ├── job_safety.rs                            tests of the limits of the machine: settings, refused programs and --force
+│   ├── job_safety.rs                            tests of the machine limits and of the dry run
 │   ├── kinds.rs                                 tolerance for pads, contour fills, file kinds, pens, DXF
 │   ├── layout.rs                                tests of both sides, panels, rules and the command line
 │   ├── multi.rs                                 tests of tools, rubout, direction, order and settings

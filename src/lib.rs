@@ -20,6 +20,7 @@ pub mod lang;
 pub mod machine;
 pub mod preview;
 pub mod shot;
+pub mod simulate;
 pub mod viewport;
 pub mod window;
 

@@ -17,7 +17,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有385个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它有一个窗口（用 `--features gui` 构建），可打开层、钻孔文件、板框、阻焊层和基准点表，翻转电路板并在拼板上重复，绘制铜箔、孔、板框和路径，并写出与命令行相同的文件，但窗口尚未在屏幕上看过，没有在机器上试过，也没有用一批真实文件检验过。
+**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有397个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它有一个窗口（用 `--features gui` 构建），可打开层、钻孔文件、板框、阻焊层和基准点表，翻转电路板并在拼板上重复，绘制铜箔、孔、板框和路径，并写出与命令行相同的文件，但窗口尚未在屏幕上看过，没有在机器上试过，也没有用一批真实文件检验过。
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | 版本 | `0.1.1` |
 | 成熟度 | 脚手架 |
-| 测试 | 385 |
+| 测试 | 397 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -48,7 +48,7 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 385 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
+| 测试 | 🟡 | 397 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`）：打开或拖入层、缩放和平移、编辑主要参数、导出；其逻辑已测试，发布版程序可将其绘制为图片（`--shot`），但还没有人在屏幕上实际使用过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -78,6 +78,7 @@
 * **读取与按代码的提示（命令行）：** 文件带大小限制读取（`--max-bytes N` 或 `max_input_mb`，默认 64 MiB），非 UTF-8 文本按 Latin-1 读取并给出警告（`input-not-utf8`）；Gerber 读取器的提示连同稳定代码一起显示，`--hide CODE[,CODE]` 可省略这些代码。关于简化路径的说明和关于切割桥的说明，只在确实改变了内容时才输出。 `arc_tolerance_mm` 设定图层圆弧的跟随精度。 `min_tool_mm`（默认 0.02）设定任何刀具设置所能使用的最细刀具，更细的刀具会连同设置名称一起被拒绝；`rapid_mm_min`（默认 0，不估算）是快速移动的速度，`info` 据此追加作业时间的估算（切削、下刀、移动；主轴等待和手动换刀不计入）。 `hpgl_units_per_mm`（默认 40，范围 10 到 1000）设定绘图文件每毫米的单位数，32767 单位的范围检查随之变化（100 时为 327 毫米）。
 * **来自刀具库的刀具**（`src/crib.rs`）：`--crib 文件`（或 `crib_file`）读取 `eh3d-tools` 导出的 CSV 表，`--crib-fine N`、`--crib-coarse N` 和 `--crib-route N` 从中取出对应编号的刀具：立铣刀、V 形刀或雕刻刀在 `depth_mm` 深度的切削宽度成为 `fine_tool_mm` 或 `coarse_tool_mm`（V 形刀宽度为 `2 * 深度 * tan(角度 / 2) + crib_vbit_flat_mm`，最大为其直径，向下取整到万分之一毫米），立铣刀的直径成为 `route_tool_mm`；每次替换都会在标准错误输出中说明，钻头、激光和喷嘴会被拒绝，比 `min_tool_mm` 更细的刀具会连同设置名一起被拒绝。只有选择了刀具时才会读取该表。
 * **机器的限制**（`src/machine.rs`）：`machine_profile`（`ccd-mtc`：495 x 325 mm，`ccd2-mtc`：325 x 270 mm）或 `machine_x_mm` 与 `machine_y_mm` 给出工作台，`machine_margin_mm` 是与台面边缘保持的距离，`machine_max_depth_mm` 和 `machine_max_rpm` 是最深的切削和最快的主轴。G 代码在保存前逐个动作走一遍，当某个动作超出工作台、下刀过深或主轴转速过高时，连同行号一起被拒绝（`--force` 仍会写出并说明原因）；作业的深度或转速超过限制的设置在读取设置时被拒绝。一切默认关闭。
+* **程序的空运行**（`src/simulate.rs`）：`eh3d-isocam simulate 程序.nc` 逐个动作走完任意 G 代码程序，输出长度、移动范围、最深切削和时间（按进给切削、按下刀进给下降、快速移动按 `rapid_mm_min`、`G4` 等待），并连同行号列出进入材料的快速移动、主轴停止或没有进给的切削、不会结束的程序以及违反的机器限制；有任何发现退出码即为 1。报告以八种语言给出。
 
 ## 🧩 在 EH3D 中的角色
 
@@ -147,6 +148,7 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
 tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting)
 machine limits: --machine-profile none|ccd-mtc|ccd2-mtc  --machine-x-mm N  --machine-y-mm N  --machine-margin-mm N  --machine-max-depth-mm N  --machine-max-rpm N   (0 = not checked)
+dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time, box, deepest cut, findings with their lines; exit code 1 on any finding)
 ```
 
 ```text
@@ -169,6 +171,7 @@ EH3D-ISOCAM/
 │   ├── main.rs                                  命令行
 │   ├── preview.rs                               以 SVG 或文本绘制各遍路径
 │   ├── shot.rs                                  窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数
+│   ├── simulate.rs                              G 代码程序的空运行：时间、范围、最深切削和八种语言的发现
 │   ├── viewport.rs                              图像的缩放和平移（纯数值）
 │   └── window.rs                                无需屏幕的窗口状态：层、参数、路径、导出和状态
 ├── tests/
@@ -179,7 +182,7 @@ EH3D-ISOCAM/
 │   ├── excellon_format.rs                       钻孔文件坐标 2.4 格式的测试
 │   ├── files.rs                                 钻孔与板框文件的测试
 │   ├── isocam.rs                                库和命令行的测试
-│   ├── job_safety.rs                            机器限制的测试：设置、被拒绝的程序和 --force
+│   ├── job_safety.rs                            机器限制与空运行的测试
 │   ├── kinds.rs                                 焊盘容差、轮廓填充、文件类型、笔、DXF
 │   ├── layout.rs                                双面、拼板、规则和命令行的测试
 │   ├── multi.rs                                 刀具、残余铜箔、方向、顺序和设置的测试
@@ -224,7 +227,7 @@ cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # 
 
 ## 🧪 测试
 
-测试套件有 385 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 397 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -263,6 +266,7 @@ EH3D-ISOCAM/
 │   ├── main.rs                                  命令行
 │   ├── preview.rs                               以 SVG 或文本绘制各遍路径
 │   ├── shot.rs                                  窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数
+│   ├── simulate.rs                              G 代码程序的空运行：时间、范围、最深切削和八种语言的发现
 │   ├── viewport.rs                              图像的缩放和平移（纯数值）
 │   └── window.rs                                无需屏幕的窗口状态：层、参数、路径、导出和状态
 ├── tests/
@@ -273,7 +277,7 @@ EH3D-ISOCAM/
 │   ├── excellon_format.rs                       钻孔文件坐标 2.4 格式的测试
 │   ├── files.rs                                 钻孔与板框文件的测试
 │   ├── isocam.rs                                库和命令行的测试
-│   ├── job_safety.rs                            机器限制的测试：设置、被拒绝的程序和 --force
+│   ├── job_safety.rs                            机器限制与空运行的测试
 │   ├── kinds.rs                                 焊盘容差、轮廓填充、文件类型、笔、DXF
 │   ├── layout.rs                                双面、拼板、规则和命令行的测试
 │   ├── multi.rs                                 刀具、残余铜箔、方向、顺序和设置的测试

@@ -249,6 +249,19 @@
           }
         },
         {
+          "name": "simulate.rs",
+          "desc": {
+            "en": "the dry run of a G-code program: time, box, deepest cut and findings in eight languages",
+            "es": "la pasada en seco de un programa de G-code: tiempo, recorrido, corte más profundo y hallazgos en ocho idiomas",
+            "de": "der Trockenlauf eines G-Code-Programms: Zeit, Fahrbereich, tiefster Schnitt und Befunde in acht Sprachen",
+            "fr": "la passe à blanc d'un programme G-code : durée, parcours, coupe la plus profonde et trouvailles en huit langues",
+            "it": "la prova a vuoto di un programma G-code: tempo, percorso, taglio più profondo e rilievi in otto lingue",
+            "ja": "G-code プログラムの空運転：時間、動く範囲、最も深い切削、8言語の指摘",
+            "zh": "G 代码程序的空运行：时间、范围、最深切削和八种语言的发现",
+            "pt": "a passagem em seco de um programa G-code: tempo, percurso, corte mais fundo e achados em oito línguas"
+          }
+        },
+        {
           "name": "viewport.rs",
           "desc": {
             "en": "zoom and pan of the picture, in plain numbers",
@@ -375,14 +388,14 @@
         {
           "name": "job_safety.rs",
           "desc": {
-            "en": "tests of the limits of the machine: settings, refused programs and --force",
-            "es": "tests de los límites de la máquina: ajustes, programas rechazados y --force",
-            "de": "Tests der Maschinengrenzen: Einstellungen, abgelehnte Programme und --force",
-            "fr": "tests des limites de la machine : réglages, programmes refusés et --force",
-            "it": "test dei limiti della macchina: impostazioni, programmi rifiutati e --force",
-            "ja": "機械の限界のテスト：設定、拒否されるプログラム、--force",
-            "zh": "机器限制的测试：设置、被拒绝的程序和 --force",
-            "pt": "testes dos limites da máquina: definições, programas recusados e --force"
+            "en": "tests of the machine limits and of the dry run",
+            "es": "tests de los límites de la máquina y de la pasada en seco",
+            "de": "Tests der Maschinengrenzen und des Trockenlaufs",
+            "fr": "tests des limites de la machine et de la passe à blanc",
+            "it": "test dei limiti della macchina e della prova a vuoto",
+            "ja": "機械の限界と空運転のテスト",
+            "zh": "机器限制与空运行的测试",
+            "pt": "testes dos limites da máquina e da passagem em seco"
           }
         },
         {

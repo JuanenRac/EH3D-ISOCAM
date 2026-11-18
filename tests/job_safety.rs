@@ -1,5 +1,5 @@
 //! The limits of the machine a program is for: the settings that describe it, and the command line refusing (or, with --force, warning about) a program that would leave the table, cut
-//! too deep or run the spindle too fast. Nothing here has run on a machine.
+//! too deep or run the spindle too fast, and the dry run of a program (`simulate`) with its time, its box and its findings in the eight languages. Nothing here has run on a machine.
 
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::machine::Profile;
@@ -219,4 +219,117 @@ fn the_settings_file_of_the_example_has_the_machine_keys() {
     ] {
         assert!(text.contains(key), "{key} is not in examples/isocam.cfg");
     }
+}
+
+// ---- the dry run ------------------------------------------------------------------------------------------------------------------------------------------
+
+/// Runs the program with a language of the system.
+fn run_in(lang: &str, args: &[&str]) -> (bool, String, String) {
+    let out = Command::new(BIN)
+        .args(args)
+        .env("LC_ALL", lang)
+        .current_dir(root())
+        .output()
+        .expect("the program runs");
+    (
+        out.status.success(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+#[test]
+fn the_dry_run_of_a_program_of_the_command_line_has_a_time_a_box_and_no_findings() {
+    let d = dir("sim_ok");
+    let nc = d.join("a.nc");
+    let (ok, _, err) = isolate(&nc, &[]);
+    assert!(ok, "{err}");
+    let (ok, out, err) = run(&["simulate", nc.to_str().unwrap(), "--rapid-mm-min", "3000"]);
+    assert!(ok, "{out}{err}");
+    assert!(out.contains("time: ") && out.contains("cutting"), "{out}");
+    assert!(
+        out.contains("travel: X ") && out.contains("deepest cut 0.060 mm"),
+        "{out}"
+    );
+    assert!(out.contains("no warnings"), "{out}");
+    // without the speed of the rapid moves there is no time, and it says why
+    let (ok, out, _) = run(&["simulate", nc.to_str().unwrap()]);
+    assert!(ok && out.contains("rapid_mm_min"), "{out}");
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
+fn the_dry_run_speaks_the_language_of_the_system() {
+    let d = dir("sim_lang");
+    let nc = d.join("a.nc");
+    let (ok, _, err) = isolate(&nc, &[]);
+    assert!(ok, "{err}");
+    for (lang, word) in [
+        ("es_ES.UTF-8", "sin avisos"),
+        ("de_DE.UTF-8", "keine Warnungen"),
+        ("fr_FR.UTF-8", "aucun avertissement"),
+        ("it_IT.UTF-8", "nessun avviso"),
+        ("ja_JP.UTF-8", "警告なし"),
+        ("zh_CN.UTF-8", "没有警告"),
+        ("pt_PT.UTF-8", "sem avisos"),
+        ("en_US.UTF-8", "no warnings"),
+    ] {
+        let (ok, out, err) = run_in(lang, &["simulate", nc.to_str().unwrap()]);
+        assert!(ok && out.contains(word), "{lang}: {out}{err}");
+    }
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
+fn the_dry_run_fails_with_the_findings_of_a_bad_program() {
+    let d = dir("sim_bad");
+    let nc = d.join("bad.nc");
+    std::fs::write(&nc, "G21\nG90\nG0 X5 Y5\nG0 Z-1\nG1 X20 F100\n").unwrap();
+    let (ok, out, err) = run_in("en_US.UTF-8", &["simulate", nc.to_str().unwrap()]);
+    assert!(!ok, "{out}");
+    assert!(
+        out.contains("warning: line 4: a rapid move goes into the material"),
+        "{out}"
+    );
+    assert!(
+        out.contains("line 5: it cuts with the spindle off"),
+        "{out}"
+    );
+    assert!(out.contains("the program does not end"), "{out}");
+    assert!(err.contains("3 findings"), "{err}");
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
+fn the_dry_run_applies_the_limits_of_the_machine() {
+    let d = dir("sim_limits");
+    let nc = d.join("a.nc");
+    let (ok, _, err) = isolate(&nc, &[]);
+    assert!(ok, "{err}");
+    let (ok, out, _) = run(&[
+        "simulate",
+        nc.to_str().unwrap(),
+        "--machine-profile",
+        "ccd-mtc",
+    ]);
+    assert!(ok, "{out}");
+    let (ok, out, err) = run(&[
+        "simulate",
+        nc.to_str().unwrap(),
+        "--machine-x-mm",
+        "15",
+        "--machine-y-mm",
+        "10",
+    ]);
+    assert!(!ok && out.contains("outside the table"), "{out}{err}");
+    // a program that is not there, and no program at all
+    let (ok, _, err) = run(&["simulate", d.join("none.nc").to_str().unwrap()]);
+    assert!(!ok && err.contains("none.nc"), "{err}");
+    let out = Command::new(BIN)
+        .arg("simulate")
+        .current_dir(root())
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(64));
+    let _ = std::fs::remove_dir_all(&d);
 }

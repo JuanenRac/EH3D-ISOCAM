@@ -18,10 +18,12 @@ use eh3d_isocam::fill::{rubout_contours, Fill};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::hpgl::{write_opts, PenBy};
 use eh3d_isocam::isolate::{net_scene, plan_with_pads, rubout_lines, Pass};
+use eh3d_isocam::machine::check_program;
 use eh3d_isocam::optimize::optimize_passes;
 use eh3d_isocam::order::{arrange, directions, travel_mm, Cut, Strategy};
 use eh3d_isocam::preview;
 use eh3d_isocam::problems::{problem_zones, thin_for_tolerance_in};
+use eh3d_isocam::simulate;
 use eh3d_isocam::tolerance::{close_pieces_scoped, ToleranceScope};
 use eh3d_isocam::transform::{lay_out, Board};
 use eh3d_isocam::units::{parse_length, Unit};
@@ -45,6 +47,7 @@ const HELP: &str = "eh3d-isocam: isolation milling of copper from a Gerber layer
   eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F.gts]  the openings of the solder mask, from the mask layer or from the pads of the copper
   eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--contour FILE  parallel lines of a tool that clear an area or fill closed paths, cut to the copper of LAYER when it is given
   eh3d-isocam kind FILE...                       say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
+  eh3d-isocam simulate PROGRAM.nc                a dry run of a G-code program: its time, the box it moves in, the deepest cut and what is wrong with it (the machine limits of the settings apply)
   eh3d-isocam config                             every setting with its default, as a configuration file
   eh3d-isocam [gui] [LAYER.gtl]                  the window (a build with --features gui): with no arguments, or with a single layer, it opens; the commands above never open it
   eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|light] [--wait N] [--lang CODE] [--replace]   a picture of the window (a build with --features gui)
@@ -799,6 +802,26 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 len(&cli, total)
             );
             Ok(())
+        }
+        "simulate" => {
+            let file = arg(&cli, 0, "simulate needs a G-code program")?;
+            let text = read(&cli, file)?;
+            let mut report = simulate::run(&text, s.rapid_mm_min);
+            let limits = s.machine_limits();
+            if !limits.is_off() {
+                if let Err(why) = check_program(&text, &limits) {
+                    report.warnings.push(simulate::Warning {
+                        line: 0,
+                        kind: simulate::Kind::Limit(why),
+                    });
+                }
+            }
+            print!("{}", report.text(language(), &|mm| len(&cli, mm)));
+            if report.warnings.is_empty() {
+                Ok(())
+            } else {
+                Err(format!("{} findings", report.warnings.len()))
+            }
         }
         "rubout-area" => {
             let out = arg(&cli, 0, "rubout-area needs an output file")?;

@@ -17,7 +17,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 385 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 397 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versão | `0.1.1` |
 | Maturidade | Estrutura inicial |
-| Testes | 385 |
+| Testes | 397 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -48,7 +48,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ficheiros e disposição | 🟡 | lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, acrescenta furos de alinhamento e verifica as regras de projeto com a posição de cada achado; testado num computador, não com ficheiros escritos por outros programas nem numa máquina. |
 | Isolamento forçado, correção, máscara | 🟡 | percursos forçados nos espaços onde a ferramenta não cabe, percursos mais leves, escala e correção com pontos de referência, aberturas da máscara de soldadura, unidades e pré-visualização das passagens; testado num computador com camadas geradas e entradas danificadas, nunca com placas reais nem numa máquina, e a correção não foi comparada com medições reais de uma câmara. |
 | Linha de comandos | 🟡 | `eh3d-isocam` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 385 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. Incluem uma simulação com semente fixa de uma máquina Bungard com o curso da sua mesa, com falhas injetadas e recuperação. |
+| Testes | 🟡 | 397 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. Incluem uma simulação com semente fixa de uma máquina Bungard com o curso da sua mesa, com falhas injetadas e recuperação. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🟠 | Escrita (egui, `--features gui`): abrir ou largar uma camada, zoom e deslocamento, editar os parâmetros principais, exportar; a sua lógica está testada e o programa de uma versão desenha-a numa imagem (`--shot`), mas ainda ninguém a usou num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -78,6 +78,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **Leitura e avisos por código (linha de comandos):** os ficheiros são lidos com um limite de tamanho (`--max-bytes N` ou `max_input_mb`, 64 MiB por omissão) e o texto que não é UTF-8 é lido como Latin-1 com um aviso (`input-not-utf8`); os avisos do leitor de Gerber são mostrados com o seu código estável e `--hide CODE[,CODE]` omite esses códigos. A nota sobre os trajetos mais leves e a das pontes do corte só são impressas quando mudaram alguma coisa. `arc_tolerance_mm` define com que rigor se seguem os arcos de uma camada. `min_tool_mm` (0,02 por omissão) define a ferramenta mais fina que qualquer definição de ferramenta pode ter, e uma mais fina é recusada com o nome da definição; `rapid_mm_min` (0 por omissão, sem estimativa) é a velocidade dos movimentos rápidos, com a qual `info` acrescenta uma estimativa do tempo do trabalho (corte, descida, deslocações; a espera do fuso e as trocas de ferramenta à mão não são contadas). `hpgl_units_per_mm` (40 por omissão, de 10 a 1000) define as unidades de um ficheiro de traçado por milímetro; a verificação do intervalo de 32767 unidades acompanha-o (327 mm com 100).
 * **Ferramentas do armazém** (`src/crib.rs`): `--crib FICHEIRO` (ou `crib_file`) lê a tabela CSV que o `eh3d-tools` exporta, e `--crib-fine N`, `--crib-coarse N` e `--crib-route N` tiram dela as ferramentas com esses números: a largura com que corta uma fresa, uma fresa em V ou um gravador a `depth_mm` passa a ser `fine_tool_mm` ou `coarse_tool_mm` (uma fresa em V corta `2 * profundidade * tan(ângulo / 2) + crib_vbit_flat_mm` de largura, no máximo o seu diâmetro, arredondada por defeito à décima de milésimo de milímetro) e o diâmetro de uma fresa passa a ser `route_tool_mm`; cada substituição é avisada na saída de erros, uma broca, um laser ou um bico é recusado, e uma ferramenta demasiado fina para `min_tool_mm` é recusada com o nome da definição. A tabela só é lida quando se escolhe uma ferramenta.
 * **Limites da máquina** (`src/machine.rs`): `machine_profile` (`ccd-mtc`: 495 x 325 mm, `ccd2-mtc`: 325 x 270 mm) ou `machine_x_mm` e `machine_y_mm` dão a mesa, `machine_margin_mm` a distância guardada aos seus bordos, `machine_max_depth_mm` e `machine_max_rpm` o corte mais fundo e o fuso mais rápido. O G-code é percorrido movimento a movimento antes de ser guardado e recusado com a sua linha quando um movimento sai da mesa, desce demasiado ou faz rodar o fuso depressa demais (`--force` escreve-o na mesma e diz porquê); uma profundidade ou uma velocidade do trabalho acima dos limites é recusada ao ler as definições. Tudo está desativado por omissão.
+* **Uma passagem em seco de um programa** (`src/simulate.rs`): `eh3d-isocam simulate PROGRAMA.nc` percorre qualquer programa de G-code movimento a movimento e imprime o seu comprimento, o percurso que abrange, o corte mais fundo e o tempo (corte ao avanço, descida ao avanço de penetração, rápidos a `rapid_mm_min`, esperas `G4`), e enumera com as suas linhas um rápido que entra no material, um corte com o fuso parado ou sem avanço, um programa que não termina e os limites da máquina que quebra; qualquer achado dá o código de saída 1. O relatório sai nas oito línguas.
 
 ## 🧩 Papel no EH3D
 
@@ -147,6 +148,7 @@ old-style Gerber (no format statement): --apertures FILE  --gerber-format 2.3  -
 drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before the point, four after)
 tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting)
 machine limits: --machine-profile none|ccd-mtc|ccd2-mtc  --machine-x-mm N  --machine-y-mm N  --machine-margin-mm N  --machine-max-depth-mm N  --machine-max-rpm N   (0 = not checked)
+dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time, box, deepest cut, findings with their lines; exit code 1 on any finding)
 ```
 
 ```text
@@ -169,6 +171,7 @@ EH3D-ISOCAM/
 │   ├── main.rs                                  a linha de comandos
 │   ├── preview.rs                               as passagens desenhadas em SVG ou texto
 │   ├── shot.rs                                  o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã
+│   ├── simulate.rs                              a passagem em seco de um programa G-code: tempo, percurso, corte mais fundo e achados em oito línguas
 │   ├── viewport.rs                              zoom e deslocamento da imagem, em números simples
 │   └── window.rs                                o estado da janela sem ecrã: camada, parâmetros, trajetórias, exportação e estado
 ├── tests/
@@ -179,7 +182,7 @@ EH3D-ISOCAM/
 │   ├── excellon_format.rs                       testes do formato 2.4 das coordenadas de um ficheiro de furação
 │   ├── files.rs                                 testes dos ficheiros de furação e contorno
 │   ├── isocam.rs                                testes da biblioteca e da linha de comandos
-│   ├── job_safety.rs                            testes dos limites da máquina: definições, programas recusados e --force
+│   ├── job_safety.rs                            testes dos limites da máquina e da passagem em seco
 │   ├── kinds.rs                                 tolerância para pads, preenchimentos, tipos de ficheiro, canetas, DXF
 │   ├── layout.rs                                testes de dupla face, painéis, regras e linha de comandos
 │   ├── multi.rs                                 testes de ferramentas, cobre restante, sentido, ordem e definições
@@ -224,7 +227,7 @@ Para tirar uma captura da janela sem a abrir à mão, execute-o com `--shot FICH
 
 ## 🧪 Testes
 
-O conjunto tem 385 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 397 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -263,6 +266,7 @@ EH3D-ISOCAM/
 │   ├── main.rs                                  a linha de comandos
 │   ├── preview.rs                               as passagens desenhadas em SVG ou texto
 │   ├── shot.rs                                  o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã
+│   ├── simulate.rs                              a passagem em seco de um programa G-code: tempo, percurso, corte mais fundo e achados em oito línguas
 │   ├── viewport.rs                              zoom e deslocamento da imagem, em números simples
 │   └── window.rs                                o estado da janela sem ecrã: camada, parâmetros, trajetórias, exportação e estado
 ├── tests/
@@ -273,7 +277,7 @@ EH3D-ISOCAM/
 │   ├── excellon_format.rs                       testes do formato 2.4 das coordenadas de um ficheiro de furação
 │   ├── files.rs                                 testes dos ficheiros de furação e contorno
 │   ├── isocam.rs                                testes da biblioteca e da linha de comandos
-│   ├── job_safety.rs                            testes dos limites da máquina: definições, programas recusados e --force
+│   ├── job_safety.rs                            testes dos limites da máquina e da passagem em seco
 │   ├── kinds.rs                                 tolerância para pads, preenchimentos, tipos de ficheiro, canetas, DXF
 │   ├── layout.rs                                testes de dupla face, painéis, regras e linha de comandos
 │   ├── multi.rs                                 testes de ferramentas, cobre restante, sentido, ordem e definições
