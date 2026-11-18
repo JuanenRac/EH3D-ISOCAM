@@ -15,6 +15,7 @@ pub mod filetype;
 pub mod gcode;
 #[cfg(feature = "gui")]
 pub mod gui;
+pub mod heightmap;
 pub mod hpgl;
 pub mod lang;
 pub mod machine;

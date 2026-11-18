@@ -158,6 +158,19 @@
           }
         },
         {
+          "name": "heightmap.rs",
+          "desc": {
+            "en": "the height map of the table, read from the file of EH3D-AUTOLEVEL",
+            "es": "el mapa de alturas de la mesa, leído del fichero de EH3D-AUTOLEVEL",
+            "de": "die Höhenkarte des Tisches, gelesen aus der Datei von EH3D-AUTOLEVEL",
+            "fr": "la carte des hauteurs de la table, lue dans le fichier d'EH3D-AUTOLEVEL",
+            "it": "la mappa delle altezze del piano, letta dal file di EH3D-AUTOLEVEL",
+            "ja": "EH3D-AUTOLEVEL のファイルから読むテーブルの高さマップ",
+            "zh": "从 EH3D-AUTOLEVEL 的文件读取的台面高度图",
+            "pt": "o mapa de alturas da mesa, lido do ficheiro do EH3D-AUTOLEVEL"
+          }
+        },
+        {
           "name": "hpgl.rs",
           "desc": {
             "en": "the paths as an HP-GL plot file",
@@ -344,6 +357,19 @@
             "ja": "工具庫から取る工具のテスト",
             "zh": "取自刀具库的刀具测试",
             "pt": "testes das ferramentas tiradas do armazém"
+          }
+        },
+        {
+          "name": "depth_and_levelling.rs",
+          "desc": {
+            "en": "tests of steps of depth and of cutting along a height map",
+            "es": "tests de las pasadas de profundidad y del corte según un mapa de alturas",
+            "de": "Tests der Tiefenstufen und des Schneidens nach einer Höhenkarte",
+            "fr": "tests des passes de profondeur et de la coupe selon une carte des hauteurs",
+            "it": "test delle passate di profondità e del taglio secondo una mappa delle altezze",
+            "ja": "深さの段階と高さマップに沿った切削のテスト",
+            "zh": "分层下刀与按高度图切削的测试",
+            "pt": "testes das passadas de profundidade e do corte segundo um mapa de alturas"
           }
         },
         {

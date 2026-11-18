@@ -19,6 +19,8 @@ pub struct Job {
     pub spindle_rpm: f64,
     /// Seconds to wait (`G4`) after each `M3` for the spindle to reach its speed; 0 writes no wait.
     pub spindle_wait_s: f64,
+    /// Goes down in steps of this much, each path cut once at every depth (0: all the depth at once).
+    pub depth_step_mm: f64,
 }
 
 impl Default for Job {
@@ -31,6 +33,7 @@ impl Default for Job {
             plunge_mm_min: 60.0,
             spindle_rpm: 24000.0,
             spindle_wait_s: 0.0,
+            depth_step_mm: 0.0,
         }
     }
 }
@@ -55,8 +58,31 @@ impl Job {
         range("feed_mm_min", self.feed_mm_min, 1.0, 10_000.0)?;
         range("plunge_mm_min", self.plunge_mm_min, 1.0, 5_000.0)?;
         range("spindle_rpm", self.spindle_rpm, 1000.0, 200_000.0)?;
-        range("spindle_wait_s", self.spindle_wait_s, 0.0, 60.0)
+        range("spindle_wait_s", self.spindle_wait_s, 0.0, 60.0)?;
+        if self.depth_step_mm != 0.0 {
+            range("depth_step_mm", self.depth_step_mm, 0.005, 2.0)?;
+        }
+        Ok(())
     }
+
+    /// The depths the cut goes to, one after the other: the whole depth in one go, or a step more each time and the whole depth at the end.
+    pub fn levels(&self) -> Vec<f64> {
+        let step = self.depth_step_mm;
+        if step.is_nan() || step <= 0.0 || step >= self.depth_mm {
+            return vec![self.depth_mm];
+        }
+        let n = (self.depth_mm / step - 1e-9).ceil() as usize;
+        let mut v: Vec<f64> = (1..n).map(|k| step * k as f64).collect();
+        v.push(self.depth_mm);
+        v
+    }
+}
+
+/// The surface the cut follows instead of a flat table: the height of the surface at a point (up is positive, 0 where Z zero was set), and the longest piece a cutting move is left
+/// in, so that the Z follows the surface along the move.
+pub struct Surface<'a> {
+    pub height_mm: &'a dyn Fn(f64, f64) -> f64,
+    pub max_segment_mm: f64,
 }
 
 /// A number of the file, written the way the whole suite writes it. [`write_in`] checks beforehand that every number it writes is finite, so the error cannot happen here.
@@ -167,7 +193,25 @@ pub fn write_with(passes: &[Pass], job: &Job, order: &Order) -> Result<String, S
 
 /// The same, in millimetres (`G21`) or in inches (`G20`: every length and the feeds are converted). G-code has no mils.
 pub fn write_in(passes: &[Pass], job: &Job, order: &Order, unit: Unit) -> Result<String, String> {
+    write_levelled(passes, job, order, unit, None)
+}
+
+/// The same, with the cut following a surface (`Some`): the depth is kept under the surface at every point, long cutting moves are cut into pieces of at most
+/// `max_segment_mm` so that the Z follows it, and with `depth_step_mm` every path is cut again at each depth (a closed path goes round again from its start, an open run is
+/// cut back the way it came), without lifting the tool in between.
+pub fn write_levelled(
+    passes: &[Pass],
+    job: &Job,
+    order: &Order,
+    unit: Unit,
+    surface: Option<&Surface>,
+) -> Result<String, String> {
     job.validate()?;
+    if let Some(s) = surface {
+        if !(s.max_segment_mm.is_finite() && s.max_segment_mm > 0.0) {
+            return Err("the longest piece of a move on a surface must be above 0".into());
+        }
+    }
     // a number that is not finite would be written as `NaN` or `inf`, which a controller chokes on: nothing is written
     if passes.iter().any(|p| {
         !(p.offset_mm.is_finite() && p.diameter_mm.is_finite())
@@ -225,30 +269,70 @@ pub fn write_in(passes: &[Pass], job: &Job, order: &Order, unit: Unit) -> Result
             cuts.len()
         ));
         for cut in &cuts {
-            let start = cut.pts[0];
-            g.push_str(&format!(
-                "G0 X{} Y{}\nG1 Z{} F{}\n",
-                nn(c(start.0), unit),
-                nn(c(start.1), unit),
-                nn(c(-job.depth_mm), unit),
-                nn(c(job.plunge_mm_min), unit)
-            ));
-            let count = if cut.closed {
-                cut.pts.len()
-            } else {
-                cut.pts.len() - 1
+            // the points of the first pass: a closed path ends where it began
+            let mut forward = cut.pts.clone();
+            if cut.closed {
+                forward.push(cut.pts[0]);
+            }
+            let z_at = |depth: f64, p: (f64, f64)| {
+                -depth + surface.map_or(0.0, |s| (s.height_mm)(p.0, p.1))
             };
-            for j in 1..=count {
-                let p = cut.pts[j % cut.pts.len()];
-                if j == 1 {
-                    g.push_str(&format!(
-                        "G1 X{} Y{} F{}\n",
-                        nn(c(p.0), unit),
-                        nn(c(p.1), unit),
-                        nn(c(job.feed_mm_min), unit)
-                    ));
+            for (k, depth) in job.levels().into_iter().enumerate() {
+                // an open run is cut back the way it came on every second pass
+                let line: Vec<(f64, f64)> = if !cut.closed && k % 2 == 1 {
+                    forward.iter().rev().copied().collect()
                 } else {
-                    g.push_str(&format!("G1 X{} Y{}\n", nn(c(p.0), unit), nn(c(p.1), unit)));
+                    forward.clone()
+                };
+                let start = line[0];
+                if k == 0 {
+                    g.push_str(&format!(
+                        "G0 X{} Y{}\n",
+                        nn(c(start.0), unit),
+                        nn(c(start.1), unit)
+                    ));
+                }
+                g.push_str(&format!(
+                    "G1 Z{} F{}\n",
+                    nn(c(z_at(depth, start)), unit),
+                    nn(c(job.plunge_mm_min), unit)
+                ));
+                let mut first = true;
+                for w in line.windows(2) {
+                    let (a, b) = (w[0], w[1]);
+                    let pieces = surface.map_or(1, |s| {
+                        ((b.0 - a.0).hypot(b.1 - a.1) / s.max_segment_mm)
+                            .ceil()
+                            .max(1.0) as usize
+                    });
+                    for i in 1..=pieces {
+                        let u = i as f64 / pieces as f64;
+                        let p = if i == pieces {
+                            b
+                        } else {
+                            (a.0 + (b.0 - a.0) * u, a.1 + (b.1 - a.1) * u)
+                        };
+                        let z = if surface.is_some() {
+                            format!(" Z{}", nn(c(z_at(depth, p)), unit))
+                        } else {
+                            String::new()
+                        };
+                        if first {
+                            g.push_str(&format!(
+                                "G1 X{} Y{}{z} F{}\n",
+                                nn(c(p.0), unit),
+                                nn(c(p.1), unit),
+                                nn(c(job.feed_mm_min), unit)
+                            ));
+                            first = false;
+                        } else {
+                            g.push_str(&format!(
+                                "G1 X{} Y{}{z}\n",
+                                nn(c(p.0), unit),
+                                nn(c(p.1), unit)
+                            ));
+                        }
+                    }
                 }
             }
             g.push_str(&format!("G0 Z{}\n", nn(c(job.safe_z_mm), unit)));

@@ -9,7 +9,8 @@ use crate::drill::{
 };
 use crate::fiducial::{apply_to_holes, apply_to_passes, Fit};
 use crate::filetype;
-use crate::gcode::write_in;
+use crate::gcode::{write_levelled, Surface};
+use crate::heightmap::HeightMap;
 use crate::hpgl::{
     isocam_style, set_pen_speed, write_holes_scaled, write_opts, PenBy, PlotOptions,
 };
@@ -18,6 +19,7 @@ use crate::machine::check_program;
 use crate::mask;
 use crate::order::{arrange, Cut};
 use crate::transform::{alignment_pattern, lay_out, Axis, Board};
+use crate::units::Unit;
 use eh3d_gerberviewer::scene::{Bounds, Scene};
 use eh3d_parser_gerber::{read_file_limited, InputLimits};
 use std::fs;
@@ -213,6 +215,18 @@ pub fn finish_plot(s: &Settings, text: Result<String, String>) -> Result<String,
     })
 }
 
+/// The height map the settings name (`heightmap_file`), read with the size limit of every other file; `None` when there is none.
+pub fn load_heightmap(s: &Settings) -> Result<Option<HeightMap>, String> {
+    if s.heightmap_file.is_empty() {
+        return Ok(None);
+    }
+    let path = Path::new(&s.heightmap_file);
+    let text = read_text(path, s)?;
+    HeightMap::parse(&text)
+        .map(Some)
+        .map_err(|e| format!("{}: {e}", s.heightmap_file))
+}
+
 /// The G-code of the passes as the settings say, walked against the limits of the machine (its table, the margin kept from the edges, the deepest cut and the fastest spindle). A
 /// program that breaks a limit is refused with the line, unless `force` is given: then it is written and the notice comes back with it, to be shown.
 pub fn gcode_program(
@@ -220,7 +234,45 @@ pub fn gcode_program(
     s: &Settings,
     force: bool,
 ) -> Result<(String, Vec<String>), String> {
-    let g = write_in(passes, &s.job(), &s.order(), s.output_units)?;
+    let map = load_heightmap(s)?;
+    let g = match &map {
+        None => write_levelled(passes, &s.job(), &s.order(), s.output_units, None)?,
+        Some(map) => {
+            if s.output_units != Unit::Mm {
+                return Err(
+                    "a height map is in mm: write the G-code in mm (output_units = mm)".into(),
+                );
+            }
+            let (rx, ry) = (s.heightmap_ref_x_mm, s.heightmap_ref_y_mm);
+            let range = map.deviation_from(rx, ry);
+            if range > s.heightmap_max_range_mm {
+                return Err(format!(
+                    "the table of the height map is {range:.3} mm above or below its height at the zero ({rx}, {ry}), more than heightmap_max_range_mm ({}): check the map and where Z zero was set",
+                    s.heightmap_max_range_mm
+                ));
+            }
+            let zero = map.height_at(rx, ry);
+            let height = |x: f64, y: f64| map.height_at(x, y) - zero;
+            let surface = Surface {
+                height_mm: &height,
+                max_segment_mm: s.heightmap_max_segment_mm,
+            };
+            let text =
+                write_levelled(passes, &s.job(), &s.order(), s.output_units, Some(&surface))?;
+            // a comment line, with nothing in the name of the file that could end it
+            let name: String = file_name(Path::new(&s.heightmap_file))
+                .chars()
+                .map(|c| {
+                    if matches!(c, '(' | ')' | ';' | '\n' | '\r') {
+                        '_'
+                    } else {
+                        c
+                    }
+                })
+                .collect();
+            format!("(Z follows the height map {name})\n{text}")
+        }
+    };
     let limits = s.machine_limits();
     let mut notes = Vec::new();
     if !limits.is_off() {

@@ -17,7 +17,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 397 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 416 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.1.1` |
 | Reifegrad | Gerüst |
-| Tests | 397 |
+| Tests | 416 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -48,7 +48,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Dateien und Anordnung | 🟡 | liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, setzt Passlöcher und prüft die Entwurfsregeln mit dem Ort jedes Befunds; auf einem Computer getestet, nicht mit Dateien anderer Programme und nicht auf einer Maschine. |
 | Erzwungene Isolation, Korrektur, Maske | 🟡 | erzwungene Pfade durch Lücken, in die das Werkzeug nicht passt, leichtere Bahnen, Skalierung und Korrektur mit Referenzpunkten, die Öffnungen der Lötstoppmaske, Einheiten und die Vorschau der Durchgänge; auf einem Computer mit erzeugten Lagen und beschädigten Eingaben getestet, nie mit echten Platinen und nie auf einer Maschine, und die Korrektur wurde nicht mit echten Kameramessungen verglichen. |
 | Kommandozeile | 🟡 | `eh3d-isocam` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 397 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. Dazu gehört eine Simulation mit festem Seed für eine Bungard-Maschine mit dem Verfahrweg ihres Tisches, mit eingespeisten Fehlern und Wiederherstellung. |
+| Tests | 🟡 | 416 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. Dazu gehört eine Simulation mit festem Seed für eine Bungard-Maschine mit dem Verfahrweg ihres Tisches, mit eingespeisten Fehlern und Wiederherstellung. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`): Ebene öffnen oder hineinziehen, Zoom und Verschieben, die wichtigsten Parameter ändern, exportieren; die Logik ist getestet und das Programm einer Version zeichnet es in ein Bild (`--shot`), aber noch niemand hat es auf einem Bildschirm benutzt. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -79,6 +79,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 * **Werkzeuge aus dem Werkzeuglager** (`src/crib.rs`): `--crib DATEI` (oder `crib_file`) liest die CSV-Tabelle, die `eh3d-tools` exportiert, und `--crib-fine N`, `--crib-coarse N` und `--crib-route N` nehmen daraus die Werkzeuge mit diesen Nummern: die Breite, mit der ein Fingerfräser, ein V-Fräser oder ein Gravierstichel bei `depth_mm` schneidet, wird zu `fine_tool_mm` oder `coarse_tool_mm` (ein V-Fräser schneidet `2 * Tiefe * tan(Winkel / 2) + crib_vbit_flat_mm` breit, höchstens seinen Durchmesser, auf ein Zehntausendstel Millimeter abgerundet) und der Durchmesser eines Fingerfräsers wird zu `route_tool_mm`; jeder Austausch wird auf der Fehlerausgabe gemeldet, ein Bohrer, ein Laser oder eine Düse wird abgelehnt, und ein für `min_tool_mm` zu dünnes Werkzeug wird mit dem Namen der Einstellung abgelehnt. Die Tabelle wird nur gelesen, wenn ein Werkzeug gewählt wird.
 * **Grenzen der Maschine** (`src/machine.rs`): `machine_profile` (`ccd-mtc`: 495 x 325 mm, `ccd2-mtc`: 325 x 270 mm) oder `machine_x_mm` und `machine_y_mm` geben den Tisch an, `machine_margin_mm` den Abstand zu seinen Rändern, `machine_max_depth_mm` und `machine_max_rpm` den tiefsten Schnitt und die schnellste Spindel. Der G-Code wird vor dem Speichern Bewegung für Bewegung durchlaufen und mit seiner Zeile abgelehnt, wenn eine Bewegung den Tisch verlässt, zu tief geht oder die Spindel zu schnell dreht (`--force` schreibt ihn trotzdem und nennt den Grund); eine Tiefe oder Drehzahl des Auftrags über den Grenzen wird beim Lesen der Einstellungen abgelehnt. Alles ist standardmäßig aus.
 * **Ein Trockenlauf eines Programms** (`src/simulate.rs`): `eh3d-isocam simulate PROGRAMM.nc` durchläuft jedes G-Code-Programm Bewegung für Bewegung und gibt seine Länge, den Fahrbereich, den tiefsten Schnitt und die Zeit aus (Schneiden mit dem Vorschub, Eintauchen mit dem Eintauchvorschub, Eilgänge mit `rapid_mm_min`, `G4`-Wartezeiten) und listet mit ihren Zeilen einen Eilgang ins Material, einen Schnitt bei stehender Spindel oder ohne Vorschub, ein Programm, das nicht endet, und die Maschinengrenzen, die es verletzt; jeder Befund ergibt den Exit-Code 1. Der Bericht erscheint in den acht Sprachen.
+* **Tiefenstufen und eine Höhenkarte** (`src/heightmap.rs`): `depth_step_mm` schneidet jeden Pfad in jeder Tiefe erneut (ein geschlossener Pfad läuft noch einmal herum, ein offener Lauf wird auf dem Rückweg geschnitten, ohne Anheben), und `--height-map DATEI` (`heightmap_file`) liest die Karte von EH3D-AUTOLEVEL, sodass das Z jedes Schnitts die Tiefe unter dem Tisch an dieser Stelle ist, mit in Stücke von höchstens `heightmap_max_segment_mm` zerlegten Bewegungen; eine Karte mit fehlendem Punkt oder ein Tisch, der zu weit von eben abweicht (`heightmap_max_range_mm`), wird abgelehnt. Beides ist standardmäßig aus.
 
 ## 🧩 Rolle in EH3D
 
@@ -149,6 +150,7 @@ drill and routing files: --excellon-format auto|2.4   (2.4 = two digits before t
 tools from the crib: --crib FILE  --crib-fine N  --crib-coarse N  --crib-route N   (N = the number of the tool in the table of eh3d-tools; 0 = keep the setting)
 machine limits: --machine-profile none|ccd-mtc|ccd2-mtc  --machine-x-mm N  --machine-y-mm N  --machine-margin-mm N  --machine-max-depth-mm N  --machine-max-rpm N   (0 = not checked)
 dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time, box, deepest cut, findings with their lines; exit code 1 on any finding)
+depth and surface: --depth-step-mm N  --height-map FILE  --heightmap-ref-x-mm N  --heightmap-ref-y-mm N  --heightmap-max-segment-mm N  --heightmap-max-range-mm N   (the map is the text file of EH3D-AUTOLEVEL)
 ```
 
 ```text
@@ -164,6 +166,7 @@ EH3D-ISOCAM/
 │   ├── filetype.rs                              welche Art Datei eine Eingabe ist
 │   ├── gcode.rs                                 die Bahnen als G-Code
 │   ├── gui.rs                                   das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut
+│   ├── heightmap.rs                             die Höhenkarte des Tisches, gelesen aus der Datei von EH3D-AUTOLEVEL
 │   ├── hpgl.rs                                  die Bahnen als HP-GL-Plotdatei
 │   ├── lang.rs                                  die Wörter des Fensters in den acht Sprachen
 │   ├── machine.rs                               Tisch, Rand sowie Tiefen- und Spindelgrenzen der Maschine und die Prüfung eines Programms dagegen
@@ -179,6 +182,7 @@ EH3D-ISOCAM/
 │   ├── advanced.rs                              erzwungene Isolation, Korrektur, Maske, Einheiten, Vorschau
 │   ├── cli_reading.rs                           Tests zum Lesen von Dateien: Größenlimit, Text ohne UTF-8, Meldungen nach Code
 │   ├── crib.rs                                  Tests der aus dem Lager genommenen Werkzeuge
+│   ├── depth_and_levelling.rs                   Tests der Tiefenstufen und des Schneidens nach einer Höhenkarte
 │   ├── excellon_format.rs                       Tests des Formats 2.4 der Koordinaten einer Bohrdatei
 │   ├── files.rs                                 Tests der Bohr- und Konturdateien
 │   ├── isocam.rs                                Tests von Bibliothek und Kommandozeile
@@ -227,7 +231,7 @@ Um ein Bild des Fensters aufzunehmen, ohne es von Hand zu öffnen, starten Sie e
 
 ## 🧪 Tests
 
-Die Suite hat 397 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 416 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -259,6 +263,7 @@ EH3D-ISOCAM/
 │   ├── filetype.rs                              welche Art Datei eine Eingabe ist
 │   ├── gcode.rs                                 die Bahnen als G-Code
 │   ├── gui.rs                                   das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut
+│   ├── heightmap.rs                             die Höhenkarte des Tisches, gelesen aus der Datei von EH3D-AUTOLEVEL
 │   ├── hpgl.rs                                  die Bahnen als HP-GL-Plotdatei
 │   ├── lang.rs                                  die Wörter des Fensters in den acht Sprachen
 │   ├── machine.rs                               Tisch, Rand sowie Tiefen- und Spindelgrenzen der Maschine und die Prüfung eines Programms dagegen
@@ -274,6 +279,7 @@ EH3D-ISOCAM/
 │   ├── advanced.rs                              erzwungene Isolation, Korrektur, Maske, Einheiten, Vorschau
 │   ├── cli_reading.rs                           Tests zum Lesen von Dateien: Größenlimit, Text ohne UTF-8, Meldungen nach Code
 │   ├── crib.rs                                  Tests der aus dem Lager genommenen Werkzeuge
+│   ├── depth_and_levelling.rs                   Tests der Tiefenstufen und des Schneidens nach einer Höhenkarte
 │   ├── excellon_format.rs                       Tests des Formats 2.4 der Koordinaten einer Bohrdatei
 │   ├── files.rs                                 Tests der Bohr- und Konturdateien
 │   ├── isocam.rs                                Tests von Bibliothek und Kommandozeile

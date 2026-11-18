@@ -182,6 +182,17 @@ pub struct Settings {
     pub machine_max_depth_mm: f64,
     /// The fastest spindle speed the machine may be sent; 0 does not check it.
     pub machine_max_rpm: f64,
+    /// Goes down in steps of this much, every path cut once at each depth (0: all the depth at once).
+    pub depth_step_mm: f64,
+    /// A height map of the table in the text format of EH3D-AUTOLEVEL (`--height-map FILE`); empty cuts at a flat depth. The Z of every cut follows it.
+    pub heightmap_file: String,
+    /// Where Z zero was set (the heights of the map are taken from the one there).
+    pub heightmap_ref_x_mm: f64,
+    pub heightmap_ref_y_mm: f64,
+    /// The longest piece, in mm, a cutting move is left in when it follows a height map.
+    pub heightmap_max_segment_mm: f64,
+    /// The most the table may be above or below its height at the zero, in mm; a map beyond it is refused.
+    pub heightmap_max_range_mm: f64,
 }
 
 impl Default for Settings {
@@ -290,6 +301,12 @@ impl Default for Settings {
             machine_margin_mm: 0.0,
             machine_max_depth_mm: 0.0,
             machine_max_rpm: 0.0,
+            depth_step_mm: 0.0,
+            heightmap_file: String::new(),
+            heightmap_ref_x_mm: 0.0,
+            heightmap_ref_y_mm: 0.0,
+            heightmap_max_segment_mm: 2.0,
+            heightmap_max_range_mm: 0.5,
         }
     }
 }
@@ -338,6 +355,7 @@ impl Settings {
         let key = match key.as_str() {
             "tool" => "fine_tool_mm",
             "crib" => "crib_file",
+            "height_map" => "heightmap_file",
             "passes" => "fine_passes",
             "stepover" => "fine_stepover_mm",
             "res" => "res_mm",
@@ -521,6 +539,20 @@ impl Settings {
             "machine_margin_mm" => self.machine_margin_mm = num(key, v)?,
             "machine_max_depth_mm" => self.machine_max_depth_mm = num(key, v)?,
             "machine_max_rpm" => self.machine_max_rpm = num(key, v)?,
+            "depth_step_mm" => self.depth_step_mm = num(key, v)?,
+            "heightmap_file" => {
+                if v.contains(['#', '\n', '\r']) {
+                    return Err(format!(
+                        "{key} '{}': a file name cannot hold # or a line break",
+                        v.trim()
+                    ));
+                }
+                self.heightmap_file = v.trim().to_string();
+            }
+            "heightmap_ref_x_mm" => self.heightmap_ref_x_mm = num(key, v)?,
+            "heightmap_ref_y_mm" => self.heightmap_ref_y_mm = num(key, v)?,
+            "heightmap_max_segment_mm" => self.heightmap_max_segment_mm = num(key, v)?,
+            "heightmap_max_range_mm" => self.heightmap_max_range_mm = num(key, v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -625,6 +657,12 @@ machine_y_mm = {}
 machine_margin_mm = {}
 machine_max_depth_mm = {}
 machine_max_rpm = {}
+depth_step_mm = {}
+heightmap_file = {}
+heightmap_ref_x_mm = {}
+heightmap_ref_y_mm = {}
+heightmap_max_segment_mm = {}
+heightmap_max_range_mm = {}
 ",
             self.conflict_tolerance_scope.name(),
             self.rubout_fill_margin_mm,
@@ -655,7 +693,13 @@ machine_max_rpm = {}
             self.machine_y_mm,
             self.machine_margin_mm,
             self.machine_max_depth_mm,
-            self.machine_max_rpm
+            self.machine_max_rpm,
+            self.depth_step_mm,
+            self.heightmap_file,
+            self.heightmap_ref_x_mm,
+            self.heightmap_ref_y_mm,
+            self.heightmap_max_segment_mm,
+            self.heightmap_max_range_mm
         ));
         for p in &self.fiducials {
             extra.push_str(&format!(
@@ -830,6 +874,30 @@ machine_max_rpm = {}
                 ));
             }
         }
+        range(
+            "heightmap_max_segment_mm",
+            self.heightmap_max_segment_mm,
+            0.1,
+            50.0,
+        )?;
+        range(
+            "heightmap_max_range_mm",
+            self.heightmap_max_range_mm,
+            0.01,
+            5.0,
+        )?;
+        range(
+            "heightmap_ref_x_mm",
+            self.heightmap_ref_x_mm,
+            -10_000.0,
+            10_000.0,
+        )?;
+        range(
+            "heightmap_ref_y_mm",
+            self.heightmap_ref_y_mm,
+            -10_000.0,
+            10_000.0,
+        )?;
         range("alignment_hole_mm", self.alignment_hole_mm, 0.3, 10.0)?;
         range("alignment_margin_mm", self.alignment_margin_mm, 0.5, 100.0)?;
         range("panel_gap_mm", self.panel_gap_mm, 0.0, 100.0)?;
@@ -1080,6 +1148,7 @@ machine_max_rpm = {}
             plunge_mm_min: self.plunge_mm_min,
             spindle_rpm: self.spindle_rpm,
             spindle_wait_s: self.spindle_wait_s,
+            depth_step_mm: self.depth_step_mm,
         }
     }
 
