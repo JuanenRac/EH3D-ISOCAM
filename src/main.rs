@@ -18,7 +18,6 @@ use eh3d_isocam::fill::{rubout_contours, Fill};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::hpgl::{write_opts, PenBy};
 use eh3d_isocam::isolate::{net_scene, plan_with_pads, rubout_lines, Pass};
-use eh3d_isocam::machine::check_program;
 use eh3d_isocam::optimize::optimize_passes;
 use eh3d_isocam::order::{arrange, directions, travel_mm, Cut, Strategy};
 use eh3d_isocam::preview;
@@ -789,6 +788,12 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     gcode_header(&cli, cli.positional.first().map(String::as_str))
                 )
             };
+            // the time of a program of G-code, when the settings give the speed of the rapid moves
+            let time = if s.rapid_mm_min > 0.0 && !is_plot(out) && !is_dxf(out) {
+                simulate::run(&text, s.rapid_mm_min).time_line()
+            } else {
+                None
+            };
             write_text(&cli, 1, out, text)?;
             let total: f64 = passes
                 .iter()
@@ -801,21 +806,15 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 passes.iter().map(|ps| ps.cuts().len()).sum::<usize>(),
                 len(&cli, total)
             );
+            if let Some(t) = time {
+                println!("{t}");
+            }
             Ok(())
         }
         "simulate" => {
             let file = arg(&cli, 0, "simulate needs a G-code program")?;
             let text = read(&cli, file)?;
-            let mut report = simulate::run(&text, s.rapid_mm_min);
-            let limits = s.machine_limits();
-            if !limits.is_off() {
-                if let Err(why) = check_program(&text, &limits) {
-                    report.warnings.push(simulate::Warning {
-                        line: 0,
-                        kind: simulate::Kind::Limit(why),
-                    });
-                }
-            }
+            let report = simulate::run_checked(&text, s.rapid_mm_min, &s.machine_limits());
             print!("{}", report.text(language(), &|mm| len(&cli, mm)));
             if report.warnings.is_empty() {
                 Ok(())

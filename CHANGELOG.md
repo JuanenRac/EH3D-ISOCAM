@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **`isolate` prints the estimated time:** when `rapid_mm_min` is above 0, the line `estimated time: ...` (cutting, going down and moving, without the waits of the spindle) follows the summary of the G-code that was written, from the same walk of the program that `simulate` makes; it is a new line of the standard output, only there when the speed of the rapid moves is set, and not for a plot or a DXF drawing. `simulate` and the new `simulate::run_checked` share the machine limits as findings.
 - **The CI and the release build take the shared libraries at their newest releases:** the pins of the sibling repositories in the workflows are raised to the releases the program now needs, so that the build and the binaries of a release use them.
 ## [0.1.2] - Limits of the machine checked in the G-code, a dry run with its time, cuts in steps of depth along a height map, the depth from the width of a V-bit track and holes in a short order
 

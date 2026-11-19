@@ -62,6 +62,36 @@ impl Report {
     }
 }
 
+impl Report {
+    /// One line with the estimated time and its parts, in English, for the commands that write a program; none when the speed of the rapid moves is not known.
+    pub fn time_line(&self) -> Option<String> {
+        if !self.rapid_known {
+            return None;
+        }
+        Some(format!(
+            "estimated time: {} ({} cutting, {} going down, {} moving); the spindle wait and the tool changes by hand are not counted",
+            crate::gcode::duration_text(self.total_s() - self.dwell_s),
+            crate::gcode::duration_text(self.cutting_s),
+            crate::gcode::duration_text(self.plunging_s),
+            crate::gcode::duration_text(self.rapid_s)
+        ))
+    }
+}
+
+/// The dry run of a program with the limits of a machine: what the program breaks of them is one more finding.
+pub fn run_checked(text: &str, rapid_mm_min: f64, limits: &crate::machine::Limits) -> Report {
+    let mut report = run(text, rapid_mm_min);
+    if !limits.is_off() {
+        if let Err(why) = crate::machine::check_program(text, limits) {
+            report.warnings.push(Warning {
+                line: 0,
+                kind: Kind::Limit(why),
+            });
+        }
+    }
+    report
+}
+
 /// The length of a move in mm, arcs by their arc length (with the rise or fall of Z along it).
 fn length(s: &Segment) -> f64 {
     let (dx, dy, dz) = (s.to.x - s.from.x, s.to.y - s.from.y, s.to.z - s.from.z);
@@ -586,5 +616,38 @@ mod tests {
         let clean = run(CLEAN, 3000.0);
         assert!(clean.text("zh", &mm).contains("没有警告"));
         assert!(clean.text("pt", &mm).contains("sem avisos"));
+    }
+
+    #[test]
+    fn the_time_line_is_there_only_when_the_rapid_speed_is_known() {
+        assert_eq!(run(CLEAN, 0.0).time_line(), None);
+        let line = run(CLEAN, 3000.0).time_line().expect("a time");
+        assert!(
+            line.starts_with("estimated time: ") && line.contains("cutting"),
+            "{line}"
+        );
+    }
+
+    #[test]
+    fn the_limits_of_the_machine_are_one_more_finding() {
+        let off = crate::machine::Limits {
+            table_mm: None,
+            margin_mm: 0.0,
+            max_depth_mm: 0.0,
+            max_rpm: 0.0,
+        };
+        assert!(run_checked(CLEAN, 3000.0, &off).warnings.is_empty());
+        let small = crate::machine::Limits {
+            table_mm: Some((20.0, 20.0)),
+            ..off
+        };
+        let r = run_checked(CLEAN, 3000.0, &small);
+        assert!(
+            r.warnings
+                .iter()
+                .any(|w| matches!(&w.kind, Kind::Limit(m) if m.contains("outside the table"))),
+            "{:?}",
+            r.warnings
+        );
     }
 }

@@ -259,6 +259,25 @@ fn the_dry_run_of_a_program_of_the_command_line_has_a_time_a_box_and_no_findings
 }
 
 #[test]
+fn isolate_prints_the_estimated_time_only_when_the_rapid_speed_is_known() {
+    let d = dir("iso_time");
+    let nc = d.join("a.nc");
+    let (ok, out, err) = isolate(&nc, &[]);
+    assert!(ok && !out.contains("estimated time"), "{out}{err}");
+    let _ = std::fs::remove_file(&nc);
+    let (ok, out, err) = isolate(&nc, &["--rapid-mm-min", "3000"]);
+    assert!(ok && out.contains("estimated time: "), "{out}{err}");
+    // the same time as the dry run of the program that was written
+    let (ok, sim, err) = run(&["simulate", nc.to_str().unwrap(), "--rapid-mm-min", "3000"]);
+    assert!(ok && sim.contains("time: "), "{sim}{err}");
+    // a plot is not a program for a machine: no time
+    let plt = d.join("a.plt");
+    let (ok, out, err) = isolate(&plt, &["--rapid-mm-min", "3000"]);
+    assert!(ok && !out.contains("estimated time"), "{out}{err}");
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
 fn the_dry_run_speaks_the_language_of_the_system() {
     let d = dir("sim_lang");
     let nc = d.join("a.nc");
