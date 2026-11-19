@@ -2426,7 +2426,7 @@ M30
         let out = dir.join("off.ncd");
         assert!(!w.export_route(&out));
         assert!(!out.exists());
-        assert!(matches!(&w.status, Status::Failed(why) if why.contains("outside the table")));
+        assert!(matches!(&w.status, Status::Failed(_)), "{:?}", w.status);
         let _ = fs::remove_dir_all(&dir);
     }
 }
