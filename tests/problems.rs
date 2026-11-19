@@ -392,6 +392,7 @@ fn the_new_settings_round_trip_and_their_limits_hold() {
         ("tab_count", "3"),
         ("tab_width_mm", "1.5"),
         ("tab_min_length_mm", "6"),
+        ("tab_corner_clearance_mm", "3"),
         ("tolerance_warning_margin_mm", "0.08"),
         ("net_tool_mm", "1.5"),
         ("rubout_lines_tool_mm", "0.6"),
@@ -408,6 +409,10 @@ fn the_new_settings_round_trip_and_their_limits_hold() {
             "tab_min_length_mm",
         ),
         ("tab_count = 99", "tab_count"),
+        (
+            "tab_count = 2\ntab_corner_clearance_mm = -1",
+            "tab_corner_clearance_mm",
+        ),
         ("alignment_pattern = special\nalignment_holes = 3", "2 or 6"),
         (
             "alignment_pattern = special\nalignment_holes = 2\nalignment_special_a_mm = 0.5",

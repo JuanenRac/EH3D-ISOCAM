@@ -2,10 +2,11 @@
 
 use eh3d_bungard_formats::{hpgl as plotter, ncd};
 use eh3d_isocam::drill::{
-    add_tabs, join_runs, read_drills, read_outline, route_outline, write_drills,
-    write_route_excellon, Hole, Outline, Tabs,
+    add_tabs, add_tabs_clear_of_corners, join_runs, read_drills, read_outline, route_outline,
+    write_drills, write_route_excellon, Hole, Outline, Tabs,
 };
 use eh3d_isocam::hpgl::{write_with, PenBy};
+use eh3d_isocam::isolate::Pass;
 use eh3d_isocam::order::{arrange, is_clockwise, Cut, Order};
 
 fn hole(tool: u8, x: f64, y: f64, d: f64) -> Hole {
@@ -326,6 +327,118 @@ fn bridges_open_the_cut_round_the_board_into_runs_with_gaps() {
     // the runs are cuts like any other: they reach the routing file
     let text = write_route_excellon(&pass.cuts(), 1.0, 1).unwrap();
     assert_eq!(text.matches("M15").count(), 4);
+}
+
+/// The middle of the gap each bridge leaves and how wide the gap is: from the end of a run to the start of the next one.
+fn bridge_gaps(pass: &Pass) -> Vec<((f64, f64), f64)> {
+    let runs = &pass.open;
+    (0..runs.len())
+        .map(|k| {
+            let end = runs[k].last().unwrap();
+            let start = runs[(k + 1) % runs.len()].first().unwrap();
+            (
+                ((end.0 + start.0) / 2.0, (end.1 + start.1) / 2.0),
+                (start.0 - end.0).hypot(start.1 - end.1),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn bridges_are_moved_off_the_corners_when_a_clearance_is_asked_for() {
+    let o = Outline {
+        closed: vec![rect(0.0, 0.0, 40.0, 20.0)],
+        open: vec![],
+    };
+    let base = route_outline(&o, 1.0, 0.05).unwrap();
+    let corners = [(0.0, 0.0), (40.0, 0.0), (40.0, 20.0), (0.0, 20.0)];
+    let near = |c: (f64, f64)| {
+        corners
+            .iter()
+            .map(|k| (c.0 - k.0).hypot(c.1 - k.1))
+            .fold(f64::MAX, f64::min)
+    };
+    let mut fell_on_a_corner = false;
+    for count in 1..=6 {
+        let tabs = Tabs {
+            count,
+            width_mm: 2.0,
+            min_length_mm: 4.0,
+        };
+        let mut even = base.clone();
+        let r0 = add_tabs(&mut even, 1.0, &tabs).unwrap();
+        let mut clear = base.clone();
+        let r = add_tabs_clear_of_corners(&mut clear, 1.0, &tabs, 4.0).unwrap();
+        assert_eq!(r.bridges, r0.bridges, "count {count}");
+        assert_eq!(r.corner_bridges, 0, "count {count}: {r:?}");
+        let gaps = bridge_gaps(&clear);
+        assert_eq!(gaps.len(), count);
+        for (c, width) in gaps {
+            assert!(
+                near(c) > 4.0,
+                "count {count}: a bridge at {c:?} is {} from a corner",
+                near(c)
+            );
+            // the gap is on a straight stretch: as wide as the bridge and one tool
+            assert!(
+                (width - 3.0).abs() < 0.05,
+                "count {count}: gap of {width} at {c:?}"
+            );
+        }
+        fell_on_a_corner |= bridge_gaps(&even).iter().any(|(c, _)| near(*c) <= 4.0);
+    }
+    assert!(
+        fell_on_a_corner,
+        "the even places never came near a corner: the test shows nothing"
+    );
+}
+
+#[test]
+fn a_clearance_of_zero_is_the_even_places_and_a_wrong_one_is_refused() {
+    let o = Outline {
+        closed: vec![rect(0.0, 0.0, 40.0, 20.0)],
+        open: vec![],
+    };
+    let base = route_outline(&o, 1.0, 0.05).unwrap();
+    let tabs = Tabs {
+        count: 3,
+        width_mm: 2.0,
+        min_length_mm: 4.0,
+    };
+    let (mut a, mut b) = (base.clone(), base.clone());
+    let ra = add_tabs(&mut a, 1.0, &tabs).unwrap();
+    let rb = add_tabs_clear_of_corners(&mut b, 1.0, &tabs, 0.0).unwrap();
+    assert_eq!((a, ra), (b, rb));
+    for bad in [-1.0, f64::NAN, f64::INFINITY] {
+        assert!(
+            add_tabs_clear_of_corners(&mut base.clone(), 1.0, &tabs, bad).is_err(),
+            "{bad}"
+        );
+    }
+}
+
+#[test]
+fn a_bridge_with_no_clear_place_stays_where_it_was_and_is_counted() {
+    // a small square has a corner within any clearance of any of its points
+    let o = Outline {
+        closed: vec![rect(0.0, 0.0, 10.0, 10.0)],
+        open: vec![],
+    };
+    let base = route_outline(&o, 1.0, 0.05).unwrap();
+    let tabs = Tabs {
+        count: 1,
+        width_mm: 1.0,
+        min_length_mm: 4.0,
+    };
+    let mut even = base.clone();
+    add_tabs(&mut even, 1.0, &tabs).unwrap();
+    let mut clear = base.clone();
+    let r = add_tabs_clear_of_corners(&mut clear, 1.0, &tabs, 30.0).unwrap();
+    assert_eq!(
+        (r.bridges, r.corner_bridges, r.paths_left_closed),
+        (1, 1, 0)
+    );
+    assert_eq!(clear, even);
 }
 
 #[test]

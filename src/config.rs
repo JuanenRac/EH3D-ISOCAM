@@ -115,6 +115,9 @@ pub struct Settings {
     pub tab_count: usize,
     pub tab_width_mm: f64,
     pub tab_min_length_mm: f64,
+    /// How far from a corner of the cut a bridge and its gap are kept: a bridge that would fall on a corner is moved along the path to the nearest clear place (0 puts the bridges
+    /// evenly, wherever they fall).
+    pub tab_corner_clearance_mm: f64,
     /// A track narrower than twice the tolerance plus this is reported when a tolerance is set.
     pub tolerance_warning_margin_mm: f64,
     /// The tool that isolates one net chosen by a point (`--net X,Y`).
@@ -271,6 +274,7 @@ impl Default for Settings {
             tab_count: 0,
             tab_width_mm: 1.0,
             tab_min_length_mm: 4.0,
+            tab_corner_clearance_mm: 0.0,
             tolerance_warning_margin_mm: 0.05,
             net_tool_mm: 1.0,
             rubout_lines_tool_mm: 0.8,
@@ -483,6 +487,7 @@ impl Settings {
             "tab_count" => self.tab_count = count(key, v)?,
             "tab_width_mm" => self.tab_width_mm = num(key, v)?,
             "tab_min_length_mm" => self.tab_min_length_mm = num(key, v)?,
+            "tab_corner_clearance_mm" => self.tab_corner_clearance_mm = num(key, v)?,
             "tolerance_warning_margin_mm" => self.tolerance_warning_margin_mm = num(key, v)?,
             "net_tool_mm" => self.net_tool_mm = num(key, v)?,
             "rubout_lines_tool_mm" => self.rubout_lines_tool_mm = num(key, v)?,
@@ -599,7 +604,7 @@ impl Settings {
     pub fn to_text(&self) -> String {
         let b = |v: bool| if v { "yes" } else { "no" };
         let mut extra = format!(
-            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\ngerber_format = {}.{}\ngerber_zeros = {}\ngerber_units = {}\naperture_units = {}\naperture_size_column = {}\nconflict_tolerance_mm = {}\nproblem_corner_angle_deg = {}\nproblem_track_gap_factor = {}\nalignment_pattern = {}\nalignment_special_a_mm = {}\nalignment_special_b_mm = {}\ntab_count = {}\ntab_width_mm = {}\ntab_min_length_mm = {}\ntolerance_warning_margin_mm = {}\nnet_tool_mm = {}\nrubout_lines_tool_mm = {}\nrubout_lines_direction = {}\n",
+            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\ngerber_format = {}.{}\ngerber_zeros = {}\ngerber_units = {}\naperture_units = {}\naperture_size_column = {}\nconflict_tolerance_mm = {}\nproblem_corner_angle_deg = {}\nproblem_track_gap_factor = {}\nalignment_pattern = {}\nalignment_special_a_mm = {}\nalignment_special_b_mm = {}\ntab_count = {}\ntab_width_mm = {}\ntab_min_length_mm = {}\ntab_corner_clearance_mm = {}\ntolerance_warning_margin_mm = {}\nnet_tool_mm = {}\nrubout_lines_tool_mm = {}\nrubout_lines_direction = {}\n",
             self.output_units.name(),
             self.report_units.name(),
             b(self.forced_isolation),
@@ -629,6 +634,7 @@ impl Settings {
             self.tab_count,
             self.tab_width_mm,
             self.tab_min_length_mm,
+            self.tab_corner_clearance_mm,
             self.tolerance_warning_margin_mm,
             self.net_tool_mm,
             self.rubout_lines_tool_mm,
@@ -988,6 +994,12 @@ drill_order = {}
                 self.tab_min_length_mm,
                 2.0 * self.route_tool_mm,
                 10_000.0,
+            )?;
+            range(
+                "tab_corner_clearance_mm",
+                self.tab_corner_clearance_mm,
+                0.0,
+                1000.0,
             )?;
         }
         range(

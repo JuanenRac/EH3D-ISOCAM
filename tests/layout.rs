@@ -783,6 +783,39 @@ fn the_cut_gets_bridges_and_the_alignment_holes_come_in_six() {
     assert!(err.contains("4 bridges"), "{err}");
     let text = std::fs::read_to_string(&file).unwrap();
     assert_eq!(text.matches("M15").count(), 4, "{text}");
+    // the bridges kept off the corners are the same number, and a negative clearance is refused with its name
+    let clear = tmp("isocam_tabs_clear.ncd");
+    let (ok, _, err) = run(&[
+        "route",
+        &outline,
+        &clear,
+        "--route-tool-mm",
+        "2",
+        "--tab-count",
+        "4",
+        "--tab-width-mm",
+        "3",
+        "--tab-corner-clearance-mm",
+        "6",
+    ]);
+    assert!(ok && err.contains("4 bridges"), "{err}");
+    assert_eq!(
+        std::fs::read_to_string(&clear)
+            .unwrap()
+            .matches("M15")
+            .count(),
+        4
+    );
+    let (ok, _, err) = run(&[
+        "route",
+        &outline,
+        &clear,
+        "--tab-count",
+        "4",
+        "--tab-corner-clearance-mm",
+        "-1",
+    ]);
+    assert!(!ok && err.contains("tab_corner_clearance_mm"), "{err}");
     // a bridge narrower than 0.1 mm or pieces shorter than two tools are refused
     let (ok, _, err) = run(&[
         "route",

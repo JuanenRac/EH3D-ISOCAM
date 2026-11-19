@@ -4,9 +4,9 @@
 use crate::config::Settings;
 use crate::contour::Loop;
 use crate::drill::{
-    add_tabs, drill_travel_mm, order_holes, read_drills_with_format, read_outline, route_outline,
-    write_drills_in_format, write_route_excellon_in_format, DrillOrder, DrillStyle, Hole, Outline,
-    TabReport, Tabs,
+    add_tabs_clear_of_corners, drill_travel_mm, order_holes, read_drills_with_format, read_outline,
+    route_outline, write_drills_in_format, write_route_excellon_in_format, DrillOrder, DrillStyle,
+    Hole, Outline, TabReport, Tabs,
 };
 use crate::fiducial::{apply_to_holes, apply_to_passes, Fit};
 use crate::filetype;
@@ -457,7 +457,7 @@ pub fn route_job(
         s.res_mm.min(s.route_tool_mm / 2.0),
     )?;
     let tabs = if s.tab_count > 0 {
-        add_tabs(
+        add_tabs_clear_of_corners(
             &mut pass,
             s.route_tool_mm,
             &Tabs {
@@ -465,6 +465,7 @@ pub fn route_job(
                 width_mm: s.tab_width_mm,
                 min_length_mm: s.tab_min_length_mm,
             },
+            s.tab_corner_clearance_mm,
         )?
     } else {
         TabReport::default()

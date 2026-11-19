@@ -200,10 +200,13 @@ pub enum Msg {
     LegendRapid,
     LegendPlunge,
     LegendCut,
+    TabCorner,
+    NoteCornerBridges,
+    TabMinLength,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 112] = [
+    pub const ALL: [Msg; 115] = [
         Msg::Open,
         Msg::Export,
         Msg::Compute,
@@ -316,6 +319,9 @@ impl Msg {
         Msg::LegendRapid,
         Msg::LegendPlunge,
         Msg::LegendCut,
+        Msg::TabCorner,
+        Msg::NoteCornerBridges,
+        Msg::TabMinLength,
     ];
 
     /// The words in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese.
@@ -1440,6 +1446,36 @@ impl Msg {
                 "切削（浅い→深い）",
                 "切削（由浅到深）",
                 "Corte (de pouco a muito profundo)",
+            ],
+            Msg::TabCorner => [
+                "Bridge clearance from corners (mm, 0 = evenly)",
+                "Distancia de los puentes a las esquinas (mm, 0 = repartidos)",
+                "Abstand der Stege zu Ecken (mm, 0 = gleichmäßig)",
+                "Distance des ponts aux coins (mm, 0 = répartis)",
+                "Distanza dei ponti dagli angoli (mm, 0 = distribuiti)",
+                "ブリッジと角の間隔 (mm、0 = 等間隔)",
+                "连接桥与拐角的距离（mm，0 = 均匀分布）",
+                "Distância das pontes aos cantos (mm, 0 = distribuídas)",
+            ],
+            Msg::NoteCornerBridges => [
+                "{0} bridges could not be moved off a corner",
+                "{0} puentes no se pudieron apartar de una esquina",
+                "{0} Stege ließen sich nicht von einer Ecke wegschieben",
+                "{0} ponts n'ont pas pu être écartés d'un coin",
+                "{0} ponti non si sono potuti spostare da un angolo",
+                "{0} 個のブリッジは角から離せませんでした",
+                "有 {0} 个连接桥无法移离拐角",
+                "Não foi possível afastar {0} pontes de um canto",
+            ],
+            Msg::TabMinLength => [
+                "Shortest piece between bridges (mm)",
+                "Tramo más corto entre puentes (mm)",
+                "Kürzestes Stück zwischen Stegen (mm)",
+                "Plus court tronçon entre ponts (mm)",
+                "Tratto più corto fra i ponti (mm)",
+                "ブリッジ間の最短区間 (mm)",
+                "连接桥之间的最短一段（mm）",
+                "Troço mais curto entre pontes (mm)",
             ],
         }
     }

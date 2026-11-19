@@ -221,6 +221,18 @@ pub fn default_fields(s: &Settings) -> Vec<Field> {
             s.tab_width_mm.to_string(),
         ),
         f(
+            Section::Outline,
+            "tab_min_length_mm",
+            Msg::TabMinLength,
+            s.tab_min_length_mm.to_string(),
+        ),
+        f(
+            Section::Outline,
+            "tab_corner_clearance_mm",
+            Msg::TabCorner,
+            s.tab_corner_clearance_mm.to_string(),
+        ),
+        f(
             Section::Layout,
             "rotate_quarters",
             Msg::Quarters,
@@ -1375,6 +1387,13 @@ impl Window {
         if !self.write_out(out, job.text) {
             return false;
         }
+        let at_corners = job.tabs.corner_bridges;
+        if at_corners > 0 {
+            self.notes = vec![fill(
+                Msg::NoteCornerBridges.tr(self.lang),
+                &[at_corners.to_string().as_str()],
+            )];
+        }
         if loose > 0 {
             self.status = Status::ExportedLoose {
                 file: board::file_name(out),
@@ -2308,5 +2327,37 @@ M30
         depths.sort_by(|a, b| a.partial_cmp(b).unwrap());
         depths.dedup();
         assert_eq!(depths, [20.0, 40.0, 60.0]);
+    }
+
+    #[test]
+    fn a_bridge_that_cannot_leave_a_corner_is_said_in_the_notes() {
+        let dir = scratch("route-corners");
+        let (_, o) = board_files(&dir);
+        let mut w = Window::new(Lang::En);
+        assert!(w.open_outline(&o));
+        for key in [
+            "tab_count",
+            "tab_width_mm",
+            "tab_min_length_mm",
+            "tab_corner_clearance_mm",
+        ] {
+            assert!(w.fields.iter().any(|f| f.key == key), "{key}");
+        }
+        set(&mut w, "tab_count", "2");
+        // within a clearance of 400 mm of any place there is a corner
+        set(&mut w, "tab_corner_clearance_mm", "400");
+        assert!(w.export_route(&dir.join("far.ncd")));
+        assert_eq!(w.notes, ["2 bridges could not be moved off a corner"]);
+        // a clearance that fits leaves nothing to say
+        w.notes.clear();
+        set(&mut w, "tab_corner_clearance_mm", "5");
+        assert!(w.export_route(&dir.join("near.ncd")));
+        assert!(w.notes.is_empty(), "{:?}", w.notes);
+        let text = fs::read_to_string(dir.join("near.ncd")).unwrap();
+        assert_eq!(text.matches("M15").count(), 2, "{text}");
+        for l in Lang::ALL {
+            assert!(Msg::NoteCornerBridges.tr(l).contains("{0}"), "{l:?}");
+        }
+        let _ = fs::remove_dir_all(&dir);
     }
 }

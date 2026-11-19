@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 444 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 448 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.1.2` |
 | Maturità | Impalcatura |
-| Test | 444 |
+| Test | 448 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,7 +48,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 444 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
+| Test | 🟡 | 448 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata e il programma di una versione la disegna in un'immagine (`--shot`), ma nessuno l'ha ancora usata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -85,6 +85,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **Il tempo del lavoro** (`src/simulate.rs`): con `rapid_mm_min` impostato, `isolate` stampa anche il tempo stimato del G-code scritto (lo stesso percorso del programma che fa `simulate`, senza le attese del mandrino); senza velocità dei movimenti rapidi non stampa altro, e un tracciato o un disegno DXF non ha tempo.
 * **La prova a vuoto nella finestra** (`src/window.rs`): il pulsante «Prova a vuoto» percorre il G-code con cui sarebbero scritti i percorsi (non si scrive nulla) e mostra il tempo, la scatola in cui si muove, il taglio più profondo e i suoi rilievi nella lingua della finestra; il gruppo «Macchina» raccoglie la velocità rapida e i limiti della macchina (`machine_profile`, il piano, il margine, il taglio più profondo e il mandrino più veloce), e un limite superato è un rilievo.
 * **Il percorso dell'utensile nell'immagine** (`src/toolpath.rs`): la casella «Mostra il percorso dell'utensile» percorre il G-code con cui sarebbero scritti i percorsi e disegna ciò che farebbe la macchina al posto delle bande delle passate: i movimenti rapidi in grigio, le discese in rosso e ogni tratto di taglio in un colore dal blu (appena sotto la superficie) all'ambra (il taglio più profondo), con gli archi disegnati come archi; lo zoom, lo spostamento e «Adatta» dell'immagine agiscono su di esso, e l'impostazione `depth_step_mm` è ora un parametro della finestra.
+* **Ponti lontani dagli angoli** (`src/drill.rs`): `tab_corner_clearance_mm` (0 per impostazione predefinita, che distribuisce i ponti in modo uniforme lungo ogni percorso come prima) sposta un ponte che cadrebbe su un angolo del taglio lungo il percorso, a passi di un quarto della distanza, fino al punto più vicino in cui il percorso gira al massimo di 20 gradi entro il varco e la distanza da ogni lato; un ponte che non trova un tale punto resta dov'era ed è contato e segnalato (`route` avvisa, la finestra aggiunge una nota). Il numero dei ponti (`tab_count`), la loro larghezza (`tab_width_mm`) e il tratto più corto fra due (`tab_min_length_mm`) sono parametri della finestra.
 
 ## 🧩 Ruolo in EH3D
 
@@ -238,7 +239,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 444 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 448 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

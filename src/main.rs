@@ -62,7 +62,7 @@ every such gap that is not narrower than --forced-min-gap-mm and refuses only fo
 is not UTF-8 is read as Latin-1 with a warning, and the notices of the Gerber reader are shown with their code: --hide CODE[,CODE] leaves out the notices of those codes. --optimize-tolerance-mm and --spike-max-mm make the paths lighter;
 --scale-x/--scale-y (about the centre of the board) and --fiducial \"DESIGN_X,DESIGN_Y,MEASURED_X,MEASURED_Y\" (two or more times) scale and correct the work for a stretched or turned board.
 isolate --net X,Y isolates only the net that holds the point (up to half a millimetre from its copper) with the tool of net_tool_mm. route puts bridges on the cut with tab_count,
-tab_width_mm and tab_min_length_mm. With a conflict tolerance, check and isolate warn about the tracks and pads that are thin for it (tolerance_warning_margin_mm). The alignment
+tab_width_mm and tab_min_length_mm; tab_corner_clearance_mm moves a bridge off a corner. With a conflict tolerance, check and isolate warn about the tracks and pads that are thin for it (tolerance_warning_margin_mm). The alignment
 holes are 2, 3 or 6, outside the board or in a special pattern (alignment_pattern, alignment_special_a_mm and alignment_special_b_mm).
 conflict_tolerance_scope = pads keeps the tolerance for the gaps beside a pad. A layer that is really a drill file, a plot or a drawing (and the other way round) is refused by name; kind says
 what a file is. hpgl_pen_map and hpgl_pen_speed_cm_s (0 = the machine's own) set the pens of a plot of holes and the speed of a plot. hpgl_isocam_style (on) writes a plot with a PA for each point and lines of about 75 columns, as the original program did.
@@ -963,6 +963,13 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     r.tabs.bridges,
                     len(&cli, s.tab_width_mm),
                     r.tabs.paths_cut
+                );
+            }
+            if r.tabs.corner_bridges > 0 {
+                eprintln!(
+                    "warning: {} bridges stay on a corner: no place within {} of them is clear of corners",
+                    r.tabs.corner_bridges,
+                    len(&cli, s.tab_corner_clearance_mm)
                 );
             }
             if r.tabs.paths_left_closed > 0 {

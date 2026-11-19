@@ -694,6 +694,36 @@ pub struct TabReport {
     pub bridges: usize,
     /// The closed paths too short for a bridge, which are left closed.
     pub paths_left_closed: usize,
+    /// The bridges that stay where they fall although a corner is within the clearance asked for, because no place near them is clear of corners.
+    pub corner_bridges: usize,
+}
+
+/// The most a path may turn, in total, within a bridge and its clearance for the place to count as clear of corners (degrees).
+const CORNER_TURN_DEG: f64 = 20.0;
+
+/// How much the path turns (the sum of the angles at its points, in degrees) between the distances `lo` and `hi` along a closed path, wrapping round.
+fn turning_between(pts: &[(f64, f64)], cum: &[f64], total: f64, lo: f64, hi: f64) -> f64 {
+    let n = pts.len();
+    let mut sum = 0.0;
+    for lap in -1..=2 {
+        for i in 0..n {
+            let d = lap as f64 * total + cum[i];
+            if d < lo || d > hi {
+                continue;
+            }
+            let (a, b, c) = (pts[(i + n - 1) % n], pts[i], pts[(i + 1) % n]);
+            let (ux, uy) = (b.0 - a.0, b.1 - a.1);
+            let (vx, vy) = (c.0 - b.0, c.1 - b.1);
+            if ux.hypot(uy) < 1e-12 || vx.hypot(vy) < 1e-12 {
+                continue;
+            }
+            sum += (ux * vy - uy * vx)
+                .atan2(ux * vx + uy * vy)
+                .abs()
+                .to_degrees();
+        }
+    }
+    sum
 }
 
 /// The point at the distance `d` along a closed path (`cum[i]` is the length up to point `i`, `total` the whole length).
@@ -714,6 +744,23 @@ fn point_along(pts: &[(f64, f64)], cum: &[f64], total: f64, d: f64) -> (f64, f64
 /// short of the middle of the bridge, so the material that is left is as wide as asked); the bridges are spread evenly along the path, the first half a span from its start.
 /// A path that is too short for a bridge stays closed and is counted.
 pub fn add_tabs(pass: &mut Pass, tool_mm: f64, t: &Tabs) -> Result<TabReport, String> {
+    add_tabs_clear_of_corners(pass, tool_mm, t, 0.0)
+}
+
+/// Like `add_tabs`, but a bridge is moved along the path, by steps of a quarter of the clearance (at most half a span less the gap), to the nearest place where the path turns
+/// by no more than 20 degrees in all within the gap and `corner_clearance_mm` on either side of it; a bridge that finds no such place stays where it would have been and is
+/// counted in `corner_bridges`. A clearance of 0 puts the bridges evenly, as `add_tabs` does.
+pub fn add_tabs_clear_of_corners(
+    pass: &mut Pass,
+    tool_mm: f64,
+    t: &Tabs,
+    corner_clearance_mm: f64,
+) -> Result<TabReport, String> {
+    if !(corner_clearance_mm.is_finite() && corner_clearance_mm >= 0.0) {
+        return Err(format!(
+            "the clearance of the bridges from corners is {corner_clearance_mm} mm: it must be 0 or more"
+        ));
+    }
     if !(tool_mm.is_finite() && tool_mm > 0.0) {
         return Err("the tool of the bridges must be wider than 0".into());
     }
@@ -757,11 +804,39 @@ pub fn add_tabs(pass: &mut Pass, tool_mm: f64, t: &Tabs) -> Result<TabReport, St
             continue;
         }
         let span = total / bridges as f64;
+        // where the bridges are: evenly, each moved off a corner when that is asked for and a clear place is near
+        let reach = (span / 2.0 - half - 0.05).max(0.0);
+        let step = (corner_clearance_mm / 4.0).max(0.05);
+        let mut centres = Vec::with_capacity(bridges);
         for k in 0..bridges {
-            let (from, to) = (
-                (k as f64 + 0.5) * span + half,
-                (k as f64 + 1.5) * span - half,
-            );
+            let even = (k as f64 + 0.5) * span;
+            let clear = |c: f64| {
+                let around = half + corner_clearance_mm;
+                turning_between(&path, &cum, total, c - around, c + around) <= CORNER_TURN_DEG
+            };
+            let mut at = even;
+            if corner_clearance_mm > 0.0 && !clear(even) {
+                let mut found = None;
+                let mut shift = step;
+                while shift <= reach && found.is_none() {
+                    found = [even + shift, even - shift].into_iter().find(|c| clear(*c));
+                    shift += step;
+                }
+                match found {
+                    Some(c) => at = c,
+                    None => report.corner_bridges += 1,
+                }
+            }
+            centres.push(at);
+        }
+        for k in 0..bridges {
+            let from = centres[k] + half;
+            let next = if k + 1 < bridges {
+                centres[k + 1]
+            } else {
+                centres[0] + total
+            };
+            let to = next - half;
             let mut run = vec![point_along(&path, &cum, total, from)];
             for lap in 0..3 {
                 for i in 0..n {
