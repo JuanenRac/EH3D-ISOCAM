@@ -200,6 +200,9 @@ pub struct Settings {
     pub crib_fine_width_mm: f64,
     /// The order the holes of a drill file or a plot are drilled in (`file`, `nearest` or `optimized`); within each tool, from the starting point of the tool.
     pub drill_order: DrillOrder,
+    /// How `rubout-area` clears a contour or a box: with parallel lines back and forth (`lines`) or with rings that follow its edge inwards (`rings`), and the order of the rings.
+    pub rubout_style: crate::clearing::Style,
+    pub rubout_ring_order: crate::clearing::RingOrder,
 }
 
 impl Default for Settings {
@@ -317,6 +320,8 @@ impl Default for Settings {
             heightmap_max_range_mm: 0.5,
             crib_fine_width_mm: 0.0,
             drill_order: DrillOrder::File,
+            rubout_style: crate::clearing::Style::Lines,
+            rubout_ring_order: crate::clearing::RingOrder::OutsideIn,
         }
     }
 }
@@ -566,6 +571,8 @@ impl Settings {
             "heightmap_max_range_mm" => self.heightmap_max_range_mm = num(key, v)?,
             "crib_fine_width_mm" => self.crib_fine_width_mm = num(key, v)?,
             "drill_order" => self.drill_order = DrillOrder::parse(v)?,
+            "rubout_style" => self.rubout_style = crate::clearing::Style::parse(v)?,
+            "rubout_ring_order" => self.rubout_ring_order = crate::clearing::RingOrder::parse(v)?,
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
@@ -679,6 +686,8 @@ heightmap_max_segment_mm = {}
 heightmap_max_range_mm = {}
 crib_fine_width_mm = {}
 drill_order = {}
+rubout_style = {}
+rubout_ring_order = {}
 ",
             self.conflict_tolerance_scope.name(),
             self.rubout_fill_margin_mm,
@@ -717,7 +726,9 @@ drill_order = {}
             self.heightmap_max_segment_mm,
             self.heightmap_max_range_mm,
             self.crib_fine_width_mm,
-            self.drill_order.name()
+            self.drill_order.name(),
+            self.rubout_style.name(),
+            self.rubout_ring_order.name()
         ));
         for p in &self.fiducials {
             extra.push_str(&format!(

@@ -6,6 +6,7 @@
 
 pub mod board;
 pub mod browse;
+pub mod clearing;
 pub mod config;
 pub mod crib;
 pub mod draw;

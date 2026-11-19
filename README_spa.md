@@ -17,7 +17,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 448 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 460 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versión | `0.1.2` |
 | Madurez | Andamiaje |
-| Pruebas | 448 |
+| Pruebas | 460 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -48,7 +48,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Ficheros y disposición | 🟡 | lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, añade agujeros de alineación y comprueba las reglas de diseño con la posición de cada hallazgo; probado en un ordenador, no con ficheros escritos por otros programas ni en una máquina. |
 | Aislamiento forzado, corrección, máscara | 🟡 | caminos forzados por los huecos donde no cabe la herramienta, trayectorias más ligeras, escala y corrección con puntos de referencia, las aberturas de la máscara de soldadura, unidades y vista previa de las pasadas; probado en un ordenador con capas generadas y entradas dañadas, nunca con placas reales ni en una máquina, y la corrección no se ha comparado con mediciones reales de una cámara. |
 | Línea de comandos | 🟡 | `eh3d-isocam` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 448 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. Incluyen una simulación con semilla fija de una máquina Bungard con el recorrido de su mesa, con fallos inyectados y recuperación. |
+| Pruebas | 🟡 | 460 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. Incluyen una simulación con semilla fija de una máquina Bungard con el recorrido de su mesa, con fallos inyectados y recuperación. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🟠 | Escrita (egui, `--features gui`): abrir o soltar una capa, zoom y desplazamiento, editar los parámetros principales, exportar; su lógica está probada y el programa de una versión la dibuja en una imagen (`--shot`), pero nadie la ha usado todavía en una pantalla. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -86,6 +86,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 * **La pasada en seco en la ventana** (`src/window.rs`): el botón «Pasada en seco» recorre el G-code con el que se escribirían las trayectorias (no se escribe nada) y muestra su tiempo, la caja en la que se mueve, el corte más profundo y sus hallazgos en el idioma de la ventana; el grupo «Máquina» reúne la velocidad en rápido y los límites de la máquina (`machine_profile`, la mesa, el margen, el corte más profundo y el husillo más rápido), y un límite que se rompe es un hallazgo.
 * **El recorrido de la herramienta en la imagen** (`src/toolpath.rs`): la casilla «Mostrar el recorrido de la herramienta» recorre el G-code con el que se escribirían las trayectorias y dibuja lo que haría la máquina en lugar de las bandas de las pasadas: los movimientos rápidos en gris, las bajadas en rojo y cada tramo de corte en un color de azul (justo bajo la superficie) a ámbar (el corte más profundo), con los arcos dibujados como arcos; el zoom, el desplazamiento y «Ajustar» de la imagen actúan sobre él, y el ajuste `depth_step_mm` es ahora un parámetro de la ventana.
 * **Puentes apartados de las esquinas** (`src/drill.rs`): `tab_corner_clearance_mm` (0 por defecto, que reparte los puentes por igual a lo largo de cada trayectoria como antes) desplaza un puente que caería en una esquina del corte a lo largo de la trayectoria, en pasos de un cuarto de la distancia, hasta el lugar más cercano donde la trayectoria gira como mucho 20 grados dentro del hueco y de la distancia a cada lado; un puente que no encuentra ese lugar se queda donde estaba y se cuenta y se avisa (`route` advierte, la ventana añade una nota). El número de puentes (`tab_count`), su ancho (`tab_width_mm`) y el tramo más corto entre dos (`tab_min_length_mm`) son parámetros de la ventana.
+* **Relleno de una zona con anillos** (`src/clearing.rs`): `rubout_style = rings` hace que `rubout-area` rellene un rectángulo (`--area`) o las trayectorias cerradas de un fichero (`--contour`, relleno par-impar, así que una trayectoria dentro de otra es un agujero) con anillos cerrados que siguen el borde hacia dentro en lugar de líneas de ida y vuelta; el primer anillo queda a media herramienta del borde, los siguientes a un paso de `tool * (1 - rubout_overlap)` más adentro, y se añade un anillo por el centro cuando quedaría una franja. `rubout_ring_order` (`outside-in`, lo normal, o `inside-out`) se respeta en el G-code diga lo que diga `ordering`. Antes de escribir nada se comprueban las trayectorias contra la mesa de la máquina y la que se sale se rechaza con su número y su pasada (`--force` la escribe igualmente); la comprobación sirve también para las líneas.
 
 ## 🧩 Papel en EH3D
 
@@ -158,6 +159,7 @@ machine limits: --machine-profile none|ccd-mtc|ccd2-mtc  --machine-x-mm N  --mac
 dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time, box, deepest cut, findings with their lines; exit code 1 on any finding)
 depth and surface: --depth-step-mm N  --height-map FILE  --heightmap-ref-x-mm N  --heightmap-ref-y-mm N  --heightmap-max-segment-mm N  --heightmap-max-range-mm N   (the map is the text file of EH3D-AUTOLEVEL)
 drill order: --drill-order file|nearest|optimized   (the holes of each tool in a short path from --start-x-mm and --start-y-mm; file keeps the order of the file)
+clearing an area: --rubout-style lines|rings  --rubout-ring-order outside-in|inside-out  --rubout-overlap N  --rubout-lines-tool-mm N   (rings follow the edge inwards, never cut to a layer; the paths are checked against the machine table first)
 ```
 
 ```text
@@ -165,6 +167,7 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── board.rs                                 los pasos que comparten la línea de comandos y la ventana
 │   ├── browse.rs                                la lista de ficheros de la ventana que abre un fichero
+│   ├── clearing.rs                              el relleno de una zona con anillos, en el orden pedido y dentro de la zona
 │   ├── config.rs                                todos los valores ajustables, desde un fichero de ajustes
 │   ├── crib.rs                                  las herramientas del almacén y el ancho con que corta cada una
 │   ├── draw.rs                                  lo que dibuja la ventana: las formas y los triángulos de las regiones
@@ -239,7 +242,7 @@ Para sacar una captura de la ventana sin abrirla a mano, ejecútelo con `--shot 
 
 ## 🧪 Pruebas
 
-El conjunto tiene 448 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 460 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 
@@ -263,6 +266,7 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── board.rs                                 los pasos que comparten la línea de comandos y la ventana
 │   ├── browse.rs                                la lista de ficheros de la ventana que abre un fichero
+│   ├── clearing.rs                              el relleno de una zona con anillos, en el orden pedido y dentro de la zona
 │   ├── config.rs                                todos los valores ajustables, desde un fichero de ajustes
 │   ├── crib.rs                                  las herramientas del almacén y el ancho con que corta cada una
 │   ├── draw.rs                                  lo que dibuja la ventana: las formas y los triángulos de las regiones

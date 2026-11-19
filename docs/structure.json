@@ -54,6 +54,19 @@
           }
         },
         {
+          "name": "clearing.rs",
+          "desc": {
+            "en": "clearing an area with rings, in the order asked for and cut inside the area",
+            "es": "el relleno de una zona con anillos, en el orden pedido y dentro de la zona",
+            "de": "das Räumen einer Fläche mit Ringen, in der gewünschten Reihenfolge und innerhalb der Fläche",
+            "fr": "le dégagement d'une zone par anneaux, dans l'ordre voulu et à l'intérieur de la zone",
+            "it": "lo svuotamento di un'area con anelli, nell'ordine richiesto e dentro l'area",
+            "ja": "リングでの領域除去：指定した順序で、領域の内側を切削",
+            "zh": "用环形路径清除区域：按指定顺序，且切削在区域内部",
+            "pt": "o desbaste de uma zona com anéis, na ordem pedida e dentro da zona"
+          }
+        },
+        {
           "name": "config.rs",
           "desc": {
             "en": "every tunable value, from one settings file",

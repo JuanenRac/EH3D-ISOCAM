@@ -3,6 +3,7 @@
 //! into it. The sizes of the profiles are the ones written in the documents of EH3D-DRILLPRO; the origin of the table is taken at a corner, as the programs of the suite place the
 //! work. Nothing here has run on a machine.
 
+use crate::isolate::Pass;
 use eh3d_parser_gcode::{interpret, parse, Dialect};
 
 /// A machine whose table is known.
@@ -138,6 +139,32 @@ pub fn check_program(text: &str, limits: &Limits) -> Result<Checked, String> {
     })
 }
 
+/// Checks the paths of the passes against the table before any G-code is written: the first point of a path that is outside the table (less the margin) stops it, saying the path,
+/// its pass and where it goes. Only the table is checked; the depth and the spindle are checked in the program.
+pub fn check_passes(passes: &[Pass], limits: &Limits) -> Result<(), String> {
+    let Some((w, d)) = limits.table_mm else {
+        return Ok(());
+    };
+    let m = limits.margin_mm;
+    let eps = 1e-6;
+    let total: usize = passes.iter().map(|p| p.paths.len() + p.open.len()).sum();
+    let mut number = 0;
+    for (n, pass) in passes.iter().enumerate() {
+        for path in pass.paths.iter().chain(pass.open.iter()) {
+            number += 1;
+            for &(x, y) in path {
+                if x < m - eps || y < m - eps || x > w - m + eps || y > d - m + eps {
+                    return Err(format!(
+                        "path {number} of {total} (pass {}): the tool goes to X{x:.3} Y{y:.3}, outside the table ({w} x {d} mm, {m} mm kept from its edges)",
+                        n + 1
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -256,5 +283,36 @@ mod tests {
             d.contains("495 x 325") && d.contains("0.5 mm deep") && d.contains("30000 rpm"),
             "{d}"
         );
+    }
+
+    #[test]
+    fn the_paths_of_the_passes_are_checked_against_the_table_by_number() {
+        let inside = vec![(5.0, 5.0), (20.0, 5.0), (20.0, 20.0)];
+        let outside = vec![(5.0, 5.0), (60.0, 5.0), (60.0, 20.0)];
+        let passes = [
+            Pass {
+                paths: vec![inside.clone()],
+                ..Pass::default()
+            },
+            Pass {
+                open: vec![inside, outside],
+                ..Pass::default()
+            },
+        ];
+        let e = check_passes(&passes, &table(50.0, 50.0)).unwrap_err();
+        assert!(e.starts_with("path 3 of 3 (pass 2): "), "{e}");
+        assert!(
+            e.contains("X60.000 Y5.000") && e.contains("outside the table (50 x 50 mm"),
+            "{e}"
+        );
+        // no table, or a table that holds everything
+        assert!(check_passes(&passes, &Limits::default()).is_ok());
+        assert!(check_passes(&passes, &table(100.0, 50.0)).is_ok());
+        assert!(check_passes(&[], &table(10.0, 10.0)).is_ok());
+        // the margin counts from every edge
+        let mut l = table(100.0, 50.0);
+        l.margin_mm = 6.0;
+        let e = check_passes(&passes, &l).unwrap_err();
+        assert!(e.starts_with("path 1 of 3 (pass 1): "), "{e}");
     }
 }

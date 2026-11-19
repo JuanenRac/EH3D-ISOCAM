@@ -7,6 +7,7 @@ use eh3d_isocam::board::{
     centre_of, drills_job, finish_plot, gcode_program, isolation_plot, mark_rows, mask_job,
     plot_options, route_job,
 };
+use eh3d_isocam::clearing::{fill_rings, Rings, Style as RuboutStyle};
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::crib;
 use eh3d_isocam::drc;
@@ -18,6 +19,7 @@ use eh3d_isocam::fill::{rubout_contours, Fill};
 use eh3d_isocam::forced::{forced_passes, insert};
 use eh3d_isocam::hpgl::{write_opts, PenBy};
 use eh3d_isocam::isolate::{net_scene, plan_with_pads, rubout_lines, Pass};
+use eh3d_isocam::machine::check_passes;
 use eh3d_isocam::optimize::optimize_passes;
 use eh3d_isocam::order::{arrange, directions, travel_mm, Cut, Strategy};
 use eh3d_isocam::preview;
@@ -44,7 +46,7 @@ const HELP: &str = "eh3d-isocam: isolation milling of copper from a Gerber layer
   eh3d-isocam drills IN.ncd OUT.ncd|OUT.plt [--align]  read a drill file and write it back (turned over, repeated on a panel, with alignment holes), or as a plot with a pen for each drill (hpgl_pen_map)
   eh3d-isocam route OUTLINE OUT.plt|OUT.ncd      the path of the tool round the board (OUTLINE is a Gerber outline layer, a .dxf or a .plt)
   eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F.gts]  the openings of the solder mask, from the mask layer or from the pads of the copper
-  eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--contour FILE  parallel lines of a tool that clear an area or fill closed paths, cut to the copper of LAYER when it is given
+  eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--contour FILE  parallel lines of a tool (or, with --rubout-style rings, closed rings) that clear an area or fill closed paths, cut to the copper of LAYER when it is given (lines only)
   eh3d-isocam kind FILE...                       say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
   eh3d-isocam simulate PROGRAM.nc                a dry run of a G-code program: its time, the box it moves in, the deepest cut and what is wrong with it (the machine limits of the settings apply)
   eh3d-isocam config                             every setting with its default, as a configuration file
@@ -825,7 +827,36 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         "rubout-area" => {
             let out = arg(&cli, 0, "rubout-area needs an output file")?;
             let layer = cli.positional.get(1).map(String::as_str);
-            let pass = if cli.contour.is_some() || layer.is_some() {
+            let pass = if s.rubout_style == RuboutStyle::Rings {
+                if layer.is_some() {
+                    return Err("rubout_style = rings fills the contours as they are: it does not cut them to a layer (use rubout_style = lines for that)".into());
+                }
+                let contours = match (&cli.contour, cli.area) {
+                    (Some(f), _) => {
+                        read_outline(f, &read(&cli, f)?)
+                            .map_err(|e| format!("{f}: {e}"))?
+                            .closed
+                    }
+                    (None, Some((x0, y0, x1, y1))) => {
+                        vec![vec![(x0, y0), (x1, y0), (x1, y1), (x0, y1)]]
+                    }
+                    (None, None) => {
+                        return Err(
+                            "rubout-area needs --area X0,Y0,X1,Y1 (the corners of the area) or --contour FILE"
+                                .into(),
+                        )
+                    }
+                };
+                fill_rings(
+                    &contours,
+                    &Rings {
+                        tool_mm: s.rubout_lines_tool_mm,
+                        overlap: s.rubout_overlap,
+                        order: s.rubout_ring_order,
+                        res_mm: s.res_mm.min(s.rubout_lines_tool_mm / 2.0),
+                    },
+                )?
+            } else if cli.contour.is_some() || layer.is_some() {
                 // contours (a file, or the box of --area), cut to the copper of the layer when one is given
                 let contours =
                     match (&cli.contour, cli.area) {
@@ -867,6 +898,26 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     s.rubout_overlap,
                     s.rubout_lines_direction,
                 )?
+            };
+            // the table of the machine is checked pass by pass first, so that the refusal names the path
+            let limits = s.machine_limits();
+            if let Err(why) = check_passes(std::slice::from_ref(&pass), &limits) {
+                if cli.force {
+                    eprintln!("warning: {why}");
+                } else {
+                    return Err(format!("{why}; --force writes it anyway"));
+                }
+            }
+            // rings keep the order that was asked for
+            let ring_settings;
+            let s = if s.rubout_style == RuboutStyle::Rings {
+                ring_settings = Settings {
+                    ordering: Strategy::Original,
+                    ..s.clone()
+                };
+                &ring_settings
+            } else {
+                s
             };
             let order = s.order();
             let text = if is_plot(out) {

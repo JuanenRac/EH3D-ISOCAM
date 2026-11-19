@@ -17,7 +17,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 448 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 460 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.1.2` |
 | Maturity | Scaffolding |
-| Tests | 448 |
+| Tests | 460 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -48,7 +48,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 448 tests pass (`cargo test`), with normal cases, edge cases and damaged input. They include a seeded simulation of a Bungard machine with the travel of its table with injected faults and recovery. |
+| Tests | 🟡 | 460 tests pass (`cargo test`), with normal cases, edge cases and damaged input. They include a seeded simulation of a Bungard machine with the travel of its table with injected faults and recovery. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`): open or drop a layer, zoom and pan, edit the main parameters, export; its logic is tested and the program of a release draws it to a picture (`--shot`), but nobody has used it on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -86,6 +86,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **The dry run in the window** (`src/window.rs`): the button "Dry run" walks the G-code that the paths would be written as (nothing is written) and shows its time, the box it moves in, the deepest cut and its findings in the language of the window; the group "Machine" holds the speed of the rapid moves and the limits of the machine (`machine_profile`, the table, the margin, the deepest cut and the fastest spindle), and a limit that is broken is a finding.
 * **The path of the tool in the picture** (`src/toolpath.rs`): the box "Show the path of the tool" walks the G-code the paths would be written as and draws what the machine would do instead of the bands of the passes: rapid moves in grey, moves down in red and every cutting stretch in a colour from blue (just under the surface) to amber (the deepest cut), with arcs drawn as arcs; the zoom, the pan and "Fit" of the picture work on it, and the setting `depth_step_mm` is now a parameter of the window.
 * **Bridges kept off the corners** (`src/drill.rs`): `tab_corner_clearance_mm` (0 by default, which puts the bridges evenly along each path as before) moves a bridge that would fall on a corner of the cut along the path, in steps of a quarter of the clearance, to the nearest place where the path turns by no more than 20 degrees within the gap and the clearance on either side of it; a bridge that finds no such place stays where it was and is counted and reported (`route` warns, the window adds a note). The number of bridges (`tab_count`), their width (`tab_width_mm`) and the shortest piece between two (`tab_min_length_mm`) are parameters of the window.
+* **Clearing an area with rings** (`src/clearing.rs`): `rubout_style = rings` makes `rubout-area` fill a box (`--area`) or the closed paths of a file (`--contour`, an even-odd fill, so a path inside another one is a hole) with closed rings that follow the edge inwards instead of lines back and forth; the first ring is half a tool from the edge, the next ones a step of `tool * (1 - rubout_overlap)` further in, and a ring along the middle is added when a strip would be left. `rubout_ring_order` (`outside-in`, the usual, or `inside-out`) is kept in the G-code whatever `ordering` says. Before anything is written, the paths are checked against the table of the machine and a path that leaves it is refused with its number and its pass (`--force` writes it anyway); the check serves the lines as well.
 
 ## 🧩 Role in EH3D
 
@@ -158,6 +159,7 @@ machine limits: --machine-profile none|ccd-mtc|ccd2-mtc  --machine-x-mm N  --mac
 dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time, box, deepest cut, findings with their lines; exit code 1 on any finding)
 depth and surface: --depth-step-mm N  --height-map FILE  --heightmap-ref-x-mm N  --heightmap-ref-y-mm N  --heightmap-max-segment-mm N  --heightmap-max-range-mm N   (the map is the text file of EH3D-AUTOLEVEL)
 drill order: --drill-order file|nearest|optimized   (the holes of each tool in a short path from --start-x-mm and --start-y-mm; file keeps the order of the file)
+clearing an area: --rubout-style lines|rings  --rubout-ring-order outside-in|inside-out  --rubout-overlap N  --rubout-lines-tool-mm N   (rings follow the edge inwards, never cut to a layer; the paths are checked against the machine table first)
 ```
 
 ```text
@@ -165,6 +167,7 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── board.rs                                 the steps the command line and the window share
 │   ├── browse.rs                                the list of files of the window that opens a file
+│   ├── clearing.rs                              clearing an area with rings, in the order asked for and cut inside the area
 │   ├── config.rs                                every tunable value, from one settings file
 │   ├── crib.rs                                  the tools of the tool crib and the width each cuts with
 │   ├── draw.rs                                  what the window draws: the shapes and the triangles of the regions
@@ -239,7 +242,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 448 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 460 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -263,6 +266,7 @@ EH3D-ISOCAM/
 ├── src/
 │   ├── board.rs                                 the steps the command line and the window share
 │   ├── browse.rs                                the list of files of the window that opens a file
+│   ├── clearing.rs                              clearing an area with rings, in the order asked for and cut inside the area
 │   ├── config.rs                                every tunable value, from one settings file
 │   ├── crib.rs                                  the tools of the tool crib and the width each cuts with
 │   ├── draw.rs                                  what the window draws: the shapes and the triangles of the regions
