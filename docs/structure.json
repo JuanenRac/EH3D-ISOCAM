@@ -80,6 +80,19 @@
           }
         },
         {
+          "name": "corners.rs",
+          "desc": {
+            "en": "the corners of the outline rounded and its small cutouts left out",
+            "es": "las esquinas del contorno redondeadas y sus huecos pequeños omitidos",
+            "de": "die Ecken der Kontur abgerundet und ihre kleinen Aussparungen ausgelassen",
+            "fr": "les coins du contour arrondis et ses petites découpes omises",
+            "it": "gli angoli del contorno arrotondati e i suoi piccoli ritagli omessi",
+            "ja": "外形の角の丸め、小さな切り抜きの除外",
+            "zh": "外形拐角的圆角处理，并忽略小的镂空",
+            "pt": "os cantos do contorno arredondados e os seus recortes pequenos omitidos"
+          }
+        },
+        {
           "name": "crib.rs",
           "desc": {
             "en": "the tools of the tool crib and the width each cuts with",

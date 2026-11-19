@@ -8,6 +8,7 @@ pub mod board;
 pub mod browse;
 pub mod clearing;
 pub mod config;
+pub mod corners;
 pub mod crib;
 pub mod draw;
 pub mod drill;

@@ -3,6 +3,7 @@
 
 use crate::config::Settings;
 use crate::contour::Loop;
+use crate::corners::{drop_small_cutouts, round_outline};
 use crate::drill::{
     add_tabs_clear_of_corners, drill_travel_mm, order_holes, read_drills_with_format, read_outline,
     route_outline, write_drills_in_format, write_route_excellon_in_format, DrillOrder, DrillStyle,
@@ -16,7 +17,7 @@ use crate::hpgl::{
     isocam_style, set_pen_speed, write_holes_scaled, write_opts, PenBy, PlotOptions,
 };
 use crate::isolate::Pass;
-use crate::machine::check_program;
+use crate::machine::{check_passes, check_program};
 use crate::mask;
 use crate::order::{arrange, Cut};
 use crate::transform::{alignment_pattern, lay_out, Axis, Board};
@@ -308,7 +309,7 @@ pub fn isolation_plot(
             return Err("plot_outline needs the outline of the board: give --outline FILE".into());
         }
         let o = Outline {
-            closed: outline.to_vec(),
+            closed: shape_outline(outline, s).0,
             open: Vec::new(),
         };
         let mut cut = route_outline(&o, s.route_tool_mm, s.res_mm.min(s.route_tool_mm / 2.0))?;
@@ -431,6 +432,23 @@ pub fn drills_job(
     })
 }
 
+/// The closed paths of the outline as the tool will go round them: the small cutouts left out (`outline_min_cutout_mm`) and the corners rounded (`outline_corner_radius_mm`).
+/// Returns them with how many cutouts were left out, how many corners were rounded and how many of those got a smaller radius than asked for. With both settings at 0 the
+/// paths come back as they were.
+pub fn shape_outline(closed: &[Loop], s: &Settings) -> (Vec<Loop>, usize, usize, usize) {
+    let (kept, dropped) = drop_small_cutouts(closed, s.outline_min_cutout_mm);
+    if s.outline_corner_radius_mm > 0.0 {
+        let r = round_outline(
+            &kept,
+            s.outline_corner_radius_mm,
+            (s.res_mm / 2.0).max(0.001),
+        );
+        (r.paths, dropped, r.rounded, r.limited)
+    } else {
+        (kept, dropped, 0, 0)
+    }
+}
+
 /// The cut round the board as a file, with how long it is and what the bridges did.
 #[derive(Debug, Clone)]
 pub struct RouteJob {
@@ -438,6 +456,13 @@ pub struct RouteJob {
     pub paths: usize,
     pub cut_mm: f64,
     pub tabs: TabReport,
+    /// The cutouts left out of the cut because they are smaller than `outline_min_cutout_mm`.
+    pub cutouts_dropped: usize,
+    /// The corners rounded with `outline_corner_radius_mm`, and how many of them got a smaller radius because their sides are short.
+    pub corners_rounded: usize,
+    pub corners_limited: usize,
+    /// What is wrong with the cut against the table of the machine (the first path that leaves it), when the settings describe a table; `None` when it fits or no table is set.
+    pub outside_table: Option<String>,
 }
 
 /// The path of the tool round the closed paths of the outline (already laid out), with bridges when the settings ask for them, as a plot file or a routing Excellon file.
@@ -447,8 +472,9 @@ pub fn route_job(
     s: &Settings,
     plot: bool,
 ) -> Result<RouteJob, String> {
+    let (shaped, cutouts_dropped, corners_rounded, corners_limited) = shape_outline(closed, s);
     let outline = Outline {
-        closed: closed.to_vec(),
+        closed: shaped,
         open: Vec::new(),
     };
     let mut pass = route_outline(
@@ -476,6 +502,7 @@ pub fn route_job(
         apply_to_passes(&mut passes, &t)?;
     }
     let pass = passes.remove(0);
+    let outside_table = check_passes(std::slice::from_ref(&pass), &s.machine_limits()).err();
     let order = s.order();
     let text = if plot {
         finish_plot(
@@ -497,6 +524,10 @@ pub fn route_job(
         paths: cuts.len(),
         cut_mm: cuts.iter().map(Cut::length_mm).sum(),
         tabs,
+        cutouts_dropped,
+        corners_rounded,
+        corners_limited,
+        outside_table,
     })
 }
 

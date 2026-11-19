@@ -203,10 +203,14 @@ pub enum Msg {
     TabCorner,
     NoteCornerBridges,
     TabMinLength,
+    OutlineRadius,
+    OutlineMinCutout,
+    NoteCornersLimited,
+    NoteCutoutsDropped,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 115] = [
+    pub const ALL: [Msg; 119] = [
         Msg::Open,
         Msg::Export,
         Msg::Compute,
@@ -322,6 +326,10 @@ impl Msg {
         Msg::TabCorner,
         Msg::NoteCornerBridges,
         Msg::TabMinLength,
+        Msg::OutlineRadius,
+        Msg::OutlineMinCutout,
+        Msg::NoteCornersLimited,
+        Msg::NoteCutoutsDropped,
     ];
 
     /// The words in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese.
@@ -1476,6 +1484,46 @@ impl Msg {
                 "ブリッジ間の最短区間 (mm)",
                 "连接桥之间的最短一段（mm）",
                 "Troço mais curto entre pontes (mm)",
+            ],
+            Msg::OutlineRadius => [
+                "Radius of the rounded corners of the cut (mm, 0 = sharp)",
+                "Radio de las esquinas redondeadas del corte (mm, 0 = vivas)",
+                "Radius der abgerundeten Ecken des Schnitts (mm, 0 = scharf)",
+                "Rayon des coins arrondis de la découpe (mm, 0 = vifs)",
+                "Raggio degli angoli arrotondati del taglio (mm, 0 = vivi)",
+                "切断の角の丸み半径 (mm、0 = 角のまま)",
+                "切割拐角的圆角半径（mm，0 = 直角）",
+                "Raio dos cantos arredondados do corte (mm, 0 = vivos)",
+            ],
+            Msg::OutlineMinCutout => [
+                "Leave out cutouts smaller than (mm, 0 = keep all)",
+                "Omitir huecos menores de (mm, 0 = conservar todos)",
+                "Aussparungen kleiner als auslassen (mm, 0 = alle behalten)",
+                "Omettre les découpes plus petites que (mm, 0 = toutes)",
+                "Ometti i ritagli più piccoli di (mm, 0 = tutti)",
+                "これより小さい切り抜きを除外 (mm、0 = すべて残す)",
+                "忽略小于此尺寸的镂空（mm，0 = 全部保留）",
+                "Omitir recortes mais pequenos do que (mm, 0 = manter todos)",
+            ],
+            Msg::NoteCornersLimited => [
+                "{0} corners got a smaller radius: their sides are too short",
+                "{0} esquinas tienen un radio menor: sus lados son demasiado cortos",
+                "{0} Ecken haben einen kleineren Radius: ihre Seiten sind zu kurz",
+                "{0} coins ont un rayon plus petit : leurs côtés sont trop courts",
+                "{0} angoli hanno un raggio minore: i loro lati sono troppo corti",
+                "{0} 個の角は辺が短すぎるため半径が小さくなりました",
+                "有 {0} 个拐角因边太短而使用了更小的半径",
+                "{0} cantos ficaram com um raio menor: os seus lados são demasiado curtos",
+            ],
+            Msg::NoteCutoutsDropped => [
+                "{0} small cutouts were left out of the cut",
+                "{0} huecos pequeños se han omitido del corte",
+                "{0} kleine Aussparungen wurden im Schnitt ausgelassen",
+                "{0} petites découpes ont été omises de la découpe",
+                "{0} piccoli ritagli sono stati omessi dal taglio",
+                "{0} 個の小さな切り抜きを切断から除外しました",
+                "已从切割中忽略 {0} 个小镂空",
+                "{0} recortes pequenos foram omitidos do corte",
             ],
         }
     }

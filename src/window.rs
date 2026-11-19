@@ -233,6 +233,18 @@ pub fn default_fields(s: &Settings) -> Vec<Field> {
             s.tab_corner_clearance_mm.to_string(),
         ),
         f(
+            Section::Outline,
+            "outline_corner_radius_mm",
+            Msg::OutlineRadius,
+            s.outline_corner_radius_mm.to_string(),
+        ),
+        f(
+            Section::Outline,
+            "outline_min_cutout_mm",
+            Msg::OutlineMinCutout,
+            s.outline_min_cutout_mm.to_string(),
+        ),
+        f(
             Section::Layout,
             "rotate_quarters",
             Msg::Quarters,
@@ -1383,16 +1395,36 @@ impl Window {
                 return false;
             }
         };
+        if let Some(why) = job.outside_table {
+            self.status = Status::Failed(why);
+            return false;
+        }
         let loose = job.tabs.paths_left_closed;
         if !self.write_out(out, job.text) {
             return false;
         }
+        let mut notes = Vec::new();
         let at_corners = job.tabs.corner_bridges;
         if at_corners > 0 {
-            self.notes = vec![fill(
+            notes.push(fill(
                 Msg::NoteCornerBridges.tr(self.lang),
                 &[at_corners.to_string().as_str()],
-            )];
+            ));
+        }
+        if job.corners_limited > 0 {
+            notes.push(fill(
+                Msg::NoteCornersLimited.tr(self.lang),
+                &[job.corners_limited.to_string().as_str()],
+            ));
+        }
+        if job.cutouts_dropped > 0 {
+            notes.push(fill(
+                Msg::NoteCutoutsDropped.tr(self.lang),
+                &[job.cutouts_dropped.to_string().as_str()],
+            ));
+        }
+        if !notes.is_empty() {
+            self.notes = notes;
         }
         if loose > 0 {
             self.status = Status::ExportedLoose {
@@ -2358,6 +2390,43 @@ M30
         for l in Lang::ALL {
             assert!(Msg::NoteCornerBridges.tr(l).contains("{0}"), "{l:?}");
         }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_shape_of_the_cut_is_a_parameter_and_a_cut_off_the_table_is_refused() {
+        let dir = scratch("route-shape");
+        let (_, o) = board_files(&dir);
+        let mut w = Window::new(Lang::En);
+        assert!(w.open_outline(&o));
+        for key in ["outline_corner_radius_mm", "outline_min_cutout_mm"] {
+            assert!(w.fields.iter().any(|f| f.key == key), "{key}");
+        }
+        for l in Lang::ALL {
+            assert!(!Msg::OutlineRadius.tr(l).is_empty(), "{l:?}");
+            assert!(!Msg::OutlineMinCutout.tr(l).is_empty(), "{l:?}");
+        }
+        set(&mut w, "outline_corner_radius_mm", "1");
+        assert!(w.export_route(&dir.join("round.ncd")));
+        assert!(w.notes.is_empty(), "{:?}", w.notes);
+        // a radius that the short sides do not take is said in the notes
+        set(&mut w, "outline_corner_radius_mm", "100");
+        assert!(w.export_route(&dir.join("big.ncd")));
+        assert_eq!(w.notes.len(), 1, "{:?}", w.notes);
+        assert!(w.notes[0].contains("smaller radius"), "{:?}", w.notes);
+        for l in Lang::ALL {
+            assert!(Msg::NoteCornersLimited.tr(l).contains("{0}"), "{l:?}");
+            assert!(Msg::NoteCutoutsDropped.tr(l).contains("{0}"), "{l:?}");
+        }
+        w.notes.clear();
+        set(&mut w, "outline_corner_radius_mm", "1");
+        // a table smaller than the board: the cut leaves it and nothing is written
+        set(&mut w, "machine_x_mm", "5");
+        set(&mut w, "machine_y_mm", "5");
+        let out = dir.join("off.ncd");
+        assert!(!w.export_route(&out));
+        assert!(!out.exists());
+        assert!(matches!(&w.status, Status::Failed(why) if why.contains("outside the table")));
         let _ = fs::remove_dir_all(&dir);
     }
 }
