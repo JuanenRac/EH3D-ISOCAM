@@ -22,6 +22,7 @@ pub mod machine;
 pub mod preview;
 pub mod shot;
 pub mod simulate;
+pub mod toolpath;
 pub mod viewport;
 pub mod window;
 

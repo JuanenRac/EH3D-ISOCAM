@@ -4,6 +4,7 @@
 use crate::browse::{self, Browser};
 use crate::lang::{Lang, Msg};
 use crate::shot::{ShotRequest, ShotTheme, PATIENCE_FRAMES};
+use crate::toolpath;
 use crate::transform::Axis;
 use crate::window::{DrillUnits, Job, Section, Status, Window};
 use eframe::egui::{
@@ -240,6 +241,10 @@ impl App {
                 let mut force = self.win.force;
                 if ui.checkbox(&mut force, Msg::Force.tr(lang)).changed() {
                     self.win.set_force(force);
+                }
+                let mut show = self.win.toolpath_on;
+                if ui.checkbox(&mut show, Msg::ShowToolpath.tr(lang)).changed() {
+                    self.win.set_toolpath(show);
                 }
             });
     }
@@ -513,7 +518,42 @@ impl App {
             let line: Vec<Pos2> = path.iter().map(|p| at(p.0, p.1)).collect();
             painter.add(egui::Shape::closed_line(line, Stroke::new(1.5, OUTLINE)));
         }
-        for (k, pass) in self.win.passes.iter().enumerate() {
+        // the path of the tool of the program, when it is asked for and up to date, takes the place of the bands of the passes
+        let tool = self
+            .win
+            .toolpath
+            .as_ref()
+            .filter(|_| self.win.toolpath_on && !self.win.stale);
+        if let Some(tp) = tool {
+            for stroke in &tp.strokes {
+                let (r, g, b) = toolpath::colour(stroke.kind, stroke.depth_mm, tp.deepest_mm);
+                let line: Vec<Pos2> = stroke.points.iter().map(|p| at(p.0, p.1)).collect();
+                match stroke.kind {
+                    toolpath::Kind::Rapid => {
+                        let faint = Color32::from_rgba_unmultiplied(r, g, b, 150);
+                        painter.add(egui::Shape::line(line, Stroke::new(0.8, faint)));
+                    }
+                    toolpath::Kind::Plunge => {
+                        for point in line {
+                            painter.circle_filled(point, 2.5, Color32::from_rgb(r, g, b));
+                        }
+                    }
+                    toolpath::Kind::Cut => {
+                        painter.add(egui::Shape::line(
+                            line,
+                            Stroke::new(1.5, Color32::from_rgb(r, g, b)),
+                        ));
+                    }
+                }
+            }
+        }
+        for (k, pass) in self
+            .win
+            .passes
+            .iter()
+            .enumerate()
+            .filter(|_| tool.is_none())
+        {
             let colour = PASS_COLOURS[k % PASS_COLOURS.len()];
             let width = px(pass.diameter_mm).max(1.5);
             let band = Color32::from_rgba_unmultiplied(colour.r(), colour.g(), colour.b(), 110);
@@ -559,7 +599,21 @@ impl App {
         if self.win.layer.is_some() {
             key(COPPER, Msg::LegendCopper.tr(lang));
         }
-        if !self.win.passes.is_empty() {
+        if let Some(tp) = tool {
+            let shade = |kind: toolpath::Kind, depth: f64| {
+                let (r, g, b) = toolpath::colour(kind, depth, tp.deepest_mm);
+                Color32::from_rgb(r, g, b)
+            };
+            key(shade(toolpath::Kind::Rapid, 0.0), Msg::LegendRapid.tr(lang));
+            key(
+                shade(toolpath::Kind::Plunge, tp.deepest_mm),
+                Msg::LegendPlunge.tr(lang),
+            );
+            key(
+                shade(toolpath::Kind::Cut, tp.deepest_mm),
+                Msg::LegendCut.tr(lang),
+            );
+        } else if !self.win.passes.is_empty() {
             key(PASS_COLOURS[0], Msg::LegendPaths.tr(lang));
         }
         if !view.holes.is_empty() {

@@ -275,6 +275,19 @@
           }
         },
         {
+          "name": "toolpath.rs",
+          "desc": {
+            "en": "the path of the tool of a program for the picture: rapid, plunge and cut by depth",
+            "es": "el recorrido de la herramienta de un programa para la imagen: rápido, bajada y corte por profundidad",
+            "de": "der Werkzeugweg eines Programms für das Bild: Eilgang, Eintauchen und Schnitt nach Tiefe",
+            "fr": "le parcours de l'outil d'un programme pour l'image : rapide, plongée et coupe par profondeur",
+            "it": "il percorso dell'utensile di un programma per l'immagine: rapido, discesa e taglio per profondità",
+            "ja": "画像用のプログラムの工具経路：早送り、下降、深さ別の切削",
+            "zh": "用于图像的程序刀具路径：快速移动、下刀和按深度的切削",
+            "pt": "o percurso da ferramenta de um programa para a imagem: rápido, descida e corte por profundidade"
+          }
+        },
+        {
           "name": "viewport.rs",
           "desc": {
             "en": "zoom and pan of the picture, in plain numbers",

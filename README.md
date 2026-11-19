@@ -17,7 +17,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 438 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-isocam`) with 444 tests that run on a computer: traces the paths of one or several milling tools around the copper of a Gerber layer, clears the leftover copper, chooses the direction, the starting points and the order of the cuts, reads and writes drill files and board outlines, lays a board out for both sides and for a panel, checks the design rules and writes G-code or HP-GL. It has a window (built with `--features gui`) that opens a layer, a drill file, an outline, a mask layer and a table of reference points, turns the board over and repeats it on a panel, draws the copper, the holes, the outline and the paths and writes the same files as the command line, but the window has not been looked at on a screen yet; it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.1.2` |
 | Maturity | Scaffolding |
-| Tests | 438 |
+| Tests | 444 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -48,7 +48,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Files and layout | 🟡 | reads and writes drill files and board outlines, lays a board out for both sides and for a panel, adds alignment holes and checks the design rules with the place of every finding; tested on a computer, not with files written by other programs and not on a machine. |
 | Forced isolation, correction, mask | 🟡 | forced paths along the gaps the tool does not fit in, lighter paths, scale and correction from reference points, the solder mask openings, units and the preview of the passes; tested on a computer with generated layers and damaged input, never with real boards, never on a machine, and the correction has not been compared with real measurements of a camera. |
 | Command line | 🟡 | `eh3d-isocam` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 438 tests pass (`cargo test`), with normal cases, edge cases and damaged input. They include a seeded simulation of a Bungard machine with the travel of its table with injected faults and recovery. |
+| Tests | 🟡 | 444 tests pass (`cargo test`), with normal cases, edge cases and damaged input. They include a seeded simulation of a Bungard machine with the travel of its table with injected faults and recovery. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`): open or drop a layer, zoom and pan, edit the main parameters, export; its logic is tested and the program of a release draws it to a picture (`--shot`), but nobody has used it on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -84,6 +84,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **A short path for the drill** (`src/drill.rs`): `drill_order = nearest|optimized` (`--drill-order`) puts the holes of each tool in a short path from the starting point of the tool, the tools keeping their order, and `drills` tells how much shorter the travel is than in the order of the file; `file` (the default) keeps the order of the file.
 * **The time of the job** (`src/simulate.rs`): when `rapid_mm_min` is set, `isolate` also prints the estimated time of the G-code it wrote (the same walk of the program that `simulate` makes, without the waits of the spindle); with no rapid speed it prints nothing more, and a plot or a DXF drawing has no time.
 * **The dry run in the window** (`src/window.rs`): the button "Dry run" walks the G-code that the paths would be written as (nothing is written) and shows its time, the box it moves in, the deepest cut and its findings in the language of the window; the group "Machine" holds the speed of the rapid moves and the limits of the machine (`machine_profile`, the table, the margin, the deepest cut and the fastest spindle), and a limit that is broken is a finding.
+* **The path of the tool in the picture** (`src/toolpath.rs`): the box "Show the path of the tool" walks the G-code the paths would be written as and draws what the machine would do instead of the bands of the passes: rapid moves in grey, moves down in red and every cutting stretch in a colour from blue (just under the surface) to amber (the deepest cut), with arcs drawn as arcs; the zoom, the pan and "Fit" of the picture work on it, and the setting `depth_step_mm` is now a parameter of the window.
 
 ## 🧩 Role in EH3D
 
@@ -180,6 +181,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               the passes drawn as SVG or text
 │   ├── shot.rs                                  the picture mode of the window (--shot): its arguments, read and checked without a screen
 │   ├── simulate.rs                              the dry run of a G-code program: time, box, deepest cut and findings in eight languages
+│   ├── toolpath.rs                              the path of the tool of a program for the picture: rapid, plunge and cut by depth
 │   ├── viewport.rs                              zoom and pan of the picture, in plain numbers
 │   └── window.rs                                the state of the window without a screen: layer, parameters, paths, export and status
 ├── tests/
@@ -236,7 +238,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 438 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 444 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -277,6 +279,7 @@ EH3D-ISOCAM/
 │   ├── preview.rs                               the passes drawn as SVG or text
 │   ├── shot.rs                                  the picture mode of the window (--shot): its arguments, read and checked without a screen
 │   ├── simulate.rs                              the dry run of a G-code program: time, box, deepest cut and findings in eight languages
+│   ├── toolpath.rs                              the path of the tool of a program for the picture: rapid, plunge and cut by depth
 │   ├── viewport.rs                              zoom and pan of the picture, in plain numbers
 │   └── window.rs                                the state of the window without a screen: layer, parameters, paths, export and status
 ├── tests/

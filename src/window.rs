@@ -13,6 +13,7 @@ use crate::lang::{fill, Lang, Msg};
 use crate::optimize::optimize_passes;
 use crate::simulate;
 use crate::tolerance::close_pieces_scoped;
+use crate::toolpath::{self, Trace};
 use crate::transform::{Axis, Board};
 use crate::units::Unit;
 use crate::viewport::Viewport;
@@ -177,6 +178,12 @@ pub fn default_fields(s: &Settings) -> Vec<Field> {
         f(iso, "safe_z_mm", Msg::SafeZ, s.safe_z_mm.to_string()),
         f(iso, "spindle_rpm", Msg::Spindle, s.spindle_rpm.to_string()),
         f(iso, "res_mm", Msg::Resolution, s.res_mm.to_string()),
+        f(
+            iso,
+            "depth_step_mm",
+            Msg::DepthStep,
+            s.depth_step_mm.to_string(),
+        ),
         f(
             Section::Drills,
             "alignment_hole_mm",
@@ -581,6 +588,10 @@ pub struct Window {
     pub fit_note: Option<MarksFit>,
     /// The result of the last dry run of the program, until the paths are worked out again.
     pub dry_run: Option<simulate::Report>,
+    /// Draw the path of the tool of the program (rapid moves, plunges and cuts coloured by depth) instead of the bands of the passes.
+    pub toolpath_on: bool,
+    /// The path of the tool of the program the paths would be written as, kept while `toolpath_on` and the paths are up to date.
+    pub toolpath: Option<Trace>,
     base: Settings,
 }
 
@@ -610,6 +621,8 @@ impl Window {
             view: View::default(),
             fit_note: None,
             dry_run: None,
+            toolpath_on: false,
+            toolpath: None,
             base,
         }
     }
@@ -1064,6 +1077,7 @@ impl Window {
             return false;
         };
         self.dry_run = None;
+        self.toolpath = None;
         let (board, whole) = match self.lay_all(&settings) {
             Ok(b) => b,
             Err(why) => {
@@ -1081,6 +1095,9 @@ impl Window {
                 self.unfixed = unfixed;
                 self.stale = false;
                 self.status = self.blocker().unwrap_or_else(|| self.computed_status());
+                if self.toolpath_on {
+                    self.rebuild_toolpath(&settings);
+                }
                 true
             }
             (Err(why), _) | (_, Err(why)) => {
@@ -1109,6 +1126,31 @@ impl Window {
         self.force = force;
         if self.layer.is_some() && !self.passes.is_empty() && !self.stale {
             self.status = self.blocker().unwrap_or_else(|| self.computed_status());
+        }
+    }
+
+    /// Switches the picture of the path of the tool on or off. Switching it on works the paths out first when they are out of date.
+    pub fn set_toolpath(&mut self, on: bool) {
+        self.toolpath_on = on;
+        if !on {
+            self.toolpath = None;
+        } else if self.layer.is_some() && (self.stale || self.passes.is_empty()) {
+            self.compute();
+        } else if self.layer.is_some() && self.toolpath.is_none() {
+            if let Some(settings) = self.ready_settings() {
+                self.rebuild_toolpath(&settings);
+            }
+        }
+    }
+
+    /// Walks the G-code the paths would be written as and keeps its strokes for the picture.
+    fn rebuild_toolpath(&mut self, settings: &Settings) {
+        match board::gcode_program(&self.passes, settings, true) {
+            Ok((g, _)) => self.toolpath = Some(toolpath::trace(&g)),
+            Err(why) => {
+                self.toolpath = None;
+                self.status = Status::Failed(why);
+            }
         }
     }
 
@@ -2219,5 +2261,52 @@ M30
         }
         assert!(seen[1].1.starts_with("Pasada en seco: "));
         assert!(seen[7].1.starts_with("Passagem em seco: "));
+    }
+
+    #[test]
+    fn the_path_of_the_tool_is_kept_only_while_it_is_shown_and_up_to_date() {
+        let mut w = Window::new(Lang::En);
+        w.set_toolpath(true);
+        assert!(w.toolpath.is_none(), "no layer, nothing to walk");
+        // asked for before there is a layer, it is walked when the layer is open
+        assert!(w.open(&sample()));
+        assert!(w.toolpath.is_some());
+        w.set_toolpath(false);
+        assert!(w.toolpath.is_none(), "not asked for");
+        w.set_toolpath(true);
+        let t = w.toolpath.as_ref().expect("the path of the tool");
+        assert!(t.count(toolpath::Kind::Cut) > 0 && t.count(toolpath::Kind::Rapid) > 0);
+        assert!(t.count(toolpath::Kind::Plunge) > 0);
+        assert!((t.deepest_mm - 0.06).abs() < 1e-9, "{}", t.deepest_mm);
+        // new paths make a new walk, and steps of depth give cuts at several depths
+        set(&mut w, "depth_mm", "0.1");
+        assert!(w.compute());
+        let t = w.toolpath.as_ref().expect("walked again");
+        assert!((t.deepest_mm - 0.1).abs() < 1e-9, "{}", t.deepest_mm);
+        // a changed parameter switched it on again works the paths out first
+        set(&mut w, "depth_mm", "0.08");
+        w.set_toolpath(true);
+        assert!(!w.stale);
+        assert!((w.toolpath.as_ref().unwrap().deepest_mm - 0.08).abs() < 1e-9);
+        w.set_toolpath(false);
+        assert!(w.toolpath.is_none() && !w.toolpath_on);
+    }
+
+    #[test]
+    fn the_path_of_the_tool_follows_the_levels_of_the_depth_step() {
+        let mut w = Window::new(Lang::En);
+        assert!(w.open(&sample()));
+        set(&mut w, "depth_step_mm", "0.02");
+        w.set_toolpath(true);
+        let t = w.toolpath.as_ref().unwrap();
+        let mut depths: Vec<f64> = t
+            .strokes
+            .iter()
+            .filter(|s| s.kind == toolpath::Kind::Cut)
+            .map(|s| (s.depth_mm * 1000.0).round())
+            .collect();
+        depths.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        depths.dedup();
+        assert_eq!(depths, [20.0, 40.0, 60.0]);
     }
 }

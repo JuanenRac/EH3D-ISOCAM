@@ -195,10 +195,15 @@ pub enum Msg {
     DryRun,
     Close,
     Simulated,
+    DepthStep,
+    ShowToolpath,
+    LegendRapid,
+    LegendPlunge,
+    LegendCut,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 107] = [
+    pub const ALL: [Msg; 112] = [
         Msg::Open,
         Msg::Export,
         Msg::Compute,
@@ -306,6 +311,11 @@ impl Msg {
         Msg::DryRun,
         Msg::Close,
         Msg::Simulated,
+        Msg::DepthStep,
+        Msg::ShowToolpath,
+        Msg::LegendRapid,
+        Msg::LegendPlunge,
+        Msg::LegendCut,
     ];
 
     /// The words in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese.
@@ -1380,6 +1390,56 @@ impl Msg {
                 "空運転：{0} 動作、指摘 {1} 件",
                 "空运行：{0} 个动作，{1} 项发现",
                 "Passagem em seco: {0} movimentos, {1} ocorrências",
+            ],
+            Msg::DepthStep => [
+                "Depth step (mm, 0 = all at once)",
+                "Paso de profundidad (mm, 0 = de una vez)",
+                "Zustelltiefe (mm, 0 = auf einmal)",
+                "Pas de profondeur (mm, 0 = d'un coup)",
+                "Passo di profondità (mm, 0 = in una volta)",
+                "切込みの刻み (mm、0 = 一度に)",
+                "分层深度（mm，0 = 一次切完）",
+                "Passo de profundidade (mm, 0 = de uma vez)",
+            ],
+            Msg::ShowToolpath => [
+                "Show the path of the tool (by type and depth)",
+                "Mostrar el recorrido de la herramienta (por tipo y profundidad)",
+                "Werkzeugweg zeigen (nach Art und Tiefe)",
+                "Montrer le parcours de l'outil (par type et profondeur)",
+                "Mostra il percorso dell'utensile (per tipo e profondità)",
+                "工具経路を表示（種類と深さで色分け）",
+                "显示刀具路径（按类型和深度着色）",
+                "Mostrar o percurso da ferramenta (por tipo e profundidade)",
+            ],
+            Msg::LegendRapid => [
+                "Rapid move",
+                "Movimiento rápido",
+                "Eilgang",
+                "Déplacement rapide",
+                "Movimento rapido",
+                "早送り",
+                "快速移动",
+                "Movimento rápido",
+            ],
+            Msg::LegendPlunge => [
+                "Move down",
+                "Bajada",
+                "Eintauchen",
+                "Plongée",
+                "Discesa",
+                "下降",
+                "下刀",
+                "Descida",
+            ],
+            Msg::LegendCut => [
+                "Cut (shallow to deep)",
+                "Corte (de poco a muy profundo)",
+                "Schnitt (flach bis tief)",
+                "Coupe (de peu à très profond)",
+                "Taglio (da poco a molto profondo)",
+                "切削（浅い→深い）",
+                "切削（由浅到深）",
+                "Corte (de pouco a muito profundo)",
             ],
         }
     }
