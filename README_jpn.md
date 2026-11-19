@@ -17,7 +17,7 @@
 
 ---
 
-**正直さの確認 - 現在実際に動くもの：** Rustライブラリとコマンドラインプログラム（`eh3d-isocam`）で、コンピュータ上で動くテストが460件あります。Gerberレイヤーの銅の周囲に1本または複数のミリング工具の経路を描き、残りの銅を除去し、切削の向き・開始点・順序を選び、ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、設計ルールを確認し、GコードまたはHP-GLを書き出します。ウィンドウ（`--features gui` でビルド）ではレイヤー、ドリルファイル、基板外形、マスクレイヤー、基準点の表を開き、基板を裏返してパネルに並べ、銅・穴・外形・経路を描画し、コマンドラインと同じファイルを書き出せますが、画面ではまだ確認しておらず、実機では試しておらず、実際のファイル群での確認もしていません。
+**正直さの確認 - 現在実際に動くもの：** Rustライブラリとコマンドラインプログラム（`eh3d-isocam`）で、コンピュータ上で動くテストが465件あります。Gerberレイヤーの銅の周囲に1本または複数のミリング工具の経路を描き、残りの銅を除去し、切削の向き・開始点・順序を選び、ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、設計ルールを確認し、GコードまたはHP-GLを書き出します。ウィンドウ（`--features gui` でビルド）ではレイヤー、ドリルファイル、基板外形、マスクレイヤー、基準点の表を開き、基板を裏返してパネルに並べ、銅・穴・外形・経路を描画し、コマンドラインと同じファイルを書き出せますが、画面ではまだ確認しておらず、実機では試しておらず、実際のファイル群での確認もしていません。
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | バージョン | `0.1.2` |
 | 成熟度 | 足場 |
-| テスト | 460 |
+| テスト | 465 |
 | 技術スタック | Rust |
 | 実機での動作 | 未試験：ここにあるものは機械で動かしたことがありません |
 
@@ -48,7 +48,7 @@
 | ファイルと配置 | 🟡 | ドリルファイルと基板外形を読み書きし、基板を両面およびパネル用に配置し、位置合わせ穴を追加し、設計ルールを検出位置つきで確認します。コンピュータ上でテスト済みで、他のプログラムが書いたファイルや実機では試していません。 |
 | 強制アイソレーション・補正・マスク | 🟡 | 工具が入らない隙間に沿う強制経路、軽い経路、基準点によるスケールと補正、ソルダーマスクの開口部、単位とパスのプレビュー。生成したレイヤーと破損入力でコンピュータ上でテストしましたが、実際の基板や機械では試しておらず、補正はカメラの実測値と比較していません。 |
 | コマンドライン | 🟡 | `eh3d-isocam` はライブラリと同じ関数を実行して結果を表示します。エラーはメッセージと 0 以外の終了コードで返ります。 |
-| テスト | 🟡 | 460 件のテストが通ります（`cargo test`）。通常ケース、境界ケース、破損入力を含みます。固定シードによるテーブルの移動範囲を持つ Bungard 機のシミュレーション（障害の注入と復旧を含む）も含まれます。 |
+| テスト | 🟡 | 465 件のテストが通ります（`cargo test`）。通常ケース、境界ケース、破損入力を含みます。固定シードによるテーブルの移動範囲を持つ Bungard 機のシミュレーション（障害の注入と復旧を含む）も含まれます。 |
 | セキュリティ | 🟡 | 安全な Rust のみ（`forbid(unsafe_code)`）。受け取ったファイルでパニックせず、不正な値は理由付きのエラーになります。独立したレビューはありません。 |
 | ウィンドウ | 🟠 | 作成済み（egui、`--features gui`）：レイヤーを開くかドロップ、拡大縮小と移動、主なパラメーターの編集、書き出し。ロジックはテスト済みで、リリース版のプログラムが画像に描き出します（`--shot`）が、画面で実際に使った人はまだいません。 |
 | 実機 | 🔴 | 未試験：ここにあるものは機械で実行したことがありません。 |
@@ -87,6 +87,7 @@
 * **画像での工具経路**（`src/toolpath.rs`）：「工具経路を表示」を選ぶと、パスを書き出す場合の G-code を走査し、パスの帯の代わりに機械の実際の動きを描きます。早送りは灰色、下降は赤、切削区間は青（表面のすぐ下）から琥珀色（最も深い切削）までの色で、円弧は円弧として描かれます。画像のズーム、移動、「全体表示」がそのまま使え、設定 `depth_step_mm` はウィンドウのパラメーターになりました。
 * **角を避けたブリッジ**（`src/drill.rs`）：`tab_corner_clearance_mm`（既定は 0 で、従来どおり各パスに沿って等間隔に置きます）を設定すると、切断の角に当たるブリッジを、距離の 4 分の 1 ずつパスに沿って動かし、隙間とその両側の距離の範囲でパスの曲がりが合計 20 度以下になる最も近い場所へ移します。そのような場所がないブリッジは元の位置のままで、数えて知らせます（`route` が警告し、ウィンドウが注記を加えます）。ブリッジの数（`tab_count`）、幅（`tab_width_mm`）、2 つの間の最短区間（`tab_min_length_mm`）はウィンドウのパラメーターです。
 * **リングでの領域除去**（`src/clearing.rs`）：`rubout_style = rings` にすると、`rubout-area` は矩形（`--area`）やファイルの閉じたパス（`--contour`、偶奇塗りなので別のパスの内側のパスは穴）を、往復する線ではなく縁に沿って内側へ進む閉じたリングで埋めます。最初のリングは縁から工具半径の位置、次からは `tool * (1 - rubout_overlap)` ずつ内側で、帯が残る場合は中央にもう 1 本リングを加えます。`rubout_ring_order`（通常は `outside-in`、または `inside-out`）は `ordering` の設定に関係なく G-code で守られます。何かを書き出す前にパスを機械のテーブルに照らして調べ、はみ出すパスは番号と道筋の番号つきで拒否します（`--force` で書き出せます）。この確認は線にも使われます。
+* **作業をテーブルのどこに置くか**（`src/config.rs`）：`offset_x_mm` と `offset_y_mm`（既定は 0、-10000 から 10000）で、スケールと基準点の後に、すべての出力（銅箔のパス、ドリルファイルの穴、基板外周の切断）を同じ量だけ動かします。これで作業を機械のテーブルの好きな位置に置けます。オフセットでテーブルの外に出るプログラムは、機械の限界（`machine_profile`）が引き続き拒否します。
 
 ## 🧩 EH3D での役割
 
@@ -160,6 +161,7 @@ dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time
 depth and surface: --depth-step-mm N  --height-map FILE  --heightmap-ref-x-mm N  --heightmap-ref-y-mm N  --heightmap-max-segment-mm N  --heightmap-max-range-mm N   (the map is the text file of EH3D-AUTOLEVEL)
 drill order: --drill-order file|nearest|optimized   (the holes of each tool in a short path from --start-x-mm and --start-y-mm; file keeps the order of the file)
 clearing an area: --rubout-style lines|rings  --rubout-ring-order outside-in|inside-out  --rubout-overlap N  --rubout-lines-tool-mm N   (rings follow the edge inwards, never cut to a layer; the paths are checked against the machine table first)
+work on the table: --offset-x-mm N  --offset-y-mm N   (every output is moved by this much, after the scale and the reference points; the machine limits still apply)
 ```
 
 ```text
@@ -242,7 +244,7 @@ cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # 
 
 ## 🧪 テスト
 
-テストは 460 件あります（`cargo test`、CI では Windows と Linux で実行）。通常ケース、境界ケース、破損入力を確認し、空のファイル、ゴミデータ、途中で切れたファイルでもパニックしません。CI は `cargo fmt --check`、警告をエラーにした `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
+テストは 465 件あります（`cargo test`、CI では Windows と Linux で実行）。通常ケース、境界ケース、破損入力を確認し、空のファイル、ゴミデータ、途中で切れたファイルでもパニックしません。CI は `cargo fmt --check`、警告をエラーにした `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
 
 ## 🏗️ ビルドとリリース
 

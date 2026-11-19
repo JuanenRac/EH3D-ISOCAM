@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 460 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 465 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.1.2` |
 | Maturità | Impalcatura |
-| Test | 460 |
+| Test | 465 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,7 +48,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 460 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
+| Test | 🟡 | 465 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata e il programma di una versione la disegna in un'immagine (`--shot`), ma nessuno l'ha ancora usata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -87,6 +87,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **Il percorso dell'utensile nell'immagine** (`src/toolpath.rs`): la casella «Mostra il percorso dell'utensile» percorre il G-code con cui sarebbero scritti i percorsi e disegna ciò che farebbe la macchina al posto delle bande delle passate: i movimenti rapidi in grigio, le discese in rosso e ogni tratto di taglio in un colore dal blu (appena sotto la superficie) all'ambra (il taglio più profondo), con gli archi disegnati come archi; lo zoom, lo spostamento e «Adatta» dell'immagine agiscono su di esso, e l'impostazione `depth_step_mm` è ora un parametro della finestra.
 * **Ponti lontani dagli angoli** (`src/drill.rs`): `tab_corner_clearance_mm` (0 per impostazione predefinita, che distribuisce i ponti in modo uniforme lungo ogni percorso come prima) sposta un ponte che cadrebbe su un angolo del taglio lungo il percorso, a passi di un quarto della distanza, fino al punto più vicino in cui il percorso gira al massimo di 20 gradi entro il varco e la distanza da ogni lato; un ponte che non trova un tale punto resta dov'era ed è contato e segnalato (`route` avvisa, la finestra aggiunge una nota). Il numero dei ponti (`tab_count`), la loro larghezza (`tab_width_mm`) e il tratto più corto fra due (`tab_min_length_mm`) sono parametri della finestra.
 * **Svuotamento di un'area con anelli** (`src/clearing.rs`): con `rubout_style = rings`, `rubout-area` riempie un rettangolo (`--area`) o i percorsi chiusi di un file (`--contour`, riempimento pari-dispari: un percorso dentro un altro è un foro) con anelli chiusi che seguono il bordo verso l'interno invece di linee avanti e indietro; il primo anello è a mezzo utensile dal bordo, i successivi a un passo di `tool * (1 - rubout_overlap)` più dentro, e si aggiunge un anello lungo il centro quando resterebbe una striscia. `rubout_ring_order` (`outside-in`, l'uso normale, o `inside-out`) resta nel G-code qualunque cosa dica `ordering`. Prima di scrivere qualcosa, i percorsi sono controllati contro il piano della macchina e un percorso che ne esce è rifiutato con il suo numero e la sua passata (`--force` lo scrive comunque); il controllo vale anche per le linee.
+* **Dove va il lavoro sul piano** (`src/config.rs`): `offset_x_mm` e `offset_y_mm` (0 per impostazione predefinita, da -10000 a 10000) spostano ogni uscita della stessa quantità, dopo la scala e i punti di riferimento: i percorsi del rame, i fori di un file di foratura e il taglio attorno alla scheda, così un lavoro può essere collocato ovunque sul piano della macchina; i limiti della macchina (`machine_profile`) rifiutano ancora un programma che lo spostamento porta fuori dal piano.
 
 ## 🧩 Ruolo in EH3D
 
@@ -160,6 +161,7 @@ dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time
 depth and surface: --depth-step-mm N  --height-map FILE  --heightmap-ref-x-mm N  --heightmap-ref-y-mm N  --heightmap-max-segment-mm N  --heightmap-max-range-mm N   (the map is the text file of EH3D-AUTOLEVEL)
 drill order: --drill-order file|nearest|optimized   (the holes of each tool in a short path from --start-x-mm and --start-y-mm; file keeps the order of the file)
 clearing an area: --rubout-style lines|rings  --rubout-ring-order outside-in|inside-out  --rubout-overlap N  --rubout-lines-tool-mm N   (rings follow the edge inwards, never cut to a layer; the paths are checked against the machine table first)
+work on the table: --offset-x-mm N  --offset-y-mm N   (every output is moved by this much, after the scale and the reference points; the machine limits still apply)
 ```
 
 ```text
@@ -242,7 +244,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 460 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 465 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

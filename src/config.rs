@@ -87,6 +87,9 @@ pub struct Settings {
     pub spike_angle_deg: f64,
     pub scale_x: f64,
     pub scale_y: f64,
+    /// Where the work goes on the table: every output (the paths, the holes, the cut round the board) is moved by this much in X and Y, after the scale and the reference points.
+    pub offset_x_mm: f64,
+    pub offset_y_mm: f64,
     /// Reference points, relative to the centre of the board: where a mark should be and where it was measured.
     pub fiducials: Vec<Pair>,
     pub fiducial_model: Model,
@@ -259,6 +262,8 @@ impl Default for Settings {
             spike_angle_deg: 170.0,
             scale_x: 1.0,
             scale_y: 1.0,
+            offset_x_mm: 0.0,
+            offset_y_mm: 0.0,
             fiducials: Vec::new(),
             fiducial_model: Model::Auto,
             fiducial_max_scale_deviation: 0.05,
@@ -470,6 +475,8 @@ impl Settings {
             "spike_angle_deg" => self.spike_angle_deg = num(key, v)?,
             "scale_x" => self.scale_x = num(key, v)?,
             "scale_y" => self.scale_y = num(key, v)?,
+            "offset_x_mm" => self.offset_x_mm = num(key, v)?,
+            "offset_y_mm" => self.offset_y_mm = num(key, v)?,
             "scale" => {
                 self.scale_x = num(key, v)?;
                 self.scale_y = self.scale_x;
@@ -611,7 +618,7 @@ impl Settings {
     pub fn to_text(&self) -> String {
         let b = |v: bool| if v { "yes" } else { "no" };
         let mut extra = format!(
-            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\ngerber_format = {}.{}\ngerber_zeros = {}\ngerber_units = {}\naperture_units = {}\naperture_size_column = {}\nconflict_tolerance_mm = {}\nproblem_corner_angle_deg = {}\nproblem_track_gap_factor = {}\nalignment_pattern = {}\nalignment_special_a_mm = {}\nalignment_special_b_mm = {}\ntab_count = {}\ntab_width_mm = {}\ntab_min_length_mm = {}\ntab_corner_clearance_mm = {}\ntolerance_warning_margin_mm = {}\nnet_tool_mm = {}\nrubout_lines_tool_mm = {}\nrubout_lines_direction = {}\n",
+            "input_units = mm\noutput_units = {}\nreport_units = {}\nforced_isolation = {}\nforced_min_gap_mm = {}\noptimize_tolerance_mm = {}\nspike_max_mm = {}\nspike_angle_deg = {}\nscale_x = {}\nscale_y = {}\noffset_x_mm = {}\noffset_y_mm = {}\nfiducial_model = {}\nfiducial_max_scale_deviation = {}\nfiducial_max_residual_mm = {}\nmask_margin_mm = {}\npreview_cols = {}\ngerber_format = {}.{}\ngerber_zeros = {}\ngerber_units = {}\naperture_units = {}\naperture_size_column = {}\nconflict_tolerance_mm = {}\nproblem_corner_angle_deg = {}\nproblem_track_gap_factor = {}\nalignment_pattern = {}\nalignment_special_a_mm = {}\nalignment_special_b_mm = {}\ntab_count = {}\ntab_width_mm = {}\ntab_min_length_mm = {}\ntab_corner_clearance_mm = {}\ntolerance_warning_margin_mm = {}\nnet_tool_mm = {}\nrubout_lines_tool_mm = {}\nrubout_lines_direction = {}\n",
             self.output_units.name(),
             self.report_units.name(),
             b(self.forced_isolation),
@@ -621,6 +628,8 @@ impl Settings {
             self.spike_angle_deg,
             self.scale_x,
             self.scale_y,
+            self.offset_x_mm,
+            self.offset_y_mm,
             self.fiducial_model.name(),
             self.fiducial_max_scale_deviation,
             self.fiducial_max_residual_mm,
@@ -1051,6 +1060,8 @@ rubout_ring_order = {}
         range("arc_tolerance_mm", self.arc_tolerance_mm, 0.0001, 1.0)?;
         range("scale_x", self.scale_x, 0.5, 2.0)?;
         range("scale_y", self.scale_y, 0.5, 2.0)?;
+        range("offset_x_mm", self.offset_x_mm, -10_000.0, 10_000.0)?;
+        range("offset_y_mm", self.offset_y_mm, -10_000.0, 10_000.0)?;
         range(
             "fiducial_max_scale_deviation",
             self.fiducial_max_scale_deviation,
@@ -1119,15 +1130,20 @@ rubout_ring_order = {}
             ..Affine::identity()
         };
         let scale = to_centre.then(&Affine::scale(self.scale_x, self.scale_y));
+        let place = Affine {
+            e: self.offset_x_mm,
+            f: self.offset_y_mm,
+            ..Affine::identity()
+        };
         if self.fiducials.is_empty() {
-            return Ok((scale.then(&back), None));
+            return Ok((scale.then(&back).then(&place), None));
         }
         let limits = Limits {
             max_scale_deviation: self.fiducial_max_scale_deviation,
             max_residual_mm: self.fiducial_max_residual_mm,
         };
         let f = fit(&self.fiducials, self.fiducial_model, &limits)?;
-        Ok((scale.then(&f.affine).then(&back), Some(f)))
+        Ok((scale.then(&f.affine).then(&back).then(&place), Some(f)))
     }
 
     /// The tools and the passes of the isolation.

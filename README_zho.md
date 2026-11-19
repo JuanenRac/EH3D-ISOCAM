@@ -17,7 +17,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有460个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它有一个窗口（用 `--features gui` 构建），可打开层、钻孔文件、板框、阻焊层和基准点表，翻转电路板并在拼板上重复，绘制铜箔、孔、板框和路径，并写出与命令行相同的文件，但窗口尚未在屏幕上看过，没有在机器上试过，也没有用一批真实文件检验过。
+**诚实检查 - 当前真正能运行的内容：** 一个Rust库和一个命令行程序（`eh3d-isocam`），有465个在电脑上运行的测试：围绕Gerber层的铜箔追踪一把或多把铣刀的路径，清除残余铜箔，选择切削的方向、起点和顺序，读写钻孔文件和板框，为双面和拼板布置电路板，检查设计规则，并写出G代码或HP-GL。它有一个窗口（用 `--features gui` 构建），可打开层、钻孔文件、板框、阻焊层和基准点表，翻转电路板并在拼板上重复，绘制铜箔、孔、板框和路径，并写出与命令行相同的文件，但窗口尚未在屏幕上看过，没有在机器上试过，也没有用一批真实文件检验过。
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | 版本 | `0.1.2` |
 | 成熟度 | 脚手架 |
-| 测试 | 460 |
+| 测试 | 465 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -48,7 +48,7 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 460 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
+| 测试 | 🟡 | 465 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`）：打开或拖入层、缩放和平移、编辑主要参数、导出；其逻辑已测试，发布版程序可将其绘制为图片（`--shot`），但还没有人在屏幕上实际使用过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -87,6 +87,7 @@
 * **图像中的刀具路径**（`src/toolpath.rs`）：勾选“显示刀具路径”后，会走一遍路径将被写成的 G 代码，并画出机床实际会做的动作来代替各道次的色带：快速移动为灰色，下刀为红色，每段切削的颜色从蓝色（刚好在表面之下）渐变到琥珀色（最深的切削），圆弧按圆弧绘制；图像的缩放、平移和“适应窗口”对它同样有效，设置 `depth_step_mm` 现在也是窗口的一个参数。
 * **避开拐角的连接桥**（`src/drill.rs`）：`tab_corner_clearance_mm`（默认 0，即与以前一样沿每条路径均匀放置连接桥）会把落在切割拐角上的连接桥沿路径按距离的四分之一为步长移动，直到最近的一处：路径在缺口及其两侧该距离范围内的总转角不超过 20 度；找不到这样位置的连接桥保持原位，并被计数和报告（`route` 给出警告，窗口添加一条注释）。连接桥的数量（`tab_count`）、宽度（`tab_width_mm`）和两座桥之间的最短一段（`tab_min_length_mm`）都是窗口的参数。
 * **用环形路径清除区域**（`src/clearing.rs`）：设置 `rubout_style = rings` 后，`rubout-area` 会用沿边缘向内的封闭环代替往复直线，来填充一个矩形（`--area`）或文件中的封闭路径（`--contour`，奇偶填充，所以套在另一条路径内的路径是孔）；第一圈距边缘半个刀具，之后每圈再向内 `tool * (1 - rubout_overlap)` 一步，若会留下一条窄带，则在中间再加一圈。`rubout_ring_order`（通常为 `outside-in`，或 `inside-out`）无论 `ordering` 如何设置都保留在 G 代码中。写出任何内容之前，会先对照机床工作台检查各条路径，超出的路径会连同序号和所在道次一起被拒绝（`--force` 仍可写出）；该检查同样适用于直线方式。
+* **作业放在工作台的哪个位置**（`src/config.rs`）：`offset_x_mm` 和 `offset_y_mm`（默认 0，范围 -10000 到 10000）会在缩放和基准点之后，把所有输出（铜层路径、钻孔文件的孔和板外轮廓切割）移动相同的距离，因此作业可以放在机床工作台的任意位置；若偏移使程序超出工作台，机床限制（`machine_profile`）仍会拒绝它。
 
 ## 🧩 在 EH3D 中的角色
 
@@ -160,6 +161,7 @@ dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time
 depth and surface: --depth-step-mm N  --height-map FILE  --heightmap-ref-x-mm N  --heightmap-ref-y-mm N  --heightmap-max-segment-mm N  --heightmap-max-range-mm N   (the map is the text file of EH3D-AUTOLEVEL)
 drill order: --drill-order file|nearest|optimized   (the holes of each tool in a short path from --start-x-mm and --start-y-mm; file keeps the order of the file)
 clearing an area: --rubout-style lines|rings  --rubout-ring-order outside-in|inside-out  --rubout-overlap N  --rubout-lines-tool-mm N   (rings follow the edge inwards, never cut to a layer; the paths are checked against the machine table first)
+work on the table: --offset-x-mm N  --offset-y-mm N   (every output is moved by this much, after the scale and the reference points; the machine limits still apply)
 ```
 
 ```text
@@ -242,7 +244,7 @@ cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # 
 
 ## 🧪 测试
 
-测试套件有 460 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 465 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 

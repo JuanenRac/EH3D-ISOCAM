@@ -17,7 +17,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 460 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 465 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versão | `0.1.2` |
 | Maturidade | Estrutura inicial |
-| Testes | 460 |
+| Testes | 465 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -48,7 +48,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ficheiros e disposição | 🟡 | lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, acrescenta furos de alinhamento e verifica as regras de projeto com a posição de cada achado; testado num computador, não com ficheiros escritos por outros programas nem numa máquina. |
 | Isolamento forçado, correção, máscara | 🟡 | percursos forçados nos espaços onde a ferramenta não cabe, percursos mais leves, escala e correção com pontos de referência, aberturas da máscara de soldadura, unidades e pré-visualização das passagens; testado num computador com camadas geradas e entradas danificadas, nunca com placas reais nem numa máquina, e a correção não foi comparada com medições reais de uma câmara. |
 | Linha de comandos | 🟡 | `eh3d-isocam` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 460 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. Incluem uma simulação com semente fixa de uma máquina Bungard com o curso da sua mesa, com falhas injetadas e recuperação. |
+| Testes | 🟡 | 465 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. Incluem uma simulação com semente fixa de uma máquina Bungard com o curso da sua mesa, com falhas injetadas e recuperação. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🟠 | Escrita (egui, `--features gui`): abrir ou largar uma camada, zoom e deslocamento, editar os parâmetros principais, exportar; a sua lógica está testada e o programa de uma versão desenha-a numa imagem (`--shot`), mas ainda ninguém a usou num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -87,6 +87,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **O percurso da ferramenta na imagem** (`src/toolpath.rs`): a caixa «Mostrar o percurso da ferramenta» percorre o G-code em que os trajetos seriam escritos e desenha o que a máquina faria em vez das bandas das passagens: os movimentos rápidos a cinzento, as descidas a vermelho e cada troço de corte numa cor do azul (logo abaixo da superfície) ao âmbar (o corte mais profundo), com os arcos desenhados como arcos; o zoom, o deslocamento e «Ajustar» da imagem atuam sobre ele, e a definição `depth_step_mm` é agora um parâmetro da janela.
 * **Pontes afastadas dos cantos** (`src/drill.rs`): `tab_corner_clearance_mm` (0 por omissão, o que reparte as pontes por igual ao longo de cada trajeto como antes) desloca uma ponte que cairia num canto do corte ao longo do trajeto, em passos de um quarto da distância, até ao lugar mais próximo onde o trajeto vira no máximo 20 graus dentro do espaço e da distância de cada lado; uma ponte que não encontra esse lugar fica onde estava e é contada e assinalada (`route` avisa, a janela acrescenta uma nota). O número de pontes (`tab_count`), a sua largura (`tab_width_mm`) e o troço mais curto entre duas (`tab_min_length_mm`) são parâmetros da janela.
 * **Desbaste de uma zona com anéis** (`src/clearing.rs`): com `rubout_style = rings`, `rubout-area` preenche um retângulo (`--area`) ou os trajetos fechados de um ficheiro (`--contour`, preenchimento par-ímpar: um trajeto dentro de outro é um furo) com anéis fechados que seguem o bordo para dentro em vez de linhas de ida e volta; o primeiro anel fica a meia ferramenta do bordo, os seguintes a um passo de `tool * (1 - rubout_overlap)` mais para dentro, e acrescenta-se um anel pelo meio quando ficaria uma faixa. `rubout_ring_order` (`outside-in`, o normal, ou `inside-out`) mantém-se no G-code diga o que disser `ordering`. Antes de escrever o que quer que seja, os trajetos são verificados contra a mesa da máquina e um trajeto que sai dela é recusado com o seu número e a sua passagem (`--force` escreve-o na mesma); a verificação serve também para as linhas.
+* **Onde vai o trabalho na mesa** (`src/config.rs`): `offset_x_mm` e `offset_y_mm` (0 por omissão, de -10000 a 10000) deslocam todas as saídas da mesma quantidade, depois da escala e dos pontos de referência: os trajetos do cobre, os furos de um ficheiro de furação e o corte em redor da placa, de modo que um trabalho pode ser colocado em qualquer ponto da mesa da máquina; os limites da máquina (`machine_profile`) continuam a recusar um programa que o deslocamento tire da mesa.
 
 ## 🧩 Papel no EH3D
 
@@ -160,6 +161,7 @@ dry run of a program: eh3d-isocam simulate PROGRAM.nc [--rapid-mm-min N]   (time
 depth and surface: --depth-step-mm N  --height-map FILE  --heightmap-ref-x-mm N  --heightmap-ref-y-mm N  --heightmap-max-segment-mm N  --heightmap-max-range-mm N   (the map is the text file of EH3D-AUTOLEVEL)
 drill order: --drill-order file|nearest|optimized   (the holes of each tool in a short path from --start-x-mm and --start-y-mm; file keeps the order of the file)
 clearing an area: --rubout-style lines|rings  --rubout-ring-order outside-in|inside-out  --rubout-overlap N  --rubout-lines-tool-mm N   (rings follow the edge inwards, never cut to a layer; the paths are checked against the machine table first)
+work on the table: --offset-x-mm N  --offset-y-mm N   (every output is moved by this much, after the scale and the reference points; the machine limits still apply)
 ```
 
 ```text
@@ -242,7 +244,7 @@ Para tirar uma captura da janela sem a abrir à mão, execute-o com `--shot FICH
 
 ## 🧪 Testes
 
-O conjunto tem 460 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 465 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
