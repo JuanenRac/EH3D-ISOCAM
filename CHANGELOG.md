@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The picture of the window in the README is taken again with the newest build:** the sample layer after Compute paths, with the parameters of the tool at the left.
 ## [0.1.3] - A dry run and a path view in the window, the time of the G-code that isolate writes, bridges kept off the corners, clearing with rings and a move of the whole job on the table
 
 - **Where the work goes on the table:** `offset_x_mm` and `offset_y_mm` (0 by default; -10000 to 10000 mm) move every output by the same amount, after the scale and the reference points: the paths of `isolate`, the holes of `drills` and the cut of `route` (the move is part of the one transform the three share), so that a job can be put anywhere on the table of the machine. The limits of the machine still refuse a program that the offset takes off the table.
