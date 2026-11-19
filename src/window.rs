@@ -11,6 +11,7 @@ use crate::forced::{forced_passes, insert};
 use crate::isolate::{plan_with_pads, Pass};
 use crate::lang::{fill, Lang, Msg};
 use crate::optimize::optimize_passes;
+use crate::simulate;
 use crate::tolerance::close_pieces_scoped;
 use crate::transform::{Axis, Board};
 use crate::units::Unit;
@@ -116,6 +117,7 @@ pub enum Section {
     Outline,
     Layout,
     Mask,
+    Machine,
 }
 
 impl Section {
@@ -127,6 +129,7 @@ impl Section {
             Section::Outline => Msg::SectionOutline,
             Section::Layout => Msg::SectionLayout,
             Section::Mask => Msg::SectionMask,
+            Section::Machine => Msg::SectionMachine,
         }
     }
 }
@@ -252,6 +255,48 @@ pub fn default_fields(s: &Settings) -> Vec<Field> {
             Msg::MaskMargin,
             s.mask_margin_mm.to_string(),
         ),
+        f(
+            Section::Machine,
+            "rapid_mm_min",
+            Msg::RapidSpeed,
+            s.rapid_mm_min.to_string(),
+        ),
+        f(
+            Section::Machine,
+            "machine_profile",
+            Msg::MachineProfile,
+            s.machine_profile.name().to_string(),
+        ),
+        f(
+            Section::Machine,
+            "machine_x_mm",
+            Msg::MachineX,
+            s.machine_x_mm.to_string(),
+        ),
+        f(
+            Section::Machine,
+            "machine_y_mm",
+            Msg::MachineY,
+            s.machine_y_mm.to_string(),
+        ),
+        f(
+            Section::Machine,
+            "machine_margin_mm",
+            Msg::MachineMargin,
+            s.machine_margin_mm.to_string(),
+        ),
+        f(
+            Section::Machine,
+            "machine_max_depth_mm",
+            Msg::MachineMaxDepth,
+            s.machine_max_depth_mm.to_string(),
+        ),
+        f(
+            Section::Machine,
+            "machine_max_rpm",
+            Msg::MachineMaxRpm,
+            s.machine_max_rpm.to_string(),
+        ),
     ]
 }
 
@@ -337,6 +382,11 @@ pub enum Status {
     ExportedLoose {
         file: String,
         paths: usize,
+    },
+    /// The dry run of the program: how many moves it makes and how many findings it has.
+    Simulated {
+        moves: usize,
+        findings: usize,
     },
 }
 
@@ -430,6 +480,10 @@ impl Status {
                 Msg::ExportedLoose.tr(lang),
                 &[file.as_str(), paths.to_string().as_str()],
             ),
+            Status::Simulated { moves, findings } => fill(
+                Msg::Simulated.tr(lang),
+                &[moves.to_string().as_str(), findings.to_string().as_str()],
+            ),
         }
     }
 
@@ -443,6 +497,7 @@ impl Status {
             | Status::HolesOpened { .. }
             | Status::MaskOpened { .. }
             | Status::MarksLoaded(_) => false,
+            Status::Simulated { findings, .. } => *findings > 0,
             Status::OutlineOpened { open_runs, .. } => *open_runs > 0,
             _ => true,
         }
@@ -524,6 +579,8 @@ pub struct Window {
     pub view: View,
     /// What the reference points make of the work, when there are some.
     pub fit_note: Option<MarksFit>,
+    /// The result of the last dry run of the program, until the paths are worked out again.
+    pub dry_run: Option<simulate::Report>,
     base: Settings,
 }
 
@@ -552,6 +609,7 @@ impl Window {
             viewport: Viewport::default(),
             view: View::default(),
             fit_note: None,
+            dry_run: None,
             base,
         }
     }
@@ -1005,6 +1063,7 @@ impl Window {
         let Some(settings) = self.ready_settings() else {
             return false;
         };
+        self.dry_run = None;
         let (board, whole) = match self.lay_all(&settings) {
             Ok(b) => b,
             Err(why) => {
@@ -1051,6 +1110,48 @@ impl Window {
         if self.layer.is_some() && !self.passes.is_empty() && !self.stale {
             self.status = self.blocker().unwrap_or_else(|| self.computed_status());
         }
+    }
+
+    /// A dry run of the G-code the paths would be written as, with the speed of the rapid moves and the limits of the machine of the parameters: its time, the box it moves in and
+    /// its findings, kept in `dry_run`. The paths are worked out again first when the parameters changed; nothing is written, and what the machine limits refuse is a finding here.
+    pub fn simulate(&mut self) -> bool {
+        if self.layer.is_none() {
+            self.status = Status::NoLayer;
+            return false;
+        }
+        if (self.stale || self.passes.is_empty()) && !self.compute() {
+            return false;
+        }
+        if let Some(block) = self.blocker() {
+            self.status = block;
+            return false;
+        }
+        let Some(settings) = self.ready_settings() else {
+            return false;
+        };
+        let program = match board::gcode_program(&self.passes, &settings, true) {
+            Ok((g, _)) => g,
+            Err(why) => {
+                self.status = Status::Failed(why);
+                return false;
+            }
+        };
+        let report =
+            simulate::run_checked(&program, settings.rapid_mm_min, &settings.machine_limits());
+        self.status = Status::Simulated {
+            moves: report.moves,
+            findings: report.warnings.len(),
+        };
+        self.dry_run = Some(report);
+        true
+    }
+
+    /// The result of the dry run, in the language of the person; none before a dry run or after the paths were worked out again.
+    pub fn dry_run_text(&self) -> Option<String> {
+        self.dry_run
+            .as_ref()
+            .filter(|_| !self.stale)
+            .map(|r| r.text(self.lang.code(), &|mm| format!("{mm:.3} mm")))
     }
 
     /// The name suggested for the file of a job that writes, next to the file it comes from; none when the file it comes from is not open.
@@ -2015,5 +2116,108 @@ M30
         assert!(w.drills.is_none() && w.outline.is_none());
         assert!(w.view.holes.is_empty() && w.view.outline.is_empty());
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_machine_parameters_are_a_group_with_the_defaults_of_the_settings() {
+        let w = Window::new(Lang::En);
+        let keys: Vec<&str> = w
+            .fields
+            .iter()
+            .filter(|f| f.section == Section::Machine)
+            .map(|f| f.key)
+            .collect();
+        assert_eq!(
+            keys,
+            [
+                "rapid_mm_min",
+                "machine_profile",
+                "machine_x_mm",
+                "machine_y_mm",
+                "machine_margin_mm",
+                "machine_max_depth_mm",
+                "machine_max_rpm"
+            ]
+        );
+        assert_eq!(w.settings().unwrap(), Settings::default());
+    }
+
+    #[test]
+    fn a_dry_run_gives_the_time_the_box_and_no_findings_for_the_paths_of_the_sample() {
+        let mut w = Window::new(Lang::En);
+        assert!(!w.simulate());
+        assert_eq!(w.status, Status::NoLayer);
+        assert!(w.open(&sample()));
+        set(&mut w, "rapid_mm_min", "3000");
+        assert!(w.simulate());
+        let r = w.dry_run.as_ref().unwrap();
+        assert!(r.moves > 0 && r.rapid_known && r.warnings.is_empty());
+        assert_eq!(
+            w.status,
+            Status::Simulated {
+                moves: r.moves,
+                findings: 0
+            }
+        );
+        assert!(!w.status.is_problem());
+        let text = w.dry_run_text().unwrap();
+        assert!(
+            text.contains("time: ") && text.contains("no warnings"),
+            "{text}"
+        );
+        // the paths worked out again leave the old result away, and so does a changed parameter
+        set(&mut w, "depth_mm", "0.05");
+        assert!(w.dry_run_text().is_none());
+        assert!(w.compute() && w.dry_run.is_none());
+    }
+
+    #[test]
+    fn a_dry_run_names_what_the_machine_does_not_allow_and_is_a_problem() {
+        let mut w = Window::new(Lang::En);
+        assert!(w.open(&sample()));
+        set(&mut w, "machine_x_mm", "15");
+        set(&mut w, "machine_y_mm", "10");
+        assert!(w.simulate(), "{:?}", w.status);
+        let r = w.dry_run.as_ref().unwrap();
+        assert!(
+            r.warnings.iter().any(
+                |x| matches!(&x.kind, simulate::Kind::Limit(m) if m.contains("outside the table"))
+            ),
+            "{:?}",
+            r.warnings
+        );
+        assert!(w.status.is_problem());
+        // nothing was written and the paths are still there
+        assert!(!w.passes.is_empty());
+        // a value of the machine that is not a number names its parameter
+        set(&mut w, "machine_profile", "lathe");
+        assert!(!w.simulate());
+        assert!(matches!(
+            w.status,
+            Status::BadValue {
+                label: Msg::MachineProfile,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn the_dry_run_is_told_in_every_language_of_the_window() {
+        let mut w = Window::new(Lang::En);
+        assert!(w.open(&sample()));
+        assert!(w.simulate());
+        let mut seen = Vec::new();
+        for l in Lang::ALL {
+            w.lang = l;
+            seen.push((w.dry_run_text().unwrap(), w.status.text(l)));
+        }
+        for i in 0..seen.len() {
+            for j in i + 1..seen.len() {
+                assert_ne!(seen[i].0, seen[j].0);
+                assert_ne!(seen[i].1, seen[j].1);
+            }
+        }
+        assert!(seen[1].1.starts_with("Pasada en seco: "));
+        assert!(seen[7].1.starts_with("Passagem em seco: "));
     }
 }

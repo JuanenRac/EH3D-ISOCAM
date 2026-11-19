@@ -133,6 +133,12 @@ impl App {
                     self.ask(Job::ExportPaths);
                 }
                 if ui
+                    .add_enabled(has_layer, egui::Button::new(Msg::DryRun.tr(lang)))
+                    .clicked()
+                {
+                    self.win.simulate();
+                }
+                if ui
                     .add_enabled(has_work, egui::Button::new(Msg::Fit.tr(lang)))
                     .clicked()
                 {
@@ -164,6 +170,7 @@ impl App {
                     self.layout_group(ui);
                     self.marks_group(ui);
                     self.mask_group(ui);
+                    self.machine_group(ui);
                     self.notes_group(ui);
                 });
             });
@@ -343,6 +350,42 @@ impl App {
                 let has = self.win.layer.is_some();
                 self.export_button(ui, Job::ExportMask, Msg::ExportMask, has);
             });
+    }
+
+    /// The speed of the rapid moves and the limits of the machine, which the dry run of the program uses.
+    fn machine_group(&mut self, ui: &mut egui::Ui) {
+        egui::CollapsingHeader::new(self.heading(Section::Machine.title()))
+            .default_open(false)
+            .show(ui, |ui| {
+                self.fields_of(ui, Section::Machine);
+            });
+    }
+
+    /// The window with the result of the dry run: the time, the box and the findings in the language of the person.
+    fn dry_run_window(&mut self, ctx: &egui::Context) {
+        let Some(text) = self.win.dry_run_text() else {
+            return;
+        };
+        let lang = self.win.lang;
+        let mut open = true;
+        let mut close = false;
+        egui::Window::new(Msg::DryRun.tr(lang))
+            .open(&mut open)
+            .collapsible(false)
+            .default_size([560.0, 240.0])
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical()
+                    .max_height(260.0)
+                    .show(ui, |ui| {
+                        ui.label(egui::RichText::new(text.as_str()).monospace());
+                    });
+                if ui.button(Msg::Close.tr(lang)).clicked() {
+                    close = true;
+                }
+            });
+        if !open || close {
+            self.win.dry_run = None;
+        }
     }
 
     /// What the readers did not understand or did not use, from the last file that was opened.
@@ -652,6 +695,7 @@ impl eframe::App for App {
         self.side_panel(ui);
         self.canvas(ui);
         self.dialog_window(&ctx);
+        self.dry_run_window(&ctx);
         self.shot_tick(&ctx);
     }
 }
