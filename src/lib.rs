@@ -22,6 +22,7 @@ pub mod hpgl;
 pub mod lang;
 pub mod machine;
 pub mod preview;
+pub mod server;
 pub mod shot;
 pub mod simulate;
 pub mod toolpath;

@@ -244,3 +244,249 @@ fn a_settings_file_over_a_mebibyte_is_refused_and_a_normal_one_is_read() {
     assert!(ok, "{err}");
     let _ = fs::remove_dir_all(&dir);
 }
+
+// ---- the server mode ----
+
+/// A server of the computer that answers `n` requests with `status` and `body` and gives back the requests it got.
+fn local_server(
+    n: usize,
+    status: &str,
+    body: &str,
+) -> (String, std::thread::JoinHandle<Vec<String>>) {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap().to_string();
+    let reply = format!(
+        "HTTP/1.1 {status}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    let handle = std::thread::spawn(move || {
+        let mut heads = Vec::new();
+        for _ in 0..n {
+            let Ok((mut s, _)) = listener.accept() else {
+                break;
+            };
+            let mut buf = vec![0u8; 262_144];
+            let mut got = 0;
+            loop {
+                let k = s.read(&mut buf[got..]).unwrap_or(0);
+                if k == 0 {
+                    break;
+                }
+                got += k;
+                let text = String::from_utf8_lossy(&buf[..got]).to_string();
+                if let Some(split) = text.find("\r\n\r\n") {
+                    let want = text[..split]
+                        .lines()
+                        .find_map(|l| {
+                            l.to_ascii_lowercase()
+                                .strip_prefix("content-length:")
+                                .and_then(|v| v.trim().parse::<usize>().ok())
+                        })
+                        .unwrap_or(0);
+                    if got >= split + 4 + want {
+                        break;
+                    }
+                }
+            }
+            heads.push(String::from_utf8_lossy(&buf[..got]).to_string());
+            let _ = s.write_all(reply.as_bytes());
+        }
+        heads
+    });
+    (address, handle)
+}
+
+const CREATED: &str = "{\"artifact_id\":\"a-7\",\"blob_sha256\":\"ab\",\"size\":9}";
+
+fn link_file(dir: &std::path::Path, address: &str) -> String {
+    let cfg = dir.join("link.cfg");
+    fs::write(
+        &cfg,
+        format!("server_address = {address}\nserver_token = program-token\nserver_retries = 0\nserver_timeout_s = 5\n"),
+    )
+    .unwrap();
+    cfg.to_str().unwrap().to_string()
+}
+
+#[test]
+fn the_output_of_isolate_is_kept_on_the_server_with_the_values_it_was_made_with() {
+    let dir = folder("to_server");
+    let layer = dir.join("b.gtl");
+    fs::write(&layer, BOARD).unwrap();
+    let out = dir.join("b.nc");
+    let (address, handle) = local_server(1, "201 Created", CREATED);
+    let cfg = link_file(&dir, &address);
+    let (ok, stdout, err) = run(&[
+        "isolate",
+        layer.to_str().unwrap(),
+        out.to_str().unwrap(),
+        "--config",
+        &cfg,
+        "--to-server",
+    ]);
+    assert!(ok, "{err}");
+    assert!(
+        stdout.contains("kept on the server: b.nc as a-7"),
+        "{stdout}"
+    );
+    assert!(out.exists());
+    let heads = handle.join().unwrap();
+    assert!(
+        heads[0].starts_with("POST /api/v1/artifacts HTTP/1.1"),
+        "{}",
+        heads[0]
+    );
+    assert!(heads[0].contains("Bearer program-token"));
+    assert!(heads[0].contains("\"name\":\"b.nc\""), "{}", heads[0]);
+    assert!(
+        heads[0].contains("\"format\":\"text/x-gcode\""),
+        "{}",
+        heads[0]
+    );
+    assert!(heads[0].contains("\"command\":\"isolate\""), "{}", heads[0]);
+    assert!(
+        heads[0].contains("\"fine_tool_mm\":\"0.2\""),
+        "{}",
+        heads[0]
+    );
+    assert!(heads[0].contains("eh3d-isocam"), "{}", heads[0]);
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn to_server_without_a_server_is_refused_before_any_work_and_the_local_mode_is_untouched() {
+    let dir = folder("no_server");
+    let layer = dir.join("b.gtl");
+    fs::write(&layer, BOARD).unwrap();
+    let out = dir.join("b.nc");
+    let (ok, _, err) = run(&[
+        "isolate",
+        layer.to_str().unwrap(),
+        out.to_str().unwrap(),
+        "--to-server",
+    ]);
+    assert!(!ok && err.contains("server mode is off"), "{err}");
+    assert!(!out.exists(), "nothing was written");
+    // without --to-server the same run needs no server and writes the file
+    let (ok, stdout, err) = run(&["isolate", layer.to_str().unwrap(), out.to_str().unwrap()]);
+    assert!(ok, "{err}");
+    assert!(!stdout.contains("kept on the server"));
+    assert!(out.exists());
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_server_that_refuses_is_told_after_the_file_was_written() {
+    let dir = folder("refused");
+    let layer = dir.join("b.gtl");
+    fs::write(&layer, BOARD).unwrap();
+    let out = dir.join("b.nc");
+    let (address, handle) = local_server(
+        1,
+        "422 Unprocessable Entity",
+        "{\"error\":\"bad_artifact\",\"detail\":\"name too long\"}",
+    );
+    let cfg = link_file(&dir, &address);
+    let (ok, _, err) = run(&[
+        "isolate",
+        layer.to_str().unwrap(),
+        out.to_str().unwrap(),
+        "--config",
+        &cfg,
+        "--to-server",
+    ]);
+    handle.join().unwrap();
+    assert!(!ok, "{err}");
+    assert!(
+        err.contains("not kept on the server") && err.contains("name too long"),
+        "{err}"
+    );
+    assert!(out.exists(), "the local file stays");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_report_of_a_dry_run_is_kept_on_the_server() {
+    let dir = folder("simulate_server");
+    let program = dir.join("p.nc");
+    fs::write(
+        &program,
+        "G21\nG90\nG0 Z5\nG0 X1 Y1\nG1 Z-0.1 F100\nG1 X5 Y5 F300\nG0 Z5\nM2\n",
+    )
+    .unwrap();
+    let (address, handle) = local_server(1, "201 Created", CREATED);
+    let cfg = link_file(&dir, &address);
+    let (_, stdout, err) = run(&[
+        "simulate",
+        program.to_str().unwrap(),
+        "--config",
+        &cfg,
+        "--to-server",
+    ]);
+    let heads = handle.join().unwrap();
+    assert!(
+        stdout.contains("kept on the server: p.nc.report.txt as a-7"),
+        "{stdout} {err}"
+    );
+    assert!(
+        heads[0].contains("\"format\":\"text/plain\""),
+        "{}",
+        heads[0]
+    );
+    assert!(
+        heads[0].contains("\"command\":\"simulate\""),
+        "{}",
+        heads[0]
+    );
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_server_command_shows_the_link_without_the_token_and_what_the_server_answers() {
+    let dir = folder("server_status");
+    let (address, handle) = local_server(
+        1,
+        "200 OK",
+        "{\"name\":\"eh3d-server\",\"version\":\"0.1.8\",\"api_revision\":1,\"status\":\"ok\"}",
+    );
+    let cfg = link_file(&dir, &address);
+    let (ok, stdout, err) = run(&["server", "status", "--config", &cfg]);
+    handle.join().unwrap();
+    assert!(ok, "{err}");
+    assert!(
+        stdout.contains("server_token = ***") && !stdout.contains("program-token"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("eh3d-server 0.1.8 (ok, api 1)"), "{stdout}");
+    let (ok, stdout, _) = run(&["server", "status"]);
+    assert!(ok && stdout.contains("server mode is off"), "{stdout}");
+    let (ok, _, err) = run(&["server", "restart"]);
+    assert!(!ok && err.contains("unknown"), "{err}");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_keys_of_the_link_are_settings_of_the_file_and_of_the_command_line_with_their_ranges() {
+    let dir = folder("server_keys");
+    let layer = dir.join("b.gtl");
+    fs::write(&layer, BOARD).unwrap();
+    let f = layer.to_str().unwrap();
+    let cfg = dir.join("bad.cfg");
+    fs::write(&cfg, "fine_tool_mm = 0.2\nserver_timeout_s = 0\n").unwrap();
+    let (ok, _, err) = run(&["info", f, "--config", cfg.to_str().unwrap()]);
+    assert!(
+        !ok && err.contains("server_timeout_s") && err.contains("line 2"),
+        "{err}"
+    );
+    let (ok, _, err) = run(&["info", f, "--server-retries", "9"]);
+    assert!(!ok && err.contains("server_retries"), "{err}");
+    let cfg = dir.join("good.cfg");
+    fs::write(&cfg, "server_address = 10.0.0.5:18200\nserver_mdns = off\nserver_timeout_s = 120\nserver_retries = 5\nserver_machine = bench\n").unwrap();
+    let (ok, _, err) = run(&["info", f, "--config", cfg.to_str().unwrap()]);
+    assert!(ok, "{err}");
+    // a plain run needs no server key and never reads the network
+    let (ok, _, err) = run(&["info", f]);
+    assert!(ok, "{err}");
+    let _ = fs::remove_dir_all(&dir);
+}

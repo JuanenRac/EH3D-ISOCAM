@@ -24,6 +24,7 @@ use eh3d_isocam::optimize::optimize_passes;
 use eh3d_isocam::order::{arrange, directions, travel_mm, Cut, Strategy};
 use eh3d_isocam::preview;
 use eh3d_isocam::problems::{problem_zones, thin_for_tolerance_in};
+use eh3d_isocam::server;
 use eh3d_isocam::simulate;
 use eh3d_isocam::tolerance::{close_pieces_scoped, ToleranceScope};
 use eh3d_isocam::transform::{lay_out, Board};
@@ -50,9 +51,11 @@ const HELP: &str = "eh3d-isocam: isolation milling of copper from a Gerber layer
   eh3d-isocam kind FILE...                       say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
   eh3d-isocam simulate PROGRAM.nc                a dry run of a G-code program: its time, the box it moves in, the deepest cut and what is wrong with it (the machine limits of the settings apply)
   eh3d-isocam config                             every setting with its default, as a configuration file
+  eh3d-isocam server status [--config FILE]      the link to the EH3D server (the keys server_address, server_token, server_machine, server_timeout_s, server_retries, server_mdns and server_max_answer_mib of the configuration file) and what the server answers
   eh3d-isocam [gui] [LAYER.gtl]                  the window (a build with --features gui): with no arguments, or with a single layer, it opens; the commands above never open it
   eh3d-isocam gui [LAYER.gtl] --shot OUT.png [--size WxH] [--theme forge|dark|light] [--wait N] [--lang CODE] [--replace]   a picture of the window (a build with --features gui)
 
+--to-server keeps the file that isolate, drills, route, mask or rubout-area writes (and the report of simulate) on the EH3D server as an artifact, with the command and the main values it was made with; it needs server_address and server_token and is refused before any work when they are missing.
 Every option is a setting of the configuration file: --config FILE reads one, and --fine-tool-mm 0.15 is fine_tool_mm = 0.15 (the old --tool, --passes, --stepover, --res,
 --depth, --feed, --plunge, --safe and --rpm still work). A length may carry its unit (--fine-tool-mm 8mil, --depth-mm 0.002in); a bare number is in --input-units (mm, mil or
 inch). --output-units inch writes G20 and inches, --report-units changes what the screen shows. Also --outline FILE and --drills FILE name the outline and the holes that go
@@ -101,6 +104,10 @@ struct Cli {
     hide: Vec<String>,
     /// The units of a drill file that does not say them, or says them wrong (`--units mm|inch`).
     units: Option<eh3d_parser_excellon::Units>,
+    /// Keeps the file that is written on the EH3D server as an artifact (`--to-server`).
+    to_server: bool,
+    /// The command that is run, told to the server with the artifact.
+    command: String,
 }
 
 /// Numbers separated by commas, each one a length that may carry its unit.
@@ -133,6 +140,8 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
         max_bytes: InputLimits::default().max_bytes,
         hide: Vec::new(),
         units: None,
+        to_server: false,
+        command: String::new(),
     };
     // the configuration file first, so that the options on the command line win over it
     if let Some(i) = args.iter().position(|a| a == "--config") {
@@ -154,6 +163,7 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
     while let Some(a) = it.next() {
         match a.as_str() {
             "--force" => cli.force = true,
+            "--to-server" => cli.to_server = true,
             "--align" => cli.align = true,
             "--config" | "--input-units" => {
                 it.next();
@@ -459,7 +469,33 @@ fn write_text(cli: &Cli, out_index: usize, out: &str, text: String) -> Result<()
             "{out}: the output file is also an input of this run; write the result to a new file"
         ));
     }
-    fs::write(out, text).map_err(|e| format!("{out}: {e}"))
+    fs::write(out, &text).map_err(|e| format!("{out}: {e}"))?;
+    if cli.to_server {
+        keep(cli, out, text.as_bytes(), server::media_type(out))?;
+    }
+    Ok(())
+}
+
+/// Keeps a file on the EH3D server as an artifact, with the command that made it and the main values it was made with, and says so on the standard output.
+fn keep(cli: &Cli, name: &str, data: &[u8], format: &str) -> Result<(), String> {
+    let s = &cli.settings;
+    let (fine, coarse, depth, feed) = (
+        s.fine_tool_mm.to_string(),
+        s.coarse_tool_mm.to_string(),
+        s.depth_mm.to_string(),
+        s.feed_mm_min.to_string(),
+    );
+    let params = [
+        ("command", cli.command.as_str()),
+        ("fine_tool_mm", fine.as_str()),
+        ("coarse_tool_mm", coarse.as_str()),
+        ("depth_mm", depth.as_str()),
+        ("feed_mm_min", feed.as_str()),
+    ];
+    let line = server::keep(s.server.clone(), name, format, data, &params)
+        .map_err(|e| format!("{name}: not kept on the server: {e}"))?;
+    println!("{line}");
+    Ok(())
 }
 
 /// The places where the finest tool does not fit, with the conflict tolerance applied as the settings say (to every gap, or only beside pads).
@@ -640,6 +676,11 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         return Err("this build has no window: build it with --features gui".into());
     }
     let mut cli = parse_cli(args)?;
+    cli.command = cmd.clone();
+    // a file that is to be kept on the server needs the server to be there before any work is done
+    if cli.to_server {
+        server::require(&cli.settings.server)?;
+    }
     if cmd != "config" {
         apply_crib(&mut cli)?;
     }
@@ -668,6 +709,14 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         }
         "config" => {
             print!("{}", s.to_text());
+            Ok(())
+        }
+        "server" => {
+            match cli.positional.first().map(String::as_str) {
+                Some("status") | None => {}
+                Some(other) => return Err(format!("server {other}: unknown (use: server status)")),
+            }
+            print!("{}", server::status_report(s.server.clone())?);
             Ok(())
         }
         "check" | "isolate" | "info" | "preview" => {
@@ -817,7 +866,16 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let file = arg(&cli, 0, "simulate needs a G-code program")?;
             let text = read(&cli, file)?;
             let report = simulate::run_checked(&text, s.rapid_mm_min, &s.machine_limits());
-            print!("{}", report.text(language(), &|mm| len(&cli, mm)));
+            let report_text = report.text(language(), &|mm| len(&cli, mm));
+            print!("{report_text}");
+            if cli.to_server {
+                keep(
+                    &cli,
+                    &format!("{file}.report.txt"),
+                    report_text.as_bytes(),
+                    "text/plain",
+                )?;
+            }
             if report.warnings.is_empty() {
                 Ok(())
             } else {

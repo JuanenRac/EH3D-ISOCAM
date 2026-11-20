@@ -563,6 +563,7 @@ dependencies = [
  "eh3d-parser-gcode",
  "eh3d-parser-gerber",
  "eh3d-raster",
+ "eh3d-serverclient",
  "png 0.17.16",
 ]
 
@@ -594,6 +595,10 @@ dependencies = [
 [[package]]
 name = "eh3d-raster"
 version = "0.0.7"
+
+[[package]]
+name = "eh3d-serverclient"
+version = "0.0.1"
 
 [[package]]
 name = "either"

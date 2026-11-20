@@ -18,7 +18,7 @@
   "maturity": "functional",
   "evidence": "simulator",
   "hardware_bound": false,
-  "min_common": "0.2.1",
+  "min_common": "0.2.5",
   "family": "CNC Workflow Tools",
   "parent": null,
   "depends_on": [

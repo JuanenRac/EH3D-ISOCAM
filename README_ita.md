@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 481 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 499 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.1.4` |
 | Maturità | Impalcatura |
-| Test | 481 |
+| Test | 499 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,7 +48,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 481 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
+| Test | 🟡 | 499 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata e il programma di una versione la disegna in un'immagine (`--shot`), ma nessuno l'ha ancora usata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -231,6 +231,8 @@ EH3D-ISOCAM/
 
 Ogni valore regolabile è un'impostazione con un valore predefinito: diametri, passate e passo laterale dell'utensile fine e di quello grosso, la rimozione del rame residuo, la profondità, l'avanzamento e la velocità, il verso, il punto di partenza, l'inizio di ogni percorso e l'ordine, l'utensile che taglia la scheda, i fori di allineamento, lo specchio, la rotazione e il pannello, e le regole di progetto. `eh3d-isocam config` le stampa tutte come file (`examples/isocam.cfg` è quel file); `--config FILE` ne legge uno, e ogni impostazione può essere data sulla riga di comando come opzione con lo stesso nome (`--fine-tool-mm 0.15`), che prevale sul file. Un valore privo di senso è un errore che indica la riga. I limiti fissi vivono nel codice come costanti con nome e sono coperti da test. Anche l'isolamento forzato, i percorsi più leggeri, la scala e i punti di riferimento, il margine della maschera di saldatura, le unità e la larghezza dell'anteprima in testo sono impostazioni. Anche il formato delle coordinate di un file di foratura (`excellon_format`: `auto` o `2.4`) è un'impostazione.
 
+**Modalità server.** `--to-server` conserva sul server EH3D, come artefatto, il file che scrivono `isolate`, `drills`, `route`, `mask` o `rubout-area` (G-code, HP-GL, DXF o un file di foratura) e il rapporto di `simulate`, con il comando e i valori principali con cui è stato fatto, così gli altri programmi della suite lo trovano lì. Il collegamento è l'unico client della suite (`eh3d-serverclient` di EH3D-COMMON) e le sue chiavi stanno nel file delle impostazioni: `server_address` (`host:port`; vuoto significa spento), `server_token` (solo scrittura, mai mostrato), `server_machine`, `server_timeout_s` (da 1 a 120, 15 predefinito), `server_retries` (da 0 a 5, 2 predefinito), `server_mdns` (`off` predefinito) e `server_max_answer_mib` (da 1 a 256, 8 predefinito). I rifiuti del server vengono spiegati dal loro codice nella lingua del sistema. `eh3d-isocam server status --config FILE` mostra le impostazioni (il token come `***`) e la risposta del server. Senza indirizzo non viene inviato nulla e il lavoro locale non dipende mai dal server.
+
 ## 🚀 Avvio rapido
 
 Serve una toolchain Rust stabile (1.88 o più recente).
@@ -247,7 +249,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 481 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 499 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

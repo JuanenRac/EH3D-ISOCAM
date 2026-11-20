@@ -18,6 +18,9 @@ use crate::units::{parse_length, Unit};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Settings {
+    /// The link to the EH3D server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`):
+    /// off until `server_address` is set; the keys are settings of the file and of the command line like the others, but are not written by `to_text`.
+    pub server: eh3d_serverclient::Settings,
     pub res_mm: f64,
     pub fine_tool_mm: f64,
     pub fine_passes: usize,
@@ -215,6 +218,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
+            server: eh3d_serverclient::Settings::default(),
             res_mm: 0.02,
             fine_tool_mm: 0.2,
             fine_passes: 1,
@@ -588,6 +592,9 @@ impl Settings {
             "drill_order" => self.drill_order = DrillOrder::parse(v)?,
             "rubout_style" => self.rubout_style = crate::clearing::Style::parse(v)?,
             "rubout_ring_order" => self.rubout_ring_order = crate::clearing::RingOrder::parse(v)?,
+            other if crate::server::is_server_key(other) => {
+                self.server.set(other, v).map_err(|e| e.to_string())?;
+            }
             other => return Err(format!("{other}: unknown setting")),
         }
         Ok(())
