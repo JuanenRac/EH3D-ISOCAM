@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.5] - Send results to the EH3D server and a server status command
+
 - **A server mode over the client of the suite:** the keys `server_address`, `server_token`, `server_machine`, `server_timeout_s` (1 to 120, 15 by default), `server_retries` (0 to 5, 2 by default), `server_mdns` (`off` by default) and `server_max_answer_mib` (1 to 256, 8 by default) are settings of the configuration file and of the command line (`--server-address HOST:PORT`), read with their ranges by `eh3d-serverclient` of EH3D-COMMON; a value out of its range is an error that says the line; the mode is off until `server_address` is set and the local work never depends on it.
 - **`eh3d-isocam server status`:** shows the link (the token as `***`) and what the server answers at `/health`, with the refusals and the failures of the network told by their code in the language of the system (taken from `LC_ALL`, `LC_MESSAGES` or `LANG`).
 - **`--to-server` keeps the output on the server:** the file that `isolate`, `drills`, `route`, `mask` or `rubout-area` writes is kept on the EH3D server as an artifact once it is written locally (one request, never repeated by the client); the option is refused before any work when there is no `server_address` or `server_token`, and a refusal of the server is told after the local file was written.
