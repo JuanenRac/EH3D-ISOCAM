@@ -2,18 +2,18 @@
 
 ## Current state
 
-EH3D-ISOCAM is a working program on a computer: a library (`eh3d_isocam`), a command line (`eh3d-isocam`) and a window (built with `--features gui`). It isolates, drills and routes the layers of the example boards, checks the design rules and the limits of a machine table, and walks its G-code against a simulated machine. The suite of tests runs on Windows and Linux in the CI. The window has not been looked at on a screen and does not cover the commands `check`, `drc`, `info`, `preview` and `rubout-area`; no board has been milled and the files have not been read by other programs.
+EH3D-ISOCAM is a working program on a computer: a library (`eh3d_isocam`), a command line (`eh3d-isocam`) and a window (built with `--features gui`). It isolates, drills and routes the layers of the example boards, checks the design rules and the limits of a machine table, and walks its G-code against a simulated machine. The suite of tests runs on Windows and Linux in the CI. It also writes arcs where a run of short moves lies on a circle, engraves a silkscreen layer and tells what to look at before a job (`report`). The window has not been looked at on a screen; its logic makes the checks and the report of the job, but the buttons that call them are not written and it does not cover `info`, `rubout-area` and the other commands; no board has been milled and the files have not been read by other programs.
 
 ## Capabilities
 
-The official state of each capability is in `REQUIREMENTS.md`. The register has 45 requirements: 34 implemented, 4 prototype, 7 planned and 0 validated. By progress: 34 done, 4 partial, 4 pending and 3 blocked. This page never states a state that `REQUIREMENTS.md` does not.
+The official state of each capability is in `REQUIREMENTS.md`. The register has 48 requirements: 39 implemented, 5 prototype, 4 planned and 0 validated. By progress: 39 done, 5 partial, 1 pending and 3 blocked. This page never states a state that `REQUIREMENTS.md` does not.
 
 ## Open questions
 
-* Whether the paths should follow the exact curve instead of half a cell, and whether arcs should be fitted; today a curve is many short moves.
-* Which of the checks of the command line should come into the window first.
+* Whether `arc_fit_tolerance_mm` should be on by default; today it is 0, which keeps every piece straight, and no controller has run a program with arcs.
+* Where the buttons for the checks and the report of the job should go in the window.
 * How the stretches left out for a narrower tool should be decided when the grid is not fine enough.
-* Whether a silkscreen layer belongs here or in the viewer.
+* Whether the stamped pads of a silkscreen layer should be engraved too, and how.
 
 ## What it needs from other repositories
 
@@ -23,7 +23,7 @@ The official state of each capability is in `REQUIREMENTS.md`. The register has 
 
 ## Known technical debt and omitted tests
 
-* The paths are exact to half a cell, not to the curve itself, and a forced path lets a tool wider than the gap touch the copper on both sides.
+* The paths are exact to half a cell, not to the curve itself, an arc stays within `arc_fit_tolerance_mm` of those paths, and a forced path lets a tool wider than the gap touch the copper on both sides.
 * The solder mask follows the pads as drawn and a negative margin does not shrink a region.
 * The design rules do not round off the corners of a square pad and do not check the copper against the board edge or the solder mask.
 * Drill files are written in whole mils, and the files written were only read back by the readers of this suite.

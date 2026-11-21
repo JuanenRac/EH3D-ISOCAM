@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because no board has been milled with these paths and nothing of this program has run on a real machine.
 
-The register has 45 requirements: 34 implemented, 4 prototype, 7 planned and 0 validated. By progress: 34 done, 4 partial, 4 pending and 3 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 48 requirements: 39 implemented, 5 prototype, 4 planned and 0 validated. By progress: 39 done, 5 partial, 1 pending and 3 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -78,14 +78,22 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | ISOC-037 | The path of the tool is drawn with its depth from blue to amber. | prototype | partial | host-test | `src/toolpath::the_colours_go_from_blue_to_amber_with_the_depth_and_the_other_kinds_have_their_own` | The logic is tested without a screen; no person has looked at the drawing. |
 | ISOC-038 | Every sentence of the window has a text in each of the eight languages. | implemented | done | host-test | `src/lang::every_sentence_has_a_text_in_each_of_the_eight_languages` | - |
 
-## Not written yet
+## Curves, layers and what is still open
 
 | ID | Requirement | State | Progress | Evidence | Test | Limits |
 |---|---|---|---|---|---|---|
-| ISOC-039 | The paths follow the exact curve, or arcs are fitted to them. | planned | pending | none | `planned:curve_paths::the_path_follows_the_curve_within_the_tolerance` | Exact to half a cell today. |
+| ISOC-039 | Arcs are fitted to the paths within a tolerance of the settings, and the program is compared with the one of straight pieces. | implemented | done | host-test | `curve_paths::the_path_follows_the_curve_within_the_tolerance` | G-code only, and not with a height map; the paths are exact to half a cell, and the arcs stay within the tolerance of those paths. |
 | ISOC-040 | A Voronoi strategy traces the paths. | planned | pending | none | `planned:voronoi::the_voronoi_paths_isolate_the_same_copper` | Not written. |
-| ISOC-041 | A silkscreen layer is written. | planned | pending | none | `planned:silkscreen::the_silkscreen_layer_is_written` | No silkscreen layer in the job. |
-| ISOC-042 | The checks `check`, `drc` and `preview` are in the window. | planned | pending | none | `planned:window_checks::the_window_runs_check_drc_and_preview` | They stay on the command line today. |
+| ISOC-041 | The silkscreen layer is engraved with a tool and a depth of its own, with a warning that it is cut and not printed. | implemented | done | host-test | `silkscreen::the_silkscreen_layer_is_written` | The line is as wide as the tool, and stamped pads are left out. |
+| ISOC-042 | The checks `check`, `drc` and `preview` are in the window. | prototype | partial | host-test | `window_checks::the_window_runs_check_drc_and_preview` | The logic is tested without a screen; the buttons that call it are not written and no person has looked at the window. |
 | ISOC-043 | A board is milled with the paths and measured against the design. | planned | blocked | none | `planned:milled_board::a_milled_board_matches_the_design` | Needs a machine, a board and a person. |
 | ISOC-044 | The files written are read by the Bungard routing program and by a machine. | planned | blocked | none | `planned:other_readers::the_files_are_read_by_the_programs_of_the_machine` | Needs those programs and a machine. |
 | ISOC-045 | The window is looked at on a screen and matches the picture the program takes of itself. | planned | blocked | none | `planned:window_screen::the_window_matches_the_reference_picture` | Needs a person at a screen. |
+
+## Reports before the job
+
+| ID | Requirement | State | Progress | Evidence | Test | Limits |
+|---|---|---|---|---|---|---|
+| ISOC-046 | The report of a job tells its passes, paths, tools, arcs, time and the findings of the dry run, in the eight languages. | implemented | done | host-test | `job_report::the_report_lists_the_passes_the_tools_and_what_is_not_checked` | The time is estimated from the speeds, not measured. |
+| ISOC-047 | Every tool of the job is set against the tool crib by the width it cuts at the depth of the job, and a tool the crib lacks is a finding. | implemented | done | host-test | `job_report::every_tool_is_set_against_the_crib_by_the_width_it_cuts` | Read from the CSV table of the crib program, not from its JSON file. |
+| ISOC-048 | A verification that is not passed ends the command with the exit code 2. | implemented | done | host-test | `job_report::the_command_tells_the_report_and_ends_with_2_when_there_is_something_to_look_at` | Only `report` ends with 2; the other commands keep 1 for a failure. |

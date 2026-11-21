@@ -28,6 +28,19 @@
       "accent": "a",
       "rows": [
         {
+          "name": "arcs.rs",
+          "desc": {
+            "en": "arcs fitted to runs of short moves, within a tolerance",
+            "es": "arcos ajustados a series de movimientos cortos, con tolerancia",
+            "de": "Bögen, an kurze Bewegungsfolgen mit Toleranz angepasst",
+            "fr": "arcs ajustés à des suites de petits déplacements, avec tolérance",
+            "it": "archi adattati a serie di movimenti brevi, con tolleranza",
+            "ja": "短い移動の連なりに許容差内で当てはめる円弧",
+            "zh": "按容差拟合到短移动序列的圆弧",
+            "pt": "arcos ajustados a séries de movimentos curtos, com tolerância"
+          }
+        },
+        {
           "name": "board.rs",
           "desc": {
             "en": "the steps the command line and the window share",
@@ -275,6 +288,19 @@
           }
         },
         {
+          "name": "report.rs",
+          "desc": {
+            "en": "the report before a job, the tools against the crib and the checks",
+            "es": "el informe antes del trabajo, las herramientas frente al almacén y las comprobaciones",
+            "de": "der Bericht vor dem Auftrag, Werkzeuge gegen das Magazin und die Prüfungen",
+            "fr": "le rapport avant le travail, les outils face au magasin et les vérifications",
+            "it": "il rapporto prima del lavoro, gli utensili contro il magazzino e i controlli",
+            "ja": "ジョブ前のレポート、工具庫との照合、チェック",
+            "zh": "作业前报告、刀具与刀库核对及检查",
+            "pt": "o relatório antes do trabalho, as ferramentas contra o armazém e as verificações"
+          }
+        },
+        {
           "name": "shot.rs",
           "desc": {
             "en": "the picture mode of the window (--shot): its arguments, read and checked without a screen",
@@ -285,6 +311,19 @@
             "ja": "ウィンドウの画像モード（--shot）：画面なしで読み取り・検証される引数",
             "zh": "窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数",
             "pt": "o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã"
+          }
+        },
+        {
+          "name": "silk.rs",
+          "desc": {
+            "en": "the silkscreen layer engraved: strokes joined, regions cut round the edge",
+            "es": "el serigrafiado grabado: trazos unidos, regiones cortadas por el borde",
+            "de": "der Bestückungsdruck graviert: Striche verbunden, Flächen am Rand geschnitten",
+            "fr": "la sérigraphie gravée : traits reliés, régions coupées le long du bord",
+            "it": "la serigrafia incisa: tratti uniti, regioni tagliate lungo il bordo",
+            "ja": "彫刻されるシルク層：ストロークを連結し、領域は縁に沿って切断",
+            "zh": "雕刻丝印层：线条相连，区域沿边缘切割",
+            "pt": "a serigrafia gravada: traços juntos, regiões cortadas ao longo do bordo"
           }
         },
         {
@@ -399,6 +438,19 @@
           }
         },
         {
+          "name": "curve_paths.rs",
+          "desc": {
+            "en": "tests of the arcs fitted to the paths",
+            "es": "pruebas de los arcos ajustados a las trayectorias",
+            "de": "Tests der an die Pfade angepassten Bögen",
+            "fr": "tests des arcs ajustés aux parcours",
+            "it": "test degli archi adattati ai percorsi",
+            "ja": "経路に当てはめた円弧のテスト",
+            "zh": "拟合到路径的圆弧测试",
+            "pt": "testes dos arcos ajustados aos trajetos"
+          }
+        },
+        {
           "name": "depth_and_levelling.rs",
           "desc": {
             "en": "tests of steps of depth and of cutting along a height map",
@@ -448,6 +500,19 @@
             "ja": "ライブラリとコマンドラインのテスト",
             "zh": "库和命令行的测试",
             "pt": "testes da biblioteca e da linha de comandos"
+          }
+        },
+        {
+          "name": "job_report.rs",
+          "desc": {
+            "en": "tests of the report before the job and of the crib check",
+            "es": "pruebas del informe antes del trabajo y de la comprobación del almacén",
+            "de": "Tests des Berichts vor dem Auftrag und der Magazinprüfung",
+            "fr": "tests du rapport avant le travail et de la vérification du magasin",
+            "it": "test del rapporto prima del lavoro e del controllo del magazzino",
+            "ja": "ジョブ前レポートと工具庫照合のテスト",
+            "zh": "作业前报告与刀库核对测试",
+            "pt": "testes do relatório antes do trabalho e da verificação do armazém"
           }
         },
         {
@@ -516,6 +581,19 @@
           }
         },
         {
+          "name": "silkscreen.rs",
+          "desc": {
+            "en": "tests of the silkscreen layer engraved",
+            "es": "pruebas del serigrafiado grabado",
+            "de": "Tests des gravierten Bestückungsdrucks",
+            "fr": "tests de la sérigraphie gravée",
+            "it": "test della serigrafia incisa",
+            "ja": "彫刻シルクのテスト",
+            "zh": "雕刻丝印层测试",
+            "pt": "testes da serigrafia gravada"
+          }
+        },
+        {
           "name": "readme.rs",
           "desc": {
             "en": "tests that run what the README and the run scripts promise",
@@ -526,6 +604,19 @@
             "ja": "READMEとrunスクリプトが約束する内容を実行するテスト",
             "zh": "运行 README 和 run 脚本所承诺内容的测试",
             "pt": "testes que executam o que o README e os scripts run prometem"
+          }
+        },
+        {
+          "name": "window_checks.rs",
+          "desc": {
+            "en": "tests of the checks and the report in the window",
+            "es": "pruebas de las comprobaciones y del informe en la ventana",
+            "de": "Tests der Prüfungen und des Berichts im Fenster",
+            "fr": "tests des vérifications et du rapport dans la fenêtre",
+            "it": "test dei controlli e del rapporto nella finestra",
+            "ja": "ウィンドウ内のチェックとレポートのテスト",
+            "zh": "窗口内检查与报告测试",
+            "pt": "testes das verificações e do relatório na janela"
           }
         },
         {

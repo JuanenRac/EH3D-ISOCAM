@@ -17,7 +17,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 508 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-isocam`) com 545 testes que correm num computador: traça os percursos de uma ou mais fresas à volta do cobre de uma camada Gerber, retira o cobre restante, escolhe o sentido, os pontos de partida e a ordem dos cortes, lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, verifica as regras de projeto e escreve G-code ou HP-GL. Tem uma janela (compilada com `--features gui`) que abre uma camada, um ficheiro de furação, um contorno, uma camada de máscara e uma tabela de pontos de referência, vira a placa e repete-a num painel, desenha o cobre, os furos, o contorno e as trajetórias e escreve os mesmos ficheiros que a linha de comandos, mas que ainda não foi vista num ecrã; não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versão | `0.1.5` |
 | Maturidade | Estrutura inicial |
-| Testes | 508 |
+| Testes | 545 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -48,7 +48,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ficheiros e disposição | 🟡 | lê e escreve ficheiros de furação e contornos da placa, dispõe a placa para as duas faces e para um painel, acrescenta furos de alinhamento e verifica as regras de projeto com a posição de cada achado; testado num computador, não com ficheiros escritos por outros programas nem numa máquina. |
 | Isolamento forçado, correção, máscara | 🟡 | percursos forçados nos espaços onde a ferramenta não cabe, percursos mais leves, escala e correção com pontos de referência, aberturas da máscara de soldadura, unidades e pré-visualização das passagens; testado num computador com camadas geradas e entradas danificadas, nunca com placas reais nem numa máquina, e a correção não foi comparada com medições reais de uma câmara. |
 | Linha de comandos | 🟡 | `eh3d-isocam` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 508 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. Incluem uma simulação com semente fixa de uma máquina Bungard com o curso da sua mesa, com falhas injetadas e recuperação. |
+| Testes | 🟡 | 545 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. Incluem uma simulação com semente fixa de uma máquina Bungard com o curso da sua mesa, com falhas injetadas e recuperação. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🟠 | Escrita (egui, `--features gui`): abrir ou largar uma camada, zoom e deslocamento, editar os parâmetros principais, exportar; a sua lógica está testada e o programa de uma versão desenha-a numa imagem (`--shot`), mas ainda ninguém a usou num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -89,6 +89,9 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **A forma do corte à volta da placa** (`src/corners.rs`): `outline_corner_radius_mm` (0 por omissão, que mantém os cantos vivos como estão desenhados) arredonda cada canto dos percursos fechados do contorno com um arco desse raio antes de a ferramenta o percorrer; um canto cujos lados são demasiado curtos para o raio (um arco ocupa no máximo metade de cada lado) recebe o maior raio que cabe e é contado e avisado. `outline_min_cutout_mm` (0 por omissão) omite os recortes do contorno (percursos fechados dentro da placa) cuja caixa não tem nenhum lado maior do que esse valor. Ambos aplicam-se a `route` e ao corte de `plot_outline` e são parâmetros da janela, que diz nas suas notas quantos cantos receberam um raio menor e quantos recortes foram omitidos.
 * **O corte verificado contra a mesa da máquina:** quando as definições descrevem uma mesa (`machine_profile`, ou `machine_x_mm` e `machine_y_mm`, com `machine_margin_mm`), `route` e a janela recusam um corte que saia dela, com o percurso e o sítio para onde vai; `--force` escreve-o com um aviso na linha de comandos. Sem mesa descrita não se verifica nada, como antes.
 * **Desbaste de uma zona com anéis** (`src/clearing.rs`): com `rubout_style = rings`, `rubout-area` preenche um retângulo (`--area`) ou os trajetos fechados de um ficheiro (`--contour`, preenchimento par-ímpar: um trajeto dentro de outro é um furo) com anéis fechados que seguem o bordo para dentro em vez de linhas de ida e volta; o primeiro anel fica a meia ferramenta do bordo, os seguintes a um passo de `tool * (1 - rubout_overlap)` mais para dentro, e acrescenta-se um anel pelo meio quando ficaria uma faixa. `rubout_ring_order` (`outside-in`, o normal, ou `inside-out`) mantém-se no G-code diga o que disser `ordering`. Antes de escrever o que quer que seja, os trajetos são verificados contra a mesa da máquina e um trajeto que sai dela é recusado com o seu número e a sua passagem (`--force` escreve-o na mesma); a verificação serve também para as linhas.
+* **Arcos ajustados aos trajetos** (`src/arcs.rs`): `arc_fit_tolerance_mm` (0 por omissão, o que mantém todos os troços retos como antes; de 0.001 a 0.5 mm) substitui cada série de movimentos curtos que está sobre uma circunferência por um único `G2` ou `G3`, no máximo a essa distância do polígono de onde saiu (o ponto mais afastado da circunferência e a flecha do troço mais comprido cabem juntos nela). O `isolate` diz quantos movimentos poupou e quanto mede o corte com arcos e com troços retos; o intérprete da suite percorre o programa, pelo que os limites da máquina veem para onde um arco se abaúla. Só G-code, não em conjunto com um mapa de alturas, e é um parâmetro da janela.
+* **A serigrafia gravada** (`src/silk.rs`): `eh3d-isocam silk CAMADA.gto SAIDA.nc` junta os traços que se tocam pelas pontas, corta uma região ao longo do seu bordo e grava-os a `silk_depth_mm` com uma ferramenta de `silk_tool_mm`; avisa que a linha é tão larga como a ferramenta e fica cortada na placa, diz que traços têm outra largura (`silk_width_tolerance_mm`) e conta as pastilhas carimbadas que deixa de fora. Escreve G-code ou um desenho DXF, nunca um traçado de plotter.
+* **O relatório antes do trabalho** (`src/report.rs`): `eh3d-isocam report CAMADA.gtl` diz as passagens, os trajetos, o comprimento do corte, as ferramentas pela ordem em que são usadas, os arcos, o tempo e os avisos do ensaio em seco, confronta cada ferramenta com a tabela CSV do armazém de ferramentas (`crib_file`: uma fresa pelo seu diâmetro, uma ponta em V ou um gravador pela largura que corta à profundidade do trabalho) e junta as verificações da camada (sítios onde a ferramenta não cabe, zonas problemáticas, regras de projeto). Termina com 2, o código de saída de uma verificação não superada, quando há algo a ver. A janela faz o mesmo relatório e as mesmas verificações sem ecrã (`Window::report_text`, `Window::checks_text`); os botões que as chamam ainda não estão escritos.
 * **Onde vai o trabalho na mesa** (`src/config.rs`): `offset_x_mm` e `offset_y_mm` (0 por omissão, de -10000 a 10000) deslocam todas as saídas da mesma quantidade, depois da escala e dos pontos de referência: os trajetos do cobre, os furos de um ficheiro de furação e o corte em redor da placa, de modo que um trabalho pode ser colocado em qualquer ponto da mesa da máquina; os limites da máquina (`machine_profile`) continuam a recusar um programa que o deslocamento tire da mesa.
 
 ## 🧩 Papel no EH3D
@@ -249,7 +252,7 @@ Para tirar uma captura da janela sem a abrir à mão, execute-o com `--shot FICH
 
 ## 🧪 Testes
 
-O conjunto tem 508 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 545 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -271,6 +274,7 @@ Cada versão traz o programa com a sua janela para Windows (64 e 32 bits), Linux
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── arcs.rs                                  arcos ajustados a séries de movimentos curtos, com tolerância
 │   ├── board.rs                                 os passos que a linha de comandos e a janela partilham
 │   ├── browse.rs                                a lista de ficheiros da janela que abre um ficheiro
 │   ├── clearing.rs                              o desbaste de uma zona com anéis, na ordem pedida e dentro da zona
@@ -290,7 +294,9 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   a biblioteca: o que cada comando usa
 │   ├── main.rs                                  a linha de comandos
 │   ├── preview.rs                               as passagens desenhadas em SVG ou texto
+│   ├── report.rs                                o relatório antes do trabalho, as ferramentas contra o armazém e as verificações
 │   ├── shot.rs                                  o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã
+│   ├── silk.rs                                  a serigrafia gravada: traços juntos, regiões cortadas ao longo do bordo
 │   ├── simulate.rs                              a passagem em seco de um programa G-code: tempo, percurso, corte mais fundo e achados em oito línguas
 │   ├── toolpath.rs                              o percurso da ferramenta de um programa para a imagem: rápido, descida e corte por profundidade
 │   ├── viewport.rs                              zoom e deslocamento da imagem, em números simples
@@ -300,16 +306,20 @@ EH3D-ISOCAM/
 │   ├── advanced.rs                              isolamento forçado, correção, máscara, unidades, pré-visualização
 │   ├── cli_reading.rs                           testes de leitura de ficheiros: o limite de tamanho, texto que não é UTF-8, avisos por código
 │   ├── crib.rs                                  testes das ferramentas tiradas do armazém
+│   ├── curve_paths.rs                           testes dos arcos ajustados aos trajetos
 │   ├── depth_and_levelling.rs                   testes das passadas de profundidade e do corte segundo um mapa de alturas
 │   ├── excellon_format.rs                       testes do formato 2.4 das coordenadas de um ficheiro de furação
 │   ├── files.rs                                 testes dos ficheiros de furação e contorno
 │   ├── isocam.rs                                testes da biblioteca e da linha de comandos
+│   ├── job_report.rs                            testes do relatório antes do trabalho e da verificação do armazém
 │   ├── job_safety.rs                            testes dos limites da máquina e da passagem em seco
 │   ├── kinds.rs                                 tolerância para pads, preenchimentos, tipos de ficheiro, canetas, DXF
 │   ├── layout.rs                                testes de dupla face, painéis, regras e linha de comandos
 │   ├── multi.rs                                 testes de ferramentas, cobre restante, sentido, ordem e definições
 │   ├── problems.rs                              testes das zonas problemáticas, da tolerância e dos furos de alinhamento
+│   ├── silkscreen.rs                            testes da serigrafia gravada
 │   ├── readme.rs                                testes que executam o que o README e os scripts run prometem
+│   ├── window_checks.rs                         testes das verificações e do relatório na janela
 │   ├── window_cli.rs                            testes de que uma compilação sem a funcionalidade gui continua a ser só linha de comandos
 │   └── reqs.rs                                  testes do registo de requisitos
 ├── examples/

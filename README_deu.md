@@ -17,7 +17,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 508 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 545 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.1.5` |
 | Reifegrad | Gerüst |
-| Tests | 508 |
+| Tests | 545 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -48,7 +48,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Dateien und Anordnung | 🟡 | liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, setzt Passlöcher und prüft die Entwurfsregeln mit dem Ort jedes Befunds; auf einem Computer getestet, nicht mit Dateien anderer Programme und nicht auf einer Maschine. |
 | Erzwungene Isolation, Korrektur, Maske | 🟡 | erzwungene Pfade durch Lücken, in die das Werkzeug nicht passt, leichtere Bahnen, Skalierung und Korrektur mit Referenzpunkten, die Öffnungen der Lötstoppmaske, Einheiten und die Vorschau der Durchgänge; auf einem Computer mit erzeugten Lagen und beschädigten Eingaben getestet, nie mit echten Platinen und nie auf einer Maschine, und die Korrektur wurde nicht mit echten Kameramessungen verglichen. |
 | Kommandozeile | 🟡 | `eh3d-isocam` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 508 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. Dazu gehört eine Simulation mit festem Seed für eine Bungard-Maschine mit dem Verfahrweg ihres Tisches, mit eingespeisten Fehlern und Wiederherstellung. |
+| Tests | 🟡 | 545 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. Dazu gehört eine Simulation mit festem Seed für eine Bungard-Maschine mit dem Verfahrweg ihres Tisches, mit eingespeisten Fehlern und Wiederherstellung. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`): Ebene öffnen oder hineinziehen, Zoom und Verschieben, die wichtigsten Parameter ändern, exportieren; die Logik ist getestet und das Programm einer Version zeichnet es in ein Bild (`--shot`), aber noch niemand hat es auf einem Bildschirm benutzt. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -89,6 +89,9 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 * **Die Form des Schnitts um die Platine** (`src/corners.rs`): `outline_corner_radius_mm` (standardmäßig 0, die Ecken bleiben wie gezeichnet scharf) rundet jede Ecke der geschlossenen Pfade der Kontur mit einem Bogen dieses Radius, bevor das Werkzeug sie umfährt; eine Ecke, deren Seiten für den Radius zu kurz sind (ein Bogen nimmt höchstens die Hälfte jeder Seite ein), erhält den größten passenden Radius und wird gezählt und gemeldet. `outline_min_cutout_mm` (standardmäßig 0) lässt die Aussparungen der Kontur (geschlossene Pfade innerhalb der Platine) aus, deren Umgebungsrechteck keine Seite länger als dieser Wert hat. Beides gilt für `route` und für den Schnitt von `plot_outline` und sind Parameter des Fensters, das in seinen Hinweisen sagt, wie viele Ecken einen kleineren Radius erhielten und wie viele Aussparungen ausgelassen wurden.
 * **Der Schnitt gegen den Tisch der Maschine geprüft:** Beschreiben die Einstellungen einen Tisch (`machine_profile` oder `machine_x_mm` und `machine_y_mm`, mit `machine_margin_mm`), weisen `route` und das Fenster einen Schnitt zurück, der ihn verlässt, mit dem Pfad und dem Ort, zu dem er führt; `--force` schreibt ihn mit einer Warnung auf der Kommandozeile. Ohne beschriebenen Tisch wird nichts geprüft, wie bisher.
 * **Räumen einer Fläche mit Ringen** (`src/clearing.rs`): mit `rubout_style = rings` füllt `rubout-area` ein Rechteck (`--area`) oder die geschlossenen Bahnen einer Datei (`--contour`, Gerade-Ungerade-Füllung, also ist eine Bahn in einer anderen ein Loch) mit geschlossenen Ringen, die dem Rand nach innen folgen, statt mit hin und her laufenden Linien; der erste Ring liegt ein halbes Werkzeug vom Rand, die nächsten je einen Schritt von `tool * (1 - rubout_overlap)` weiter innen, und ein Ring in der Mitte kommt hinzu, wenn ein Streifen übrig bliebe. `rubout_ring_order` (`outside-in`, der Normalfall, oder `inside-out`) bleibt im G-Code erhalten, was `ordering` auch sagt. Bevor etwas geschrieben wird, werden die Bahnen gegen den Tisch der Maschine geprüft, und eine Bahn, die ihn verlässt, wird mit ihrer Nummer und ihrem Durchgang abgelehnt (`--force` schreibt sie trotzdem); die Prüfung gilt auch für die Linien.
+* **An die Pfade angepasste Bögen** (`src/arcs.rs`): `arc_fit_tolerance_mm` (standardmäßig 0, was alle Stücke wie bisher gerade lässt; 0.001 bis 0.5 mm) ersetzt jede Folge kurzer Bewegungen, die auf einem Kreis liegt, durch ein einziges `G2` oder `G3`, höchstens so weit vom ursprünglichen Polygon entfernt (der am weitesten vom Kreis entfernte Punkt und die Pfeilhöhe des längsten Stücks bleiben zusammen darin). `isolate` nennt, wie viele Bewegungen gespart wurden und wie lang der Schnitt mit Bögen und als gerade Stücke ist; der Interpreter der Suite läuft das Programm ab, sodass die Grenzen der Maschine sehen, wohin sich ein Bogen wölbt. Nur G-Code, nicht zusammen mit einer Höhenkarte, und ein Parameter des Fensters.
+* **Der Bestückungsdruck graviert** (`src/silk.rs`): `eh3d-isocam silk EBENE.gto AUS.nc` verbindet Striche, die sich an den Enden berühren, schneidet eine Fläche entlang ihres Rands und graviert beides mit `silk_depth_mm` und einem Werkzeug von `silk_tool_mm`; es warnt, dass die Linie so breit wie das Werkzeug ist und in die Platine geschnitten wird, nennt Striche anderer Breite (`silk_width_tolerance_mm`) und zählt die gestempelten Pads, die es auslässt. Es schreibt G-Code oder eine DXF-Zeichnung, nie einen Plot.
+* **Der Bericht vor dem Auftrag** (`src/report.rs`): `eh3d-isocam report EBENE.gtl` nennt die Durchgänge, die Pfade, die Länge des Schnitts, die Werkzeuge in der Reihenfolge ihres Einsatzes, die Bögen, die Zeit und die Befunde des Probelaufs, hält jedes Werkzeug gegen die CSV-Tabelle des Werkzeugmagazins (`crib_file`: ein Fräser nach seinem Durchmesser, ein V-Fräser oder Gravierstichel nach der Breite, die er in der Tiefe des Auftrags schneidet) und fügt die Prüfungen der Ebene hinzu (Stellen ohne Platz für das Werkzeug, Problemzonen, Entwurfsregeln). Er endet mit 2, dem Exitcode einer nicht bestandenen Prüfung, wenn es etwas anzusehen gibt. Das Fenster erstellt denselben Bericht und dieselben Prüfungen ohne Bildschirm (`Window::report_text`, `Window::checks_text`); die Schaltflächen dafür sind noch nicht geschrieben.
 * **Wo die Arbeit auf dem Tisch liegt** (`src/config.rs`): `offset_x_mm` und `offset_y_mm` (standardmäßig 0, von -10000 bis 10000) verschieben jede Ausgabe um denselben Betrag, nach dem Maßstab und den Referenzpunkten: die Bahnen des Kupfers, die Löcher einer Bohrdatei und den Schnitt um die Platine, sodass ein Auftrag an beliebiger Stelle des Maschinentischs liegen kann; die Grenzen der Maschine (`machine_profile`) weisen weiterhin ein Programm zurück, das der Versatz vom Tisch schiebt.
 
 ## 🧩 Rolle in EH3D
@@ -249,7 +252,7 @@ Um ein Bild des Fensters aufzunehmen, ohne es von Hand zu öffnen, starten Sie e
 
 ## 🧪 Tests
 
-Die Suite hat 508 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 545 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -271,6 +274,7 @@ Jede Version enthält das Programm mit seinem Fenster für Windows (64 und 32 Bi
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── arcs.rs                                  Bögen, an kurze Bewegungsfolgen mit Toleranz angepasst
 │   ├── board.rs                                 die Schritte, die Kommandozeile und Fenster teilen
 │   ├── browse.rs                                die Dateiliste des Fensters zum Öffnen einer Datei
 │   ├── clearing.rs                              das Räumen einer Fläche mit Ringen, in der gewünschten Reihenfolge und innerhalb der Fläche
@@ -290,7 +294,9 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
 │   ├── preview.rs                               die Durchgänge als SVG oder Text
+│   ├── report.rs                                der Bericht vor dem Auftrag, Werkzeuge gegen das Magazin und die Prüfungen
 │   ├── shot.rs                                  der Bildmodus des Fensters (--shot): seine Argumente, ohne Bildschirm gelesen und geprüft
+│   ├── silk.rs                                  der Bestückungsdruck graviert: Striche verbunden, Flächen am Rand geschnitten
 │   ├── simulate.rs                              der Trockenlauf eines G-Code-Programms: Zeit, Fahrbereich, tiefster Schnitt und Befunde in acht Sprachen
 │   ├── toolpath.rs                              der Werkzeugweg eines Programms für das Bild: Eilgang, Eintauchen und Schnitt nach Tiefe
 │   ├── viewport.rs                              Zoom und Verschiebung des Bildes, in einfachen Zahlen
@@ -300,16 +306,20 @@ EH3D-ISOCAM/
 │   ├── advanced.rs                              erzwungene Isolation, Korrektur, Maske, Einheiten, Vorschau
 │   ├── cli_reading.rs                           Tests zum Lesen von Dateien: Größenlimit, Text ohne UTF-8, Meldungen nach Code
 │   ├── crib.rs                                  Tests der aus dem Lager genommenen Werkzeuge
+│   ├── curve_paths.rs                           Tests der an die Pfade angepassten Bögen
 │   ├── depth_and_levelling.rs                   Tests der Tiefenstufen und des Schneidens nach einer Höhenkarte
 │   ├── excellon_format.rs                       Tests des Formats 2.4 der Koordinaten einer Bohrdatei
 │   ├── files.rs                                 Tests der Bohr- und Konturdateien
 │   ├── isocam.rs                                Tests von Bibliothek und Kommandozeile
+│   ├── job_report.rs                            Tests des Berichts vor dem Auftrag und der Magazinprüfung
 │   ├── job_safety.rs                            Tests der Maschinengrenzen und des Trockenlaufs
 │   ├── kinds.rs                                 Toleranz für Pads, Konturfüllung, Dateiarten, Stifte, DXF
 │   ├── layout.rs                                Tests zu beiden Seiten, Nutzen, Regeln und der Kommandozeile
 │   ├── multi.rs                                 Tests zu Werkzeugen, Restkupfer, Richtung, Reihenfolge und Einstellungen
 │   ├── problems.rs                              Tests der Problemzonen, der Toleranz und der Passlöcher
+│   ├── silkscreen.rs                            Tests des gravierten Bestückungsdrucks
 │   ├── readme.rs                                Tests, die ausführen, was README und run-Skripte versprechen
+│   ├── window_checks.rs                         Tests der Prüfungen und des Berichts im Fenster
 │   ├── window_cli.rs                            Tests, dass ein Build ohne das Feature gui eine reine Kommandozeile bleibt
 │   └── reqs.rs                                  Tests des Anforderungsregisters
 ├── examples/

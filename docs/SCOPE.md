@@ -13,13 +13,14 @@ The CAM program of the suite for printed circuit boards: it draws the copper on 
 * Writes the G-code (in millimetres or inches, with depth steps, a standard header and tool changes), HP-GL plots at 40 units to the millimetre and DXF drawings; follows the height map of AUTOLEVEL when it is asked to.
 * Writes the drill files, a short path for the holes, the cut round the board with bridges, rounded corners and alignment holes, both sides of a board, panels and a solder-mask layer.
 * Checks the design rules (copper too narrow, pieces too close, holes with too little copper), lists the places the tool cannot enter and refuses to write until they are looked at (or `--force`).
+* Fits arcs to the paths within a tolerance, engraves a silkscreen layer with a tool of its own and tells what to look at before a job: the tools set against the crib, the dry run and the checks (`report`).
 * Walks any G-code program move by move (`simulate`) and the program it is about to write, against the table and the limits of a machine, and refuses a cut that leaves the table with its line.
 * Shows all of it in a window (built with `--features gui`), in eight languages, with a dry run and the path of the tool drawn over the board.
 
 ## What it will not do
 
 * No decision about the limits of a machine, its interlocks or its emergency stop (see below).
-* No Voronoi strategy, no fitting of arcs, no silkscreen layer yet (see `NOT_YET.md`).
+* No Voronoi strategy yet, and no arcs in the plots and the drawings (see `NOT_YET.md`).
 * No sending of the program to a machine: it writes files.
 * No claim that a board was milled with these paths: no board has been.
 * No claim that the files it writes were read by other programs or machines: they have only been read back by the readers of this suite.

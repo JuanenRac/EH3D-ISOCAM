@@ -17,7 +17,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 508 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 545 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versión | `0.1.5` |
 | Madurez | Andamiaje |
-| Pruebas | 508 |
+| Pruebas | 545 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -48,7 +48,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Ficheros y disposición | 🟡 | lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, añade agujeros de alineación y comprueba las reglas de diseño con la posición de cada hallazgo; probado en un ordenador, no con ficheros escritos por otros programas ni en una máquina. |
 | Aislamiento forzado, corrección, máscara | 🟡 | caminos forzados por los huecos donde no cabe la herramienta, trayectorias más ligeras, escala y corrección con puntos de referencia, las aberturas de la máscara de soldadura, unidades y vista previa de las pasadas; probado en un ordenador con capas generadas y entradas dañadas, nunca con placas reales ni en una máquina, y la corrección no se ha comparado con mediciones reales de una cámara. |
 | Línea de comandos | 🟡 | `eh3d-isocam` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 508 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. Incluyen una simulación con semilla fija de una máquina Bungard con el recorrido de su mesa, con fallos inyectados y recuperación. |
+| Pruebas | 🟡 | 545 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. Incluyen una simulación con semilla fija de una máquina Bungard con el recorrido de su mesa, con fallos inyectados y recuperación. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🟠 | Escrita (egui, `--features gui`): abrir o soltar una capa, zoom y desplazamiento, editar los parámetros principales, exportar; su lógica está probada y el programa de una versión la dibuja en una imagen (`--shot`), pero nadie la ha usado todavía en una pantalla. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -89,6 +89,9 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 * **La forma del corte alrededor de la placa** (`src/corners.rs`): `outline_corner_radius_mm` (0 por defecto, que deja las esquinas vivas como están dibujadas) redondea cada esquina de los trazados cerrados del contorno con un arco de ese radio antes de que la herramienta lo recorra; una esquina cuyos lados son demasiado cortos para el radio (un arco ocupa como mucho la mitad de cada lado) recibe el mayor radio que cabe y se cuenta y se avisa. `outline_min_cutout_mm` (0 por defecto) omite los huecos del contorno (trazados cerrados dentro de la placa) cuya caja no tiene ningún lado mayor que ese valor. Ambos se aplican a `route` y al corte de `plot_outline`, y son parámetros de la ventana, que dice en sus notas cuántas esquinas recibieron un radio menor y cuántos huecos se omitieron.
 * **El corte comprobado contra la mesa de la máquina:** cuando los ajustes describen una mesa (`machine_profile`, o `machine_x_mm` y `machine_y_mm`, con `machine_margin_mm`), `route` y la ventana rechazan un corte que se sale de ella, con el trazado y el lugar al que va; `--force` lo escribe con un aviso en la línea de comandos. Sin mesa descrita no se comprueba nada, como antes.
 * **Relleno de una zona con anillos** (`src/clearing.rs`): `rubout_style = rings` hace que `rubout-area` rellene un rectángulo (`--area`) o las trayectorias cerradas de un fichero (`--contour`, relleno par-impar, así que una trayectoria dentro de otra es un agujero) con anillos cerrados que siguen el borde hacia dentro en lugar de líneas de ida y vuelta; el primer anillo queda a media herramienta del borde, los siguientes a un paso de `tool * (1 - rubout_overlap)` más adentro, y se añade un anillo por el centro cuando quedaría una franja. `rubout_ring_order` (`outside-in`, lo normal, o `inside-out`) se respeta en el G-code diga lo que diga `ordering`. Antes de escribir nada se comprueban las trayectorias contra la mesa de la máquina y la que se sale se rechaza con su número y su pasada (`--force` la escribe igualmente); la comprobación sirve también para las líneas.
+* **Arcos ajustados a las trayectorias** (`src/arcs.rs`): `arc_fit_tolerance_mm` (0 por defecto, que mantiene todos los tramos rectos como antes; de 0.001 a 0.5 mm) sustituye cada serie de movimientos cortos que está sobre una circunferencia por un solo `G2` o `G3`, a esa distancia como máximo del polígono del que salió (el punto más alejado de la circunferencia y la flecha del tramo más largo caben juntos en ella). `isolate` dice cuántos movimientos ahorra y cuánto mide el corte con arcos y con tramos rectos, y el intérprete de la suite recorre el programa, así que los límites de la máquina ven por dónde se abomba un arco. Solo G-code, no junto con un mapa de alturas, y es un parámetro de la ventana.
+* **El serigrafiado grabado** (`src/silk.rs`): `eh3d-isocam silk CAPA.gto SALIDA.nc` une los trazos que se tocan por los extremos, corta una región por su borde y los graba a `silk_depth_mm` con una herramienta de `silk_tool_mm`; avisa de que la línea es tan ancha como la herramienta y queda cortada en la placa, dice qué trazos tienen otro ancho (`silk_width_tolerance_mm`) y cuenta las almohadillas estampadas que deja fuera. Escribe G-code o un dibujo DXF, nunca un trazado de plotter.
+* **El informe antes del trabajo** (`src/report.rs`): `eh3d-isocam report CAPA.gtl` dice las pasadas, las trayectorias, lo que mide el corte, las herramientas en el orden en que se usan, los arcos, el tiempo y los avisos de la prueba en seco, compara cada herramienta con la tabla CSV del almacén de herramientas (`crib_file`: una fresa por su diámetro, una punta en V o un grabador por el ancho que corta a la profundidad del trabajo) y añade las comprobaciones de la capa (sitios donde la herramienta no cabe, zonas problemáticas, reglas de diseño). Termina con 2, el código de salida de una verificación no superada, cuando hay algo que mirar. La ventana hace el mismo informe y las mismas comprobaciones sin pantalla (`Window::report_text`, `Window::checks_text`); los botones que las llaman aún no están escritos.
 * **Dónde va el trabajo en la mesa** (`src/config.rs`): `offset_x_mm` y `offset_y_mm` (0 por defecto, de -10000 a 10000) desplazan todas las salidas la misma cantidad, después de la escala y de los puntos de referencia: las trayectorias del cobre, los taladros de un fichero de taladros y el corte alrededor de la placa, de modo que un trabajo puede colocarse en cualquier lugar de la mesa de la máquina; los límites de la máquina (`machine_profile`) siguen rechazando un programa que el desplazamiento saque de la mesa.
 
 ## 🧩 Papel en EH3D
@@ -249,7 +252,7 @@ Para sacar una captura de la ventana sin abrirla a mano, ejecútelo con `--shot 
 
 ## 🧪 Pruebas
 
-El conjunto tiene 508 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 545 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 
@@ -271,6 +274,7 @@ Cada versión trae el programa con su ventana para Windows (64 y 32 bits), Linux
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── arcs.rs                                  arcos ajustados a series de movimientos cortos, con tolerancia
 │   ├── board.rs                                 los pasos que comparten la línea de comandos y la ventana
 │   ├── browse.rs                                la lista de ficheros de la ventana que abre un fichero
 │   ├── clearing.rs                              el relleno de una zona con anillos, en el orden pedido y dentro de la zona
@@ -290,7 +294,9 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   la biblioteca: lo que usa cada orden
 │   ├── main.rs                                  la línea de comandos
 │   ├── preview.rs                               las pasadas dibujadas en SVG o texto
+│   ├── report.rs                                el informe antes del trabajo, las herramientas frente al almacén y las comprobaciones
 │   ├── shot.rs                                  el modo de captura de la ventana (--shot): sus argumentos, leídos y comprobados sin pantalla
+│   ├── silk.rs                                  el serigrafiado grabado: trazos unidos, regiones cortadas por el borde
 │   ├── simulate.rs                              la pasada en seco de un programa de G-code: tiempo, recorrido, corte más profundo y hallazgos en ocho idiomas
 │   ├── toolpath.rs                              el recorrido de la herramienta de un programa para la imagen: rápido, bajada y corte por profundidad
 │   ├── viewport.rs                              zoom y desplazamiento de la imagen, en números simples
@@ -300,16 +306,20 @@ EH3D-ISOCAM/
 │   ├── advanced.rs                              aislamiento forzado, corrección, máscara, unidades, vista previa
 │   ├── cli_reading.rs                           pruebas de lectura de ficheros: el límite de tamaño, texto que no es UTF-8, avisos por código
 │   ├── crib.rs                                  tests de las herramientas tomadas del almacén
+│   ├── curve_paths.rs                           pruebas de los arcos ajustados a las trayectorias
 │   ├── depth_and_levelling.rs                   tests de las pasadas de profundidad y del corte según un mapa de alturas
 │   ├── excellon_format.rs                       tests del formato 2.4 de las coordenadas de un fichero de taladros
 │   ├── files.rs                                 pruebas de los ficheros de taladros y contorno
 │   ├── isocam.rs                                pruebas de la biblioteca y la línea de comandos
+│   ├── job_report.rs                            pruebas del informe antes del trabajo y de la comprobación del almacén
 │   ├── job_safety.rs                            tests de los límites de la máquina y de la pasada en seco
 │   ├── kinds.rs                                 tolerancia para pads, rellenos, tipos de fichero, plumas, DXF
 │   ├── layout.rs                                pruebas de doble cara, paneles, reglas y la línea de comandos
 │   ├── multi.rs                                 pruebas de herramientas, cobre sobrante, sentido, orden y ajustes
 │   ├── problems.rs                              pruebas de zonas problema, la tolerancia y los agujeros de alineación
+│   ├── silkscreen.rs                            pruebas del serigrafiado grabado
 │   ├── readme.rs                                pruebas que ejecutan lo que prometen el README y los scripts run
+│   ├── window_checks.rs                         pruebas de las comprobaciones y del informe en la ventana
 │   ├── window_cli.rs                            pruebas de que una compilación sin la característica gui sigue siendo solo línea de comandos
 │   └── reqs.rs                                  pruebas del registro de requisitos
 ├── examples/

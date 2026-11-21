@@ -1,233 +1,254 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 2377" width="100%" role="img" aria-labelledby="t d">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 2566" width="100%" role="img" aria-labelledby="t d">
 <title id="t">Repository structure of EH3D-ISOCAM</title>
 <desc id="d">The root of EH3D-ISOCAM and its main folders and files: src/, tests/, examples/, docs/, Other folders and the files at the root.</desc>
 <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0A0C10"/><stop offset="0.5" stop-color="#0D1117"/><stop offset="1" stop-color="#05070A"/></linearGradient><linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#121821"/><stop offset="1" stop-color="#0B0F15"/></linearGradient><linearGradient id="line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00E5FF"/><stop offset="1" stop-color="#FF0055"/></linearGradient><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#00E5FF" stroke-opacity="0.035"/><circle cx="40" cy="40" r="1" fill="#00E5FF" fill-opacity="0.09"/></pattern></defs>
-<rect width="1200" height="2377" rx="14" fill="url(#bg)"/><rect width="1200" height="2377" rx="14" fill="url(#grid)"/>
-<rect x="0.5" y="0.5" width="1199" height="2376" rx="14" fill="none" stroke="#1B2530"/>
+<rect width="1200" height="2566" rx="14" fill="url(#bg)"/><rect width="1200" height="2566" rx="14" fill="url(#grid)"/>
+<rect x="0.5" y="0.5" width="1199" height="2565" rx="14" fill="none" stroke="#1B2530"/>
 <text x="60" y="62" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.5" font-weight="600" fill="#4DA3FF" text-anchor="start" letter-spacing="4.5">REPOSITORY STRUCTURE</text>
 <text x="60" y="106" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="36" font-weight="700" fill="#FFFFFF" text-anchor="start" letter-spacing="0.5">EH3D-ISOCAM</text>
 <rect x="60" y="122" width="150" height="2.5" rx="1.25" fill="url(#line)"><animate attributeName="width" values="40;150;150" keyTimes="0;0.4;1" dur="3s" repeatCount="indefinite"/></rect>
 <text x="60" y="152" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="13.5" font-weight="400" fill="#8A97A6" text-anchor="start">Two levels: the folders, and the files that carry the logic.</text>
-<path id="c0" d="M300,1266.5 C335,1266.5 330,566 360,566" fill="none" stroke="#243140" stroke-width="2"/>
-<path d="M300,1266.5 C335,1266.5 330,566 360,566" fill="none" stroke="url(#line)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 9" opacity="0.9"><animate attributeName="stroke-dashoffset" from="0" to="-30" dur="1.6s" repeatCount="indefinite"/></path>
-<circle cx="360" cy="566" r="4.5" fill="#0D1117" stroke="#00E5FF" stroke-width="1.5"/>
-<path id="c1" d="M300,1266.5 C335,1266.5 330,1220 360,1220" fill="none" stroke="#243140" stroke-width="2"/>
-<path d="M300,1266.5 C335,1266.5 330,1220 360,1220" fill="none" stroke="url(#line)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 9" opacity="0.9"><animate attributeName="stroke-dashoffset" from="0" to="-30" dur="1.6s" repeatCount="indefinite"/></path>
-<circle cx="360" cy="1220" r="4.5" fill="#0D1117" stroke="#00E5FF" stroke-width="1.5"/>
-<path id="c2" d="M300,1266.5 C335,1266.5 330,1590.5 360,1590.5" fill="none" stroke="#243140" stroke-width="2"/>
-<path d="M300,1266.5 C335,1266.5 330,1590.5 360,1590.5" fill="none" stroke="url(#line)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 9" opacity="0.9"><animate attributeName="stroke-dashoffset" from="0" to="-30" dur="1.6s" repeatCount="indefinite"/></path>
-<circle cx="360" cy="1590.5" r="4.5" fill="#0D1117" stroke="#00E5FF" stroke-width="1.5"/>
-<path id="c3" d="M300,1266.5 C335,1266.5 330,1826 360,1826" fill="none" stroke="#243140" stroke-width="2"/>
-<path d="M300,1266.5 C335,1266.5 330,1826 360,1826" fill="none" stroke="url(#line)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 9" opacity="0.9"><animate attributeName="stroke-dashoffset" from="0" to="-30" dur="1.6s" repeatCount="indefinite"/></path>
-<circle cx="360" cy="1826" r="4.5" fill="#0D1117" stroke="#00E5FF" stroke-width="1.5"/>
-<path id="c4" d="M300,1266.5 C335,1266.5 330,2156 360,2156" fill="none" stroke="#243140" stroke-width="2"/>
-<path d="M300,1266.5 C335,1266.5 330,2156 360,2156" fill="none" stroke="url(#line)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 9" opacity="0.9"><animate attributeName="stroke-dashoffset" from="0" to="-30" dur="1.6s" repeatCount="indefinite"/></path>
-<circle cx="360" cy="2156" r="4.5" fill="#0D1117" stroke="#00E5FF" stroke-width="1.5"/>
+<path id="c0" d="M300,1361 C335,1361 330,606.5 360,606.5" fill="none" stroke="#243140" stroke-width="2"/>
+<path d="M300,1361 C335,1361 330,606.5 360,606.5" fill="none" stroke="url(#line)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 9" opacity="0.9"><animate attributeName="stroke-dashoffset" from="0" to="-30" dur="1.6s" repeatCount="indefinite"/></path>
+<circle cx="360" cy="606.5" r="4.5" fill="#0D1117" stroke="#00E5FF" stroke-width="1.5"/>
+<path id="c1" d="M300,1361 C335,1361 330,1355 360,1355" fill="none" stroke="#243140" stroke-width="2"/>
+<path d="M300,1361 C335,1361 330,1355 360,1355" fill="none" stroke="url(#line)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 9" opacity="0.9"><animate attributeName="stroke-dashoffset" from="0" to="-30" dur="1.6s" repeatCount="indefinite"/></path>
+<circle cx="360" cy="1355" r="4.5" fill="#0D1117" stroke="#00E5FF" stroke-width="1.5"/>
+<path id="c2" d="M300,1361 C335,1361 330,1779.5 360,1779.5" fill="none" stroke="#243140" stroke-width="2"/>
+<path d="M300,1361 C335,1361 330,1779.5 360,1779.5" fill="none" stroke="url(#line)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 9" opacity="0.9"><animate attributeName="stroke-dashoffset" from="0" to="-30" dur="1.6s" repeatCount="indefinite"/></path>
+<circle cx="360" cy="1779.5" r="4.5" fill="#0D1117" stroke="#00E5FF" stroke-width="1.5"/>
+<path id="c3" d="M300,1361 C335,1361 330,2015 360,2015" fill="none" stroke="#243140" stroke-width="2"/>
+<path d="M300,1361 C335,1361 330,2015 360,2015" fill="none" stroke="url(#line)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 9" opacity="0.9"><animate attributeName="stroke-dashoffset" from="0" to="-30" dur="1.6s" repeatCount="indefinite"/></path>
+<circle cx="360" cy="2015" r="4.5" fill="#0D1117" stroke="#00E5FF" stroke-width="1.5"/>
+<path id="c4" d="M300,1361 C335,1361 330,2345 360,2345" fill="none" stroke="#243140" stroke-width="2"/>
+<path d="M300,1361 C335,1361 330,2345 360,2345" fill="none" stroke="url(#line)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 9" opacity="0.9"><animate attributeName="stroke-dashoffset" from="0" to="-30" dur="1.6s" repeatCount="indefinite"/></path>
+<circle cx="360" cy="2345" r="4.5" fill="#0D1117" stroke="#00E5FF" stroke-width="1.5"/>
 <circle r="3.5" fill="#00E5FF" filter="url(#glow)"><animateMotion dur="3.4s" repeatCount="indefinite"><mpath href="#c0"/></animateMotion></circle>
 <circle r="3.5" fill="#4DA3FF" filter="url(#glow)"><animateMotion dur="4.2s" repeatCount="indefinite"><mpath href="#c1"/></animateMotion></circle>
 <circle r="3.5" fill="#FFB300" filter="url(#glow)"><animateMotion dur="5.0s" repeatCount="indefinite"><mpath href="#c2"/></animateMotion></circle>
 <circle r="3.5" fill="#00E5FF" filter="url(#glow)"><animateMotion dur="5.8s" repeatCount="indefinite"><mpath href="#c3"/></animateMotion></circle>
 <circle r="3.5" fill="#4DA3FF" filter="url(#glow)"><animateMotion dur="6.6s" repeatCount="indefinite"><mpath href="#c4"/></animateMotion></circle>
-<rect x="60" y="1231.5" width="240" height="70" rx="12" fill="#0F1620" stroke="#2A3A4C" stroke-width="1.2"/>
-<rect x="60" y="1231.5" width="240" height="70" rx="12" fill="none" stroke="#00E5FF" stroke-opacity="0.5" stroke-width="1.2" filter="url(#glow)"><animate attributeName="stroke-opacity" values="0.15;0.6;0.15" dur="3.6s" repeatCount="indefinite"/></rect>
-<text x="80" y="1262.5" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="18.5" font-weight="700" fill="#FFFFFF" text-anchor="start">EH3D-ISOCAM/</text>
-<text x="80" y="1284.5" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#7D8A99" text-anchor="start" letter-spacing="1">repository root</text>
-<circle cx="300" cy="1266.5" r="5" fill="#00E5FF" filter="url(#glow)"/>
-<rect x="360" y="200" width="780" height="732" rx="10" fill="url(#card)" stroke="#1E2A36" stroke-width="1"/>
-<rect x="360" y="214" width="3" height="704" rx="1.5" fill="#00E5FF"><animate attributeName="opacity" values="0.55;1;0.55" dur="4s" begin="0s" repeatCount="indefinite"/></rect>
+<rect x="60" y="1326" width="240" height="70" rx="12" fill="#0F1620" stroke="#2A3A4C" stroke-width="1.2"/>
+<rect x="60" y="1326" width="240" height="70" rx="12" fill="none" stroke="#00E5FF" stroke-opacity="0.5" stroke-width="1.2" filter="url(#glow)"><animate attributeName="stroke-opacity" values="0.15;0.6;0.15" dur="3.6s" repeatCount="indefinite"/></rect>
+<text x="80" y="1357" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="18.5" font-weight="700" fill="#FFFFFF" text-anchor="start">EH3D-ISOCAM/</text>
+<text x="80" y="1379" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#7D8A99" text-anchor="start" letter-spacing="1">repository root</text>
+<circle cx="300" cy="1361" r="5" fill="#00E5FF" filter="url(#glow)"/>
+<rect x="360" y="200" width="780" height="813" rx="10" fill="url(#card)" stroke="#1E2A36" stroke-width="1"/>
+<rect x="360" y="214" width="3" height="785" rx="1.5" fill="#00E5FF"><animate attributeName="opacity" values="0.55;1;0.55" dur="4s" begin="0s" repeatCount="indefinite"/></rect>
 <text x="382" y="234" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="19" font-weight="700" fill="#F2F6FA" text-anchor="start">src/</text>
 <line x1="382" y1="248" x2="1122" y2="248" stroke="#00E5FF" stroke-opacity="0.35" stroke-width="1"/>
-<text x="392" y="280" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">board.rs</text>
-<text x="523.88" y="280" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the steps the command line and the window share</text>
+<text x="392" y="280" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">arcs.rs</text>
+<text x="523.88" y="280" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">arcs fitted to runs of short moves, within a tolerance</text>
 <line x1="392" y1="288" x2="1118" y2="288" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="307" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">browse.rs</text>
-<text x="523.88" y="307" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the list of files of the window that opens a file</text>
+<text x="392" y="307" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">board.rs</text>
+<text x="523.88" y="307" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the steps the command line and the window share</text>
 <line x1="392" y1="315" x2="1118" y2="315" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="334" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">clearing.rs</text>
-<text x="523.88" y="334" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">clearing an area with rings, in the order asked for and cut inside the area</text>
+<text x="392" y="334" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">browse.rs</text>
+<text x="523.88" y="334" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the list of files of the window that opens a file</text>
 <line x1="392" y1="342" x2="1118" y2="342" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="361" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">config.rs</text>
-<text x="523.88" y="361" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">every tunable value, from one settings file</text>
+<text x="392" y="361" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">clearing.rs</text>
+<text x="523.88" y="361" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">clearing an area with rings, in the order asked for and cut inside the area</text>
 <line x1="392" y1="369" x2="1118" y2="369" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="388" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">corners.rs</text>
-<text x="523.88" y="388" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the corners of the outline rounded and its small cutouts left out</text>
+<text x="392" y="388" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">config.rs</text>
+<text x="523.88" y="388" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">every tunable value, from one settings file</text>
 <line x1="392" y1="396" x2="1118" y2="396" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="415" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">crib.rs</text>
-<text x="523.88" y="415" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the tools of the tool crib and the width each cuts with</text>
+<text x="392" y="415" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">corners.rs</text>
+<text x="523.88" y="415" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the corners of the outline rounded and its small cutouts left out</text>
 <line x1="392" y1="423" x2="1118" y2="423" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="442" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">draw.rs</text>
-<text x="523.88" y="442" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">what the window draws: the shapes and the triangles of the regions</text>
+<text x="392" y="442" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">crib.rs</text>
+<text x="523.88" y="442" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the tools of the tool crib and the width each cuts with</text>
 <line x1="392" y1="450" x2="1118" y2="450" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="469" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">drill.rs</text>
-<text x="523.88" y="469" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">holes and board outline, read and written</text>
+<text x="392" y="469" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">draw.rs</text>
+<text x="523.88" y="469" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">what the window draws: the shapes and the triangles of the regions</text>
 <line x1="392" y1="477" x2="1118" y2="477" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="496" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">dxf.rs</text>
-<text x="523.88" y="496" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the passes as a DXF drawing</text>
+<text x="392" y="496" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">drill.rs</text>
+<text x="523.88" y="496" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">holes and board outline, read and written</text>
 <line x1="392" y1="504" x2="1118" y2="504" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="523" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">filetype.rs</text>
-<text x="523.88" y="523" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">what kind of file an input is</text>
+<text x="392" y="523" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">dxf.rs</text>
+<text x="523.88" y="523" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the passes as a DXF drawing</text>
 <line x1="392" y1="531" x2="1118" y2="531" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="550" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">gcode.rs</text>
-<text x="523.88" y="550" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the paths as G-code</text>
+<text x="392" y="550" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">filetype.rs</text>
+<text x="523.88" y="550" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">what kind of file an input is</text>
 <line x1="392" y1="558" x2="1118" y2="558" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="577" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">gui.rs</text>
-<text x="523.88" y="577" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the window (egui, with the gui feature): draws the state and passes on what the person does</text>
+<text x="392" y="577" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">gcode.rs</text>
+<text x="523.88" y="577" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the paths as G-code</text>
 <line x1="392" y1="585" x2="1118" y2="585" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="604" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">heightmap.rs</text>
-<text x="523.88" y="604" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the height map of the table, read from the file of EH3D-AUTOLEVEL</text>
+<text x="392" y="604" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">gui.rs</text>
+<text x="523.88" y="604" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the window (egui, with the gui feature): draws the state and passes on what the person does</text>
 <line x1="392" y1="612" x2="1118" y2="612" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="631" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">hpgl.rs</text>
-<text x="523.88" y="631" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the paths as an HP-GL plot file</text>
+<text x="392" y="631" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">heightmap.rs</text>
+<text x="523.88" y="631" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the height map of the table, read from the file of EH3D-AUTOLEVEL</text>
 <line x1="392" y1="639" x2="1118" y2="639" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="658" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">lang.rs</text>
-<text x="523.88" y="658" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the words of the window in the eight languages</text>
+<text x="392" y="658" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">hpgl.rs</text>
+<text x="523.88" y="658" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the paths as an HP-GL plot file</text>
 <line x1="392" y1="666" x2="1118" y2="666" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="685" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">machine.rs</text>
-<text x="523.88" y="685" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the machine's table, margin, depth and spindle limits, and the check of a program against them</text>
+<text x="392" y="685" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">lang.rs</text>
+<text x="523.88" y="685" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the words of the window in the eight languages</text>
 <line x1="392" y1="693" x2="1118" y2="693" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="712" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">lib.rs</text>
-<text x="523.88" y="712" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the library: what every command uses</text>
+<text x="392" y="712" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">machine.rs</text>
+<text x="523.88" y="712" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the machine's table, margin, depth and spindle limits, and the check of a program against them</text>
 <line x1="392" y1="720" x2="1118" y2="720" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="739" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">main.rs</text>
-<text x="523.88" y="739" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the command line</text>
+<text x="392" y="739" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">lib.rs</text>
+<text x="523.88" y="739" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the library: what every command uses</text>
 <line x1="392" y1="747" x2="1118" y2="747" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="766" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">preview.rs</text>
-<text x="523.88" y="766" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the passes drawn as SVG or text</text>
+<text x="392" y="766" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">main.rs</text>
+<text x="523.88" y="766" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the command line</text>
 <line x1="392" y1="774" x2="1118" y2="774" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="793" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">shot.rs</text>
-<text x="523.88" y="793" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the picture mode of the window (--shot): its arguments, read and checked without a screen</text>
+<text x="392" y="793" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">preview.rs</text>
+<text x="523.88" y="793" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the passes drawn as SVG or text</text>
 <line x1="392" y1="801" x2="1118" y2="801" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="820" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">simulate.rs</text>
-<text x="523.88" y="820" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the dry run of a G-code program: time, box, deepest cut and findings in eight languages</text>
+<text x="392" y="820" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">report.rs</text>
+<text x="523.88" y="820" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the report before a job, the tools against the crib and the checks</text>
 <line x1="392" y1="828" x2="1118" y2="828" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="847" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">toolpath.rs</text>
-<text x="523.88" y="847" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the path of the tool of a program for the picture: rapid, plunge and cut by depth</text>
+<text x="392" y="847" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">shot.rs</text>
+<text x="523.88" y="847" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the picture mode of the window (--shot): its arguments, read and checked without a screen</text>
 <line x1="392" y1="855" x2="1118" y2="855" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="874" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">viewport.rs</text>
-<text x="523.88" y="874" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">zoom and pan of the picture, in plain numbers</text>
+<text x="392" y="874" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">silk.rs</text>
+<text x="523.88" y="874" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the silkscreen layer engraved: strokes joined, regions cut round the edge</text>
 <line x1="392" y1="882" x2="1118" y2="882" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="901" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">window.rs</text>
-<text x="523.88" y="901" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the state of the window without a screen: layer, parameters, paths, export and status</text>
+<text x="392" y="901" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">simulate.rs</text>
+<text x="523.88" y="901" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the dry run of a G-code program: time, box, deepest cut and findings in eight languages</text>
 <line x1="392" y1="909" x2="1118" y2="909" stroke="#1A2430" stroke-width="1"/>
-<rect x="360" y="962" width="780" height="516" rx="10" fill="url(#card)" stroke="#1E2A36" stroke-width="1"/>
-<rect x="360" y="976" width="3" height="488" rx="1.5" fill="#FF5C8A"><animate attributeName="opacity" values="0.55;1;0.55" dur="4s" begin="0.6s" repeatCount="indefinite"/></rect>
-<text x="382" y="996" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="19" font-weight="700" fill="#F2F6FA" text-anchor="start">tests/</text>
-<line x1="382" y1="1010" x2="1122" y2="1010" stroke="#FF5C8A" stroke-opacity="0.35" stroke-width="1"/>
-<text x="392" y="1042" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">fuzz.rs</text>
-<text x="613.78" y="1042" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">fuzz tests with a fixed seed: damaged files, cuts and odd numbers</text>
-<line x1="392" y1="1050" x2="1118" y2="1050" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1069" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">advanced.rs</text>
-<text x="613.78" y="1069" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">forced isolation, correction, mask, units, preview</text>
-<line x1="392" y1="1077" x2="1118" y2="1077" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1096" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">cli_reading.rs</text>
-<text x="613.78" y="1096" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of reading files: the size limit, text that is not UTF-8, notices by code</text>
-<line x1="392" y1="1104" x2="1118" y2="1104" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1123" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">crib.rs</text>
-<text x="613.78" y="1123" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the tools taken from the crib</text>
+<text x="392" y="928" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">toolpath.rs</text>
+<text x="523.88" y="928" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the path of the tool of a program for the picture: rapid, plunge and cut by depth</text>
+<line x1="392" y1="936" x2="1118" y2="936" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="955" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">viewport.rs</text>
+<text x="523.88" y="955" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">zoom and pan of the picture, in plain numbers</text>
+<line x1="392" y1="963" x2="1118" y2="963" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="982" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">window.rs</text>
+<text x="523.88" y="982" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the state of the window without a screen: layer, parameters, paths, export and status</text>
+<line x1="392" y1="990" x2="1118" y2="990" stroke="#1A2430" stroke-width="1"/>
+<rect x="360" y="1043" width="780" height="624" rx="10" fill="url(#card)" stroke="#1E2A36" stroke-width="1"/>
+<rect x="360" y="1057" width="3" height="596" rx="1.5" fill="#FF5C8A"><animate attributeName="opacity" values="0.55;1;0.55" dur="4s" begin="0.6s" repeatCount="indefinite"/></rect>
+<text x="382" y="1077" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="19" font-weight="700" fill="#F2F6FA" text-anchor="start">tests/</text>
+<line x1="382" y1="1091" x2="1122" y2="1091" stroke="#FF5C8A" stroke-opacity="0.35" stroke-width="1"/>
+<text x="392" y="1123" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">fuzz.rs</text>
+<text x="613.78" y="1123" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">fuzz tests with a fixed seed: damaged files, cuts and odd numbers</text>
 <line x1="392" y1="1131" x2="1118" y2="1131" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1150" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">depth_and_levelling.rs</text>
-<text x="613.78" y="1150" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of steps of depth and of cutting along a height map</text>
+<text x="392" y="1150" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">advanced.rs</text>
+<text x="613.78" y="1150" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">forced isolation, correction, mask, units, preview</text>
 <line x1="392" y1="1158" x2="1118" y2="1158" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1177" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">excellon_format.rs</text>
-<text x="613.78" y="1177" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the 2.4 format of the coordinates of a drill file</text>
+<text x="392" y="1177" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">cli_reading.rs</text>
+<text x="613.78" y="1177" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of reading files: the size limit, text that is not UTF-8, notices by code</text>
 <line x1="392" y1="1185" x2="1118" y2="1185" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1204" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">files.rs</text>
-<text x="613.78" y="1204" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the drill and outline files</text>
+<text x="392" y="1204" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">crib.rs</text>
+<text x="613.78" y="1204" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the tools taken from the crib</text>
 <line x1="392" y1="1212" x2="1118" y2="1212" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1231" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">isocam.rs</text>
-<text x="613.78" y="1231" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the library and the command line</text>
+<text x="392" y="1231" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">curve_paths.rs</text>
+<text x="613.78" y="1231" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the arcs fitted to the paths</text>
 <line x1="392" y1="1239" x2="1118" y2="1239" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1258" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">job_safety.rs</text>
-<text x="613.78" y="1258" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the machine limits and of the dry run</text>
+<text x="392" y="1258" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">depth_and_levelling.rs</text>
+<text x="613.78" y="1258" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of steps of depth and of cutting along a height map</text>
 <line x1="392" y1="1266" x2="1118" y2="1266" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1285" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">kinds.rs</text>
-<text x="613.78" y="1285" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tolerance for pads, contour fills, file kinds, pens, DXF</text>
+<text x="392" y="1285" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">excellon_format.rs</text>
+<text x="613.78" y="1285" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the 2.4 format of the coordinates of a drill file</text>
 <line x1="392" y1="1293" x2="1118" y2="1293" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1312" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">layout.rs</text>
-<text x="613.78" y="1312" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of both sides, panels, rules and the command line</text>
+<text x="392" y="1312" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">files.rs</text>
+<text x="613.78" y="1312" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the drill and outline files</text>
 <line x1="392" y1="1320" x2="1118" y2="1320" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1339" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">multi.rs</text>
-<text x="613.78" y="1339" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of tools, rubout, direction, order and settings</text>
+<text x="392" y="1339" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">isocam.rs</text>
+<text x="613.78" y="1339" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the library and the command line</text>
 <line x1="392" y1="1347" x2="1118" y2="1347" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1366" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">problems.rs</text>
-<text x="613.78" y="1366" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of problem zones, the tolerance and the alignment holes</text>
+<text x="392" y="1366" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">job_report.rs</text>
+<text x="613.78" y="1366" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the report before the job and of the crib check</text>
 <line x1="392" y1="1374" x2="1118" y2="1374" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1393" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">readme.rs</text>
-<text x="613.78" y="1393" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests that run what the README and the run scripts promise</text>
+<text x="392" y="1393" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">job_safety.rs</text>
+<text x="613.78" y="1393" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the machine limits and of the dry run</text>
 <line x1="392" y1="1401" x2="1118" y2="1401" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1420" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">window_cli.rs</text>
-<text x="613.78" y="1420" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests that a build without the gui feature stays a command line</text>
+<text x="392" y="1420" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">kinds.rs</text>
+<text x="613.78" y="1420" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tolerance for pads, contour fills, file kinds, pens, DXF</text>
 <line x1="392" y1="1428" x2="1118" y2="1428" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1447" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">reqs.rs</text>
-<text x="613.78" y="1447" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the register of requirements</text>
+<text x="392" y="1447" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">layout.rs</text>
+<text x="613.78" y="1447" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of both sides, panels, rules and the command line</text>
 <line x1="392" y1="1455" x2="1118" y2="1455" stroke="#1A2430" stroke-width="1"/>
-<rect x="360" y="1508" width="780" height="165" rx="10" fill="url(#card)" stroke="#1E2A36" stroke-width="1"/>
-<rect x="360" y="1522" width="3" height="137" rx="1.5" fill="#FF5C8A"><animate attributeName="opacity" values="0.55;1;0.55" dur="4s" begin="1.2s" repeatCount="indefinite"/></rect>
-<text x="382" y="1542" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="19" font-weight="700" fill="#F2F6FA" text-anchor="start">examples/</text>
-<line x1="382" y1="1556" x2="1122" y2="1556" stroke="#FF5C8A" stroke-opacity="0.35" stroke-width="1"/>
-<text x="392" y="1588" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">crib.csv</text>
-<text x="505.9" y="1588" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">a sample tool crib (CSV) to try --crib with</text>
-<line x1="392" y1="1596" x2="1118" y2="1596" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1615" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">isocam.cfg</text>
-<text x="505.9" y="1615" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">every setting with its default, to copy and change</text>
-<line x1="392" y1="1623" x2="1118" y2="1623" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1642" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">sample.gtl</text>
-<text x="505.9" y="1642" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">a sample to try the program with</text>
-<line x1="392" y1="1650" x2="1118" y2="1650" stroke="#1A2430" stroke-width="1"/>
-<rect x="360" y="1703" width="780" height="246" rx="10" fill="url(#card)" stroke="#1E2A36" stroke-width="1"/>
-<rect x="360" y="1717" width="3" height="218" rx="1.5" fill="#FF5C8A"><animate attributeName="opacity" values="0.55;1;0.55" dur="4s" begin="1.8s" repeatCount="indefinite"/></rect>
-<text x="382" y="1737" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="19" font-weight="700" fill="#F2F6FA" text-anchor="start">docs/</text>
-<line x1="382" y1="1751" x2="1122" y2="1751" stroke="#FF5C8A" stroke-opacity="0.35" stroke-width="1"/>
-<text x="392" y="1783" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">architecture.json</text>
-<text x="568.83" y="1783" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">data of the Architecture picture</text>
-<line x1="392" y1="1791" x2="1118" y2="1791" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1810" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">NOT_YET.md</text>
-<text x="568.83" y="1810" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">good ideas that are left out of this version, with why and when</text>
-<line x1="392" y1="1818" x2="1118" y2="1818" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1837" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">REQUIREMENTS.md</text>
-<text x="568.83" y="1837" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the register of requirements: state, evidence and the test of each</text>
-<line x1="392" y1="1845" x2="1118" y2="1845" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1864" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">SCOPE.md</text>
-<text x="568.83" y="1864" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">what the program is for, what it will not do and what it never decides</text>
-<line x1="392" y1="1872" x2="1118" y2="1872" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1891" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">STATUS.md</text>
-<text x="568.83" y="1891" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">what exists, what is missing and what is still open</text>
-<line x1="392" y1="1899" x2="1118" y2="1899" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="1918" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">structure.json</text>
-<text x="568.83" y="1918" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">data of the Repository Structure picture</text>
-<line x1="392" y1="1926" x2="1118" y2="1926" stroke="#1A2430" stroke-width="1"/>
-<rect x="360" y="1979" width="780" height="354" rx="10" fill="url(#card)" stroke="#1E2A36" stroke-width="1"/>
-<rect x="360" y="1993" width="3" height="326" rx="1.5" fill="#00E5FF"><animate attributeName="opacity" values="0.55;1;0.55" dur="4s" begin="2.4s" repeatCount="indefinite"/></rect>
-<text x="382" y="2013" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#F2F6FA" text-anchor="start">Other folders and the files at the root</text>
-<line x1="382" y1="2027" x2="1122" y2="2027" stroke="#00E5FF" stroke-opacity="0.35" stroke-width="1"/>
-<text x="392" y="2059" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">tools/</text>
-<text x="631.76" y="2059" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">CI check, README check and the picture tools</text>
-<line x1="392" y1="2067" x2="1118" y2="2067" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="2086" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">images/</text>
-<text x="631.76" y="2086" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">banner, window screenshots and the Architecture and Structure pictures</text>
-<line x1="392" y1="2094" x2="1118" y2="2094" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="2113" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">.github/</text>
-<text x="631.76" y="2113" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">CI and release workflows, issue and pull-request templates</text>
-<line x1="392" y1="2121" x2="1118" y2="2121" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="2140" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">eh3d.project.json</text>
-<text x="631.76" y="2140" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">manifest: version, role, maturity and build command</text>
-<line x1="392" y1="2148" x2="1118" y2="2148" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="2167" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">Cargo.toml  Cargo.lock</text>
-<text x="631.76" y="2167" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the workspace and its locked dependencies</text>
-<line x1="392" y1="2175" x2="1118" y2="2175" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="2194" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">rust-toolchain.toml</text>
-<text x="631.76" y="2194" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the pinned Rust toolchain</text>
-<line x1="392" y1="2202" x2="1118" y2="2202" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="2221" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">CHANGELOG.md</text>
-<text x="631.76" y="2221" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">what changed in each version</text>
-<line x1="392" y1="2229" x2="1118" y2="2229" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="2248" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">AGENTS.md</text>
-<text x="631.76" y="2248" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the rules for anyone who changes the repository</text>
+<text x="392" y="1474" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">multi.rs</text>
+<text x="613.78" y="1474" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of tools, rubout, direction, order and settings</text>
+<line x1="392" y1="1482" x2="1118" y2="1482" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="1501" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">problems.rs</text>
+<text x="613.78" y="1501" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of problem zones, the tolerance and the alignment holes</text>
+<line x1="392" y1="1509" x2="1118" y2="1509" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="1528" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">silkscreen.rs</text>
+<text x="613.78" y="1528" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the silkscreen layer engraved</text>
+<line x1="392" y1="1536" x2="1118" y2="1536" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="1555" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">readme.rs</text>
+<text x="613.78" y="1555" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests that run what the README and the run scripts promise</text>
+<line x1="392" y1="1563" x2="1118" y2="1563" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="1582" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">window_checks.rs</text>
+<text x="613.78" y="1582" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the checks and the report in the window</text>
+<line x1="392" y1="1590" x2="1118" y2="1590" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="1609" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">window_cli.rs</text>
+<text x="613.78" y="1609" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests that a build without the gui feature stays a command line</text>
+<line x1="392" y1="1617" x2="1118" y2="1617" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="1636" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">reqs.rs</text>
+<text x="613.78" y="1636" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">tests of the register of requirements</text>
+<line x1="392" y1="1644" x2="1118" y2="1644" stroke="#1A2430" stroke-width="1"/>
+<rect x="360" y="1697" width="780" height="165" rx="10" fill="url(#card)" stroke="#1E2A36" stroke-width="1"/>
+<rect x="360" y="1711" width="3" height="137" rx="1.5" fill="#FF5C8A"><animate attributeName="opacity" values="0.55;1;0.55" dur="4s" begin="1.2s" repeatCount="indefinite"/></rect>
+<text x="382" y="1731" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="19" font-weight="700" fill="#F2F6FA" text-anchor="start">examples/</text>
+<line x1="382" y1="1745" x2="1122" y2="1745" stroke="#FF5C8A" stroke-opacity="0.35" stroke-width="1"/>
+<text x="392" y="1777" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">crib.csv</text>
+<text x="505.9" y="1777" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">a sample tool crib (CSV) to try --crib with</text>
+<line x1="392" y1="1785" x2="1118" y2="1785" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="1804" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">isocam.cfg</text>
+<text x="505.9" y="1804" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">every setting with its default, to copy and change</text>
+<line x1="392" y1="1812" x2="1118" y2="1812" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="1831" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">sample.gtl</text>
+<text x="505.9" y="1831" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">a sample to try the program with</text>
+<line x1="392" y1="1839" x2="1118" y2="1839" stroke="#1A2430" stroke-width="1"/>
+<rect x="360" y="1892" width="780" height="246" rx="10" fill="url(#card)" stroke="#1E2A36" stroke-width="1"/>
+<rect x="360" y="1906" width="3" height="218" rx="1.5" fill="#FF5C8A"><animate attributeName="opacity" values="0.55;1;0.55" dur="4s" begin="1.8s" repeatCount="indefinite"/></rect>
+<text x="382" y="1926" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="19" font-weight="700" fill="#F2F6FA" text-anchor="start">docs/</text>
+<line x1="382" y1="1940" x2="1122" y2="1940" stroke="#FF5C8A" stroke-opacity="0.35" stroke-width="1"/>
+<text x="392" y="1972" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">architecture.json</text>
+<text x="568.83" y="1972" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">data of the Architecture picture</text>
+<line x1="392" y1="1980" x2="1118" y2="1980" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="1999" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">NOT_YET.md</text>
+<text x="568.83" y="1999" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">good ideas that are left out of this version, with why and when</text>
+<line x1="392" y1="2007" x2="1118" y2="2007" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2026" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">REQUIREMENTS.md</text>
+<text x="568.83" y="2026" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the register of requirements: state, evidence and the test of each</text>
+<line x1="392" y1="2034" x2="1118" y2="2034" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2053" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">SCOPE.md</text>
+<text x="568.83" y="2053" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">what the program is for, what it will not do and what it never decides</text>
+<line x1="392" y1="2061" x2="1118" y2="2061" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2080" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">STATUS.md</text>
+<text x="568.83" y="2080" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">what exists, what is missing and what is still open</text>
+<line x1="392" y1="2088" x2="1118" y2="2088" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2107" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">structure.json</text>
+<text x="568.83" y="2107" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">data of the Repository Structure picture</text>
+<line x1="392" y1="2115" x2="1118" y2="2115" stroke="#1A2430" stroke-width="1"/>
+<rect x="360" y="2168" width="780" height="354" rx="10" fill="url(#card)" stroke="#1E2A36" stroke-width="1"/>
+<rect x="360" y="2182" width="3" height="326" rx="1.5" fill="#00E5FF"><animate attributeName="opacity" values="0.55;1;0.55" dur="4s" begin="2.4s" repeatCount="indefinite"/></rect>
+<text x="382" y="2202" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#F2F6FA" text-anchor="start">Other folders and the files at the root</text>
+<line x1="382" y1="2216" x2="1122" y2="2216" stroke="#00E5FF" stroke-opacity="0.35" stroke-width="1"/>
+<text x="392" y="2248" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">tools/</text>
+<text x="631.76" y="2248" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">CI check, README check and the picture tools</text>
 <line x1="392" y1="2256" x2="1118" y2="2256" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="2275" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">SECURITY.md  SUPPORT.md</text>
-<text x="631.76" y="2275" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">how to report a vulnerability and where to ask</text>
+<text x="392" y="2275" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">images/</text>
+<text x="631.76" y="2275" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">banner, window screenshots and the Architecture and Structure pictures</text>
 <line x1="392" y1="2283" x2="1118" y2="2283" stroke="#1A2430" stroke-width="1"/>
-<text x="392" y="2302" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">CONTRIBUTING.md  LICENSE</text>
-<text x="631.76" y="2302" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">how to contribute, the code of conduct and the licence</text>
+<text x="392" y="2302" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">.github/</text>
+<text x="631.76" y="2302" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">CI and release workflows, issue and pull-request templates</text>
 <line x1="392" y1="2310" x2="1118" y2="2310" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2329" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">eh3d.project.json</text>
+<text x="631.76" y="2329" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">manifest: version, role, maturity and build command</text>
+<line x1="392" y1="2337" x2="1118" y2="2337" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2356" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">Cargo.toml  Cargo.lock</text>
+<text x="631.76" y="2356" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the workspace and its locked dependencies</text>
+<line x1="392" y1="2364" x2="1118" y2="2364" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2383" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">rust-toolchain.toml</text>
+<text x="631.76" y="2383" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the pinned Rust toolchain</text>
+<line x1="392" y1="2391" x2="1118" y2="2391" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2410" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">CHANGELOG.md</text>
+<text x="631.76" y="2410" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">what changed in each version</text>
+<line x1="392" y1="2418" x2="1118" y2="2418" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2437" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">AGENTS.md</text>
+<text x="631.76" y="2437" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">the rules for anyone who changes the repository</text>
+<line x1="392" y1="2445" x2="1118" y2="2445" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2464" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">SECURITY.md  SUPPORT.md</text>
+<text x="631.76" y="2464" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">how to report a vulnerability and where to ask</text>
+<line x1="392" y1="2472" x2="1118" y2="2472" stroke="#1A2430" stroke-width="1"/>
+<text x="392" y="2491" font-family="'JetBrains Mono','Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="14.5" font-weight="600" fill="#E6EDF3" text-anchor="start">CONTRIBUTING.md  LICENSE</text>
+<text x="631.76" y="2491" font-family="'Segoe UI','Noto Sans','Noto Sans CJK SC','Microsoft YaHei','Yu Gothic','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="12.8" font-weight="400" fill="#8A97A6" text-anchor="start">how to contribute, the code of conduct and the licence</text>
+<line x1="392" y1="2499" x2="1118" y2="2499" stroke="#1A2430" stroke-width="1"/>
 </svg>

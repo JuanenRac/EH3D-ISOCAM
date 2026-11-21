@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 508 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 545 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.1.5` |
 | Maturità | Impalcatura |
-| Test | 508 |
+| Test | 545 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,7 +48,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 508 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
+| Test | 🟡 | 545 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata e il programma di una versione la disegna in un'immagine (`--shot`), ma nessuno l'ha ancora usata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -89,6 +89,9 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **La forma del taglio attorno alla scheda** (`src/corners.rs`): `outline_corner_radius_mm` (0 per impostazione predefinita, che lascia gli angoli vivi come disegnati) arrotonda ogni angolo dei percorsi chiusi del contorno con un arco di quel raggio prima che l'utensile lo percorra; un angolo i cui lati sono troppo corti per il raggio (un arco occupa al massimo metà di ogni lato) riceve il raggio più grande che entra e viene contato e segnalato. `outline_min_cutout_mm` (0 per impostazione predefinita) omette i ritagli del contorno (percorsi chiusi dentro la scheda) il cui riquadro non ha alcun lato più lungo di quel valore. Entrambi valgono per `route` e per il taglio di `plot_outline` e sono parametri della finestra, che nelle sue note dice quanti angoli hanno ricevuto un raggio minore e quanti ritagli sono stati omessi.
 * **Il taglio verificato rispetto al piano della macchina:** quando le impostazioni descrivono un piano (`machine_profile`, oppure `machine_x_mm` e `machine_y_mm`, con `machine_margin_mm`), `route` e la finestra rifiutano un taglio che ne esce, con il percorso e il punto in cui va; `--force` lo scrive con un avviso sulla riga di comando. Senza un piano descritto non si controlla nulla, come prima.
 * **Svuotamento di un'area con anelli** (`src/clearing.rs`): con `rubout_style = rings`, `rubout-area` riempie un rettangolo (`--area`) o i percorsi chiusi di un file (`--contour`, riempimento pari-dispari: un percorso dentro un altro è un foro) con anelli chiusi che seguono il bordo verso l'interno invece di linee avanti e indietro; il primo anello è a mezzo utensile dal bordo, i successivi a un passo di `tool * (1 - rubout_overlap)` più dentro, e si aggiunge un anello lungo il centro quando resterebbe una striscia. `rubout_ring_order` (`outside-in`, l'uso normale, o `inside-out`) resta nel G-code qualunque cosa dica `ordering`. Prima di scrivere qualcosa, i percorsi sono controllati contro il piano della macchina e un percorso che ne esce è rifiutato con il suo numero e la sua passata (`--force` lo scrive comunque); il controllo vale anche per le linee.
+* **Archi adattati ai percorsi** (`src/arcs.rs`): `arc_fit_tolerance_mm` (0 per impostazione predefinita, che mantiene tutti i tratti rettilinei come prima; da 0.001 a 0.5 mm) sostituisce ogni serie di movimenti brevi che giace su una circonferenza con un solo `G2` o `G3`, al massimo a quella distanza dal poligono di partenza (il punto più lontano dalla circonferenza e la freccia del tratto più lungo ci stanno insieme). `isolate` dice quanti movimenti ha risparmiato e quanto è lungo il taglio con gli archi e a tratti rettilinei; l'interprete della suite percorre il programma, così i limiti della macchina vedono dove un arco si gonfia. Solo G-code, non insieme a una mappa delle altezze, e un parametro della finestra.
+* **La serigrafia incisa** (`src/silk.rs`): `eh3d-isocam silk LIVELLO.gto USCITA.nc` unisce i tratti che si toccano alle estremità, taglia una regione lungo il suo bordo e li incide a `silk_depth_mm` con un utensile di `silk_tool_mm`; avvisa che la linea è larga quanto l'utensile ed è tagliata nella scheda, segnala i tratti di altra larghezza (`silk_width_tolerance_mm`) e conta i pad stampati che lascia fuori. Scrive G-code o un disegno DXF, mai un plot.
+* **Il rapporto prima del lavoro** (`src/report.rs`): `eh3d-isocam report LIVELLO.gtl` dice le passate, i percorsi, la lunghezza del taglio, gli utensili nell'ordine in cui servono, gli archi, il tempo e le segnalazioni della prova a secco, confronta ogni utensile con la tabella CSV del magazzino utensili (`crib_file`: una fresa dal suo diametro, una punta a V o un incisore dalla larghezza che taglia alla profondità del lavoro) e aggiunge i controlli del livello (punti in cui l'utensile non passa, zone problematiche, regole di progetto). Termina con 2, il codice di uscita di una verifica non superata, quando c'è qualcosa da guardare. La finestra fa lo stesso rapporto e gli stessi controlli senza schermo (`Window::report_text`, `Window::checks_text`); i pulsanti che li richiamano non sono ancora scritti.
 * **Dove va il lavoro sul piano** (`src/config.rs`): `offset_x_mm` e `offset_y_mm` (0 per impostazione predefinita, da -10000 a 10000) spostano ogni uscita della stessa quantità, dopo la scala e i punti di riferimento: i percorsi del rame, i fori di un file di foratura e il taglio attorno alla scheda, così un lavoro può essere collocato ovunque sul piano della macchina; i limiti della macchina (`machine_profile`) rifiutano ancora un programma che lo spostamento porta fuori dal piano.
 
 ## 🧩 Ruolo in EH3D
@@ -249,7 +252,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 508 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 545 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
@@ -271,6 +274,7 @@ Ogni versione contiene il programma con la sua finestra per Windows (64 e 32 bit
 ```text
 EH3D-ISOCAM/
 ├── src/
+│   ├── arcs.rs                                  archi adattati a serie di movimenti brevi, con tolleranza
 │   ├── board.rs                                 i passi condivisi da riga di comando e finestra
 │   ├── browse.rs                                l'elenco dei file della finestra che apre un file
 │   ├── clearing.rs                              lo svuotamento di un'area con anelli, nell'ordine richiesto e dentro l'area
@@ -290,7 +294,9 @@ EH3D-ISOCAM/
 │   ├── lib.rs                                   la libreria: ciò che usa ogni comando
 │   ├── main.rs                                  la riga di comando
 │   ├── preview.rs                               le passate disegnate in SVG o testo
+│   ├── report.rs                                il rapporto prima del lavoro, gli utensili contro il magazzino e i controlli
 │   ├── shot.rs                                  la modalità immagine della finestra (--shot): i suoi argomenti, letti e verificati senza schermo
+│   ├── silk.rs                                  la serigrafia incisa: tratti uniti, regioni tagliate lungo il bordo
 │   ├── simulate.rs                              la prova a vuoto di un programma G-code: tempo, percorso, taglio più profondo e rilievi in otto lingue
 │   ├── toolpath.rs                              il percorso dell'utensile di un programma per l'immagine: rapido, discesa e taglio per profondità
 │   ├── viewport.rs                              zoom e spostamento dell'immagine, in semplici numeri
@@ -300,16 +306,20 @@ EH3D-ISOCAM/
 │   ├── advanced.rs                              isolamento forzato, correzione, maschera, unità, anteprima
 │   ├── cli_reading.rs                           test di lettura dei file: il limite di dimensione, testo non UTF-8, avvisi per codice
 │   ├── crib.rs                                  test degli utensili presi dal magazzino
+│   ├── curve_paths.rs                           test degli archi adattati ai percorsi
 │   ├── depth_and_levelling.rs                   test delle passate di profondità e del taglio secondo una mappa delle altezze
 │   ├── excellon_format.rs                       test del formato 2.4 delle coordinate di un file di foratura
 │   ├── files.rs                                 test dei file di foratura e contorno
 │   ├── isocam.rs                                test della libreria e della riga di comando
+│   ├── job_report.rs                            test del rapporto prima del lavoro e del controllo del magazzino
 │   ├── job_safety.rs                            test dei limiti della macchina e della prova a vuoto
 │   ├── kinds.rs                                 tolleranza per pad, riempimenti, tipi di file, penne, DXF
 │   ├── layout.rs                                test di doppia faccia, pannelli, regole e riga di comando
 │   ├── multi.rs                                 test di utensili, rame residuo, verso, ordine e impostazioni
 │   ├── problems.rs                              test delle zone problematiche, della tolleranza e dei fori di allineamento
+│   ├── silkscreen.rs                            test della serigrafia incisa
 │   ├── readme.rs                                test che eseguono ciò che promettono il README e gli script run
+│   ├── window_checks.rs                         test dei controlli e del rapporto nella finestra
 │   ├── window_cli.rs                            test che una compilazione senza la funzione gui resti una riga di comando
 │   └── reqs.rs                                  test del registro dei requisiti
 ├── examples/
