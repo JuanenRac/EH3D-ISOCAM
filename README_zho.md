@@ -30,7 +30,7 @@
 |---|---|
 | 版本 | `0.1.5` |
 | 成熟度 | 脚手架 |
-| 测试 | 499 |
+| 测试 | 508 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -48,7 +48,7 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 499 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
+| 测试 | 🟡 | 508 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`）：打开或拖入层、缩放和平移、编辑主要参数、导出；其逻辑已测试，发布版程序可将其绘制为图片（`--shot`），但还没有人在屏幕上实际使用过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -249,7 +249,7 @@ cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # 
 
 ## 🧪 测试
 
-测试套件有 499 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 508 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -310,13 +310,18 @@ EH3D-ISOCAM/
 │   ├── multi.rs                                 刀具、残余铜箔、方向、顺序和设置的测试
 │   ├── problems.rs                              问题区域、容差和对位孔的测试
 │   ├── readme.rs                                运行 README 和 run 脚本所承诺内容的测试
-│   └── window_cli.rs                            测试没有 gui 特性的构建仍然只是命令行
+│   ├── window_cli.rs                            测试没有 gui 特性的构建仍然只是命令行
+│   └── reqs.rs                                  需求登记表的测试
 ├── examples/
 │   ├── crib.csv                                 试用 --crib 的示例刀具库（CSV）
 │   ├── isocam.cfg                               所有设置及其默认值，可复制后修改
 │   └── sample.gtl                               试用的示例
 ├── docs/
 │   ├── architecture.json                        架构图数据
+│   ├── NOT_YET.md                               本版本暂不包含的好想法及其原因和时机
+│   ├── REQUIREMENTS.md                          需求登记表：每项的状态、证据和测试
+│   ├── SCOPE.md                                 用途、不做什么以及永远不由它决定的事
+│   ├── STATUS.md                                已有的、缺少的和仍未决定的
 │   └── structure.json                           结构图数据
 ├── tools/                                       CI 和 README 检查及绘图工具
 ├── images/                                      横幅图、窗口截图以及架构和结构图片
@@ -325,6 +330,7 @@ EH3D-ISOCAM/
 ├── Cargo.toml Cargo.lock                        工作区及其锁定的依赖
 ├── rust-toolchain.toml                          固定的 Rust 工具链
 ├── CHANGELOG.md                                 每个版本的变更
+├── AGENTS.md                                    修改本仓库的人需要遵守的规则
 ├── SECURITY.md SUPPORT.md                       如何报告漏洞及在哪里提问
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   参与贡献、行为准则和许可证
 ```
@@ -369,6 +375,11 @@ README 和文本提供英语、西班牙语、法语、意大利语、德语、�
 ## 📚 文档
 
 * [更新日志](CHANGELOG.md)
+* [范围](docs/SCOPE.md)： 程序的用途、不做什么，以及永远不由它决定的事。
+* [需求](docs/REQUIREMENTS.md)： 功能登记表、每项的状态以及证明它的测试。
+* [状态](docs/STATUS.md)： 已有的、缺少的和仍未决定的。
+* [暂不包含](docs/NOT_YET.md)： 本版本暂不包含的好想法。
+* [修改仓库的规则](AGENTS.md)： 修改本仓库的人需要遵守的规则。
 * [架构与结构数据](docs/architecture.json)：绘制两张图所用的数据。
 
 ## 🤝 参与贡献与社区
