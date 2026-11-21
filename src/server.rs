@@ -140,12 +140,19 @@ pub fn base64(data: &[u8]) -> String {
     out
 }
 
-/// The name an artifact may have: 1 to 120 characters, no control character and no slash. A path is cut down to its last part.
+/// The name an artifact may have: 1 to 120 characters, no control character, no character that reverses the direction of the text or hides in it, no slash, and not `.` or `..`. A path
+/// is cut down to its last part.
 pub fn artifact_name(path_or_name: &str) -> Result<String, String> {
     let last = path_or_name.rsplit(['/', '\\']).next().unwrap_or("").trim();
-    if last.is_empty() || last.chars().count() > 120 || last.chars().any(char::is_control) {
+    let hidden = |c: char| matches!(c, '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}' | '\u{feff}');
+    if last.is_empty()
+        || last == "."
+        || last == ".."
+        || last.chars().count() > 120
+        || last.chars().any(|c| c.is_control() || hidden(c))
+    {
         return Err(format!(
-            "'{path_or_name}' cannot be the name of an artifact (1 to 120 characters, no control character)"
+            "'{path_or_name}' cannot be the name of an artifact (1 to 120 characters, no control character, not . or ..)"
         ));
     }
     Ok(last.to_string())
