@@ -185,6 +185,12 @@ pub fn default_fields(s: &Settings) -> Vec<Field> {
             s.depth_step_mm.to_string(),
         ),
         f(
+            iso,
+            "arc_fit_tolerance_mm",
+            Msg::ArcFit,
+            s.arc_fit_tolerance_mm.to_string(),
+        ),
+        f(
             Section::Drills,
             "alignment_hole_mm",
             Msg::AlignHole,
@@ -1333,6 +1339,61 @@ impl Window {
             _ => {
                 let (g, _) = board::gcode_program(&self.passes, s, self.force)?;
                 Ok(format!("{}{g}", gcode_header(&layer.path, s)))
+            }
+        }
+    }
+
+    /// What the person should look at before the job, in the language of the window: the report of the job with its tools set against the table of the crib when `crib` is given,
+    /// the dry run of the program and the places where the tool does not fit. The paths are worked out again first when the parameters changed. None when there is no layer or the
+    /// paths cannot be worked out.
+    pub fn report_text(&mut self, crib: Option<&[crate::crib::CribTool]>) -> Option<String> {
+        if self.layer.is_none() {
+            self.status = Status::NoLayer;
+            return None;
+        }
+        if (self.stale || self.passes.is_empty()) && !self.compute() {
+            return None;
+        }
+        let settings = self.ready_settings()?;
+        match crate::report::job_report(&self.passes, &settings, self.unfixed, crib) {
+            Ok(r) => {
+                let mm = |v: f64| format!("{v:.3} mm");
+                let mut text = r.text(self.lang, &mm);
+                if let Ok(Some(a)) = board::arc_comparison(&self.passes, &settings) {
+                    text.push_str(&a.note(self.lang, settings.arc_fit_tolerance_mm));
+                    text.push('\n');
+                }
+                Some(text)
+            }
+            Err(why) => {
+                self.status = Status::Failed(why);
+                None
+            }
+        }
+    }
+
+    /// The checks of the layer as the command line makes them (`check` and `drc`), in the language of the window: the summary first and then one line for each finding with its place.
+    pub fn checks_text(&mut self) -> Option<String> {
+        if self.layer.is_none() {
+            self.status = Status::NoLayer;
+            return None;
+        }
+        let settings = self.ready_settings()?;
+        let found = self
+            .lay_all(&settings)
+            .and_then(|(board, _)| crate::report::checks(&board, &settings));
+        match found {
+            Ok(c) => {
+                let mut text = c.text(self.lang);
+                for d in &c.details {
+                    text.push_str("\n  ");
+                    text.push_str(d);
+                }
+                Some(text)
+            }
+            Err(why) => {
+                self.status = Status::Failed(why);
+                None
             }
         }
     }

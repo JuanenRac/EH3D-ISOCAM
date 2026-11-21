@@ -48,6 +48,8 @@ const HELP: &str = "eh3d-isocam: isolation milling of copper from a Gerber layer
   eh3d-isocam route OUTLINE OUT.plt|OUT.ncd      the path of the tool round the board (OUTLINE is a Gerber outline layer, a .dxf or a .plt)
   eh3d-isocam mask COPPER.gtl OUT.gts [--mask-layer F.gts]  the openings of the solder mask, from the mask layer or from the pads of the copper
   eh3d-isocam rubout-area OUT.nc|OUT.plt|OUT.dxf [LAYER.gtl] --area X0,Y0,X1,Y1|--contour FILE  parallel lines of a tool (or, with --rubout-style rings, closed rings) that clear an area or fill closed paths, cut to the copper of LAYER when it is given (lines only)
+  eh3d-isocam silk LAYER.gto OUT.nc|OUT.dxf      the silkscreen layer engraved (silk_tool_mm, silk_depth_mm): strokes joined end to end, regions cut round the edge, with a warning that it is cut and not printed
+  eh3d-isocam report LAYER.gtl                   what to look at before the job: its passes, tools set against the crib table (crib_file), arcs, time, the dry run and the checks; ends with 2 when there is something to look at
   eh3d-isocam kind FILE...                       say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
   eh3d-isocam simulate PROGRAM.nc                a dry run of a G-code program: its time, the box it moves in, the deepest cut and what is wrong with it (the machine limits of the settings apply)
   eh3d-isocam config                             every setting with its default, as a configuration file
@@ -834,6 +836,14 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 for n in notes {
                     eprintln!("warning: {n}");
                 }
+                if let Some(a) = eh3d_isocam::board::arc_comparison(&passes, s)? {
+                    eprintln!(
+                        "note: {}; the cut is {} long with arcs and {} as straight pieces",
+                        a.note(eh3d_isocam::lang::Lang::from_env(), s.arc_fit_tolerance_mm),
+                        len(&cli, a.fitted_cut_mm),
+                        len(&cli, a.polygon_cut_mm)
+                    );
+                }
                 format!(
                     "{}{g}",
                     gcode_header(&cli, cli.positional.first().map(String::as_str))
@@ -1004,6 +1014,71 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 len(&cli, s.rubout_lines_tool_mm)
             );
             Ok(())
+        }
+        "silk" => {
+            let layer = arg(&cli, 0, "silk needs a silkscreen layer")?;
+            let out = arg(&cli, 1, "silk needs an output file")?;
+            if is_plot(out) {
+                return Err("silk writes G-code or a DXF drawing, not a plot".into());
+            }
+            let (board, whole) = load_board(&cli, Some(layer))?;
+            let e = eh3d_isocam::silk::engrave(&board.scene, s)?;
+            let (passes, _) = eh3d_isocam::board::move_passes(&e.passes, s, &whole)?;
+            for w in &e.warnings {
+                eprintln!("warning: {w}");
+            }
+            let text = if is_dxf(out) {
+                dxf::write(&passes)?
+            } else {
+                // the silkscreen is cut at its own depth
+                let mut deep = s.clone();
+                deep.depth_mm = s.silk_depth_mm;
+                deep.validate()?;
+                let (g, notes) = gcode_program(&passes, &deep, cli.force)?;
+                for n in notes {
+                    eprintln!("warning: {n}");
+                }
+                format!("{}{g}", gcode_header(&cli, Some(layer)))
+            };
+            write_text(&cli, 1, out, text)?;
+            let total: f64 = passes
+                .iter()
+                .flat_map(Pass::cuts)
+                .map(|c| c.length_mm())
+                .sum();
+            println!(
+                "{} strokes and {} regions engraved, {} of cut, written to {out}",
+                e.strokes,
+                e.regions,
+                len(&cli, total)
+            );
+            Ok(())
+        }
+        "report" => {
+            let layer = arg(&cli, 0, "report needs a Gerber layer")?;
+            let (board, whole) = load_board(&cli, Some(layer))?;
+            let (passes, unfixed) = build_passes(&cli, &board, centre_of(&whole), true)?;
+            let tools = if s.crib_file.is_empty() {
+                None
+            } else {
+                let text = read(&cli, &s.crib_file)?;
+                Some(crib::parse_csv(&text).map_err(|e| format!("{}: {e}", s.crib_file))?)
+            };
+            let lang = eh3d_isocam::lang::Lang::from_env();
+            let r = eh3d_isocam::report::job_report(&passes, s, unfixed, tools.as_deref())?;
+            print!("{}", r.text(lang, &|mm| len(&cli, mm)));
+            let c = eh3d_isocam::report::checks(&board, s)?;
+            println!("{}", c.text(lang));
+            for d in &c.details {
+                println!("  {d}");
+            }
+            if let Some(a) = eh3d_isocam::board::arc_comparison(&passes, s)? {
+                println!("{}", a.note(lang, s.arc_fit_tolerance_mm));
+            }
+            match r.findings() + c.total() {
+                0 => Ok(()),
+                n => Err(format!("verification not passed: {n} findings")),
+            }
         }
         "mask" => {
             let layer = arg(&cli, 0, "mask needs a copper layer")?;
@@ -1211,7 +1286,7 @@ fn main() -> ExitCode {
     }
 }
 
-/// The exit code of the convention of the suite for a run that ended badly: 64 when the command line was used wrongly (an unknown command, option or setting, or something it needs that is missing), 1 for a failure of the work itself.
+/// The exit code of the convention of the suite for a run that ended badly: 64 when the command line was used wrongly (an unknown command, option or setting, or something it needs that is missing), 2 when a verification was not passed (`report` with something to look at) and 1 for a failure of the work itself.
 fn exit_code(message: &str) -> u8 {
     const USAGE: [&str; 6] = [
         "unknown command",
@@ -1221,7 +1296,9 @@ fn exit_code(message: &str) -> u8 {
         "(usage:",
         "(see help)",
     ];
-    if USAGE.iter().any(|m| message.contains(m)) {
+    if message.starts_with("verification not passed") {
+        2
+    } else if USAGE.iter().any(|m| message.contains(m)) {
         64
     } else {
         1

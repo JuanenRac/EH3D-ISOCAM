@@ -1,5 +1,6 @@
 //! The G-code of the passes: the tool goes up to the safe height, travels, goes down to the depth of the cut and follows the path. The order, the direction and the starting points come from the settings; by default the nearest path is cut next.
 
+use crate::arcs::{self, Seg};
 use crate::contour::Loop;
 use crate::isolate::Pass;
 use crate::order::{arrange, Order};
@@ -206,7 +207,33 @@ pub fn write_levelled(
     unit: Unit,
     surface: Option<&Surface>,
 ) -> Result<String, String> {
+    write_fitted(passes, job, order, unit, surface, 0.0)
+}
+
+/// The same, with arcs (`G2` and `G3`) where a run of the straight pieces of a path lies on a circle within `arc_tolerance_mm` (0 keeps every piece straight; see [`arcs`]). Arcs
+/// need a flat cut: with a surface the Z changes along every move, so a tolerance above 0 together with a surface is refused.
+pub fn write_fitted(
+    passes: &[Pass],
+    job: &Job,
+    order: &Order,
+    unit: Unit,
+    surface: Option<&Surface>,
+    arc_tolerance_mm: f64,
+) -> Result<String, String> {
     job.validate()?;
+    if !arcs::tolerance_ok(arc_tolerance_mm) {
+        return Err(format!(
+            "arc_fit_tolerance_mm is {arc_tolerance_mm}: it must be 0 or from {} to {}",
+            arcs::MIN_TOLERANCE_MM,
+            arcs::MAX_TOLERANCE_MM
+        ));
+    }
+    if arc_tolerance_mm > 0.0 && surface.is_some() {
+        return Err(
+            "arcs need a flat cut: set arc_fit_tolerance_mm to 0 when the Z follows a height map"
+                .into(),
+        );
+    }
     if let Some(s) = surface {
         if !(s.max_segment_mm.is_finite() && s.max_segment_mm > 0.0) {
             return Err("the longest piece of a move on a surface must be above 0".into());
@@ -298,6 +325,34 @@ pub fn write_levelled(
                     nn(c(job.plunge_mm_min), unit)
                 ));
                 let mut first = true;
+                if arc_tolerance_mm > 0.0 {
+                    let mut from = start;
+                    for seg in arcs::fit(&line, arc_tolerance_mm) {
+                        let feed = if first {
+                            format!(" F{}", nn(c(job.feed_mm_min), unit))
+                        } else {
+                            String::new()
+                        };
+                        first = false;
+                        match seg {
+                            Seg::Line(p) => g.push_str(&format!(
+                                "G1 X{} Y{}{feed}\n",
+                                nn(c(p.0), unit),
+                                nn(c(p.1), unit)
+                            )),
+                            Seg::Arc { to, centre, ccw } => g.push_str(&format!(
+                                "G{} X{} Y{} I{} J{}{feed}\n",
+                                if ccw { 3 } else { 2 },
+                                nn(c(to.0), unit),
+                                nn(c(to.1), unit),
+                                nn(c(centre.0 - from.0), unit),
+                                nn(c(centre.1 - from.1), unit)
+                            )),
+                        }
+                        from = seg.end();
+                    }
+                    continue;
+                }
                 for w in line.windows(2) {
                     let (a, b) = (w[0], w[1]);
                     let pieces = surface.map_or(1, |s| {

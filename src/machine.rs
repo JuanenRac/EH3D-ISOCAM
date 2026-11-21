@@ -4,7 +4,7 @@
 //! work. Nothing here has run on a machine.
 
 use crate::isolate::Pass;
-use eh3d_parser_gcode::{interpret, parse, Dialect};
+use eh3d_parser_gcode::{interpret, parse, Dialect, Motion};
 
 /// A machine whose table is known.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -104,6 +104,39 @@ pub struct Checked {
     pub moves: usize,
 }
 
+/// The points of an arc, round `centre` from `from` to `to`, where it reaches the most extreme X or Y: the four points of its circle that lie within its sweep. An arc bulges beyond
+/// its two ends, so the table has to be checked at these points as well.
+fn arc_reach(
+    from: (f64, f64),
+    to: (f64, f64),
+    centre: (f64, f64),
+    clockwise: bool,
+) -> Vec<(f64, f64)> {
+    use std::f64::consts::{FRAC_PI_2, TAU};
+    let r = (from.0 - centre.0).hypot(from.1 - centre.1);
+    let a0 = (from.1 - centre.1).atan2(from.0 - centre.0);
+    let a1 = (to.1 - centre.1).atan2(to.0 - centre.0);
+    // how far the arc turns, in the direction it goes; a start that is the end is a whole circle
+    let ahead = |from_angle: f64, to_angle: f64| (to_angle - from_angle).rem_euclid(TAU);
+    let sweep = if clockwise {
+        ahead(a1, a0)
+    } else {
+        ahead(a0, a1)
+    };
+    let sweep = if sweep < 1e-12 { TAU } else { sweep };
+    (0..4)
+        .filter_map(|k| {
+            let cardinal = k as f64 * FRAC_PI_2;
+            let at = if clockwise {
+                ahead(cardinal, a0)
+            } else {
+                ahead(a0, cardinal)
+            };
+            (at < sweep).then(|| (centre.0 + r * cardinal.cos(), centre.1 + r * cardinal.sin()))
+        })
+        .collect()
+}
+
 /// Walks the program and stops at the first move that goes beyond a limit, saying the line, where the tool was going and how many moves had been made before it.
 pub fn check_program(text: &str, limits: &Limits) -> Result<Checked, String> {
     let trace = interpret(&parse(text, Dialect::Grbl));
@@ -119,6 +152,21 @@ pub fn check_program(text: &str, limits: &Limits) -> Result<Checked, String> {
                     "line {}: the tool goes to X{x:.3} Y{y:.3}, outside the table ({w} x {d} mm, {m} mm kept from its edges) after {made} moves",
                     s.line
                 ));
+            }
+        }
+        // an arc can leave the table between its two ends
+        if let (Some((w, d)), Motion::ArcCw { center } | Motion::ArcCcw { center }) =
+            (limits.table_mm, &s.motion)
+        {
+            let m = limits.margin_mm;
+            let cw = matches!(s.motion, Motion::ArcCw { .. });
+            for (x, y) in arc_reach((s.from.x, s.from.y), (s.to.x, s.to.y), *center, cw) {
+                if x < m - eps || y < m - eps || x > w - m + eps || y > d - m + eps {
+                    return Err(format!(
+                        "line {}: the arc bulges to X{x:.3} Y{y:.3}, outside the table ({w} x {d} mm, {m} mm kept from its edges) after {made} moves",
+                        s.line
+                    ));
+                }
             }
         }
         if limits.max_depth_mm > 0.0 && s.to.z < -limits.max_depth_mm - eps {

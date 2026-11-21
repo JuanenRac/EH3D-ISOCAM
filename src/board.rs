@@ -11,7 +11,7 @@ use crate::drill::{
 };
 use crate::fiducial::{apply_to_holes, apply_to_passes, Fit};
 use crate::filetype;
-use crate::gcode::{write_levelled, Surface};
+use crate::gcode::{write_fitted, Surface};
 use crate::heightmap::HeightMap;
 use crate::hpgl::{
     isocam_style, set_pen_speed, write_holes_scaled, write_opts, PenBy, PlotOptions,
@@ -238,7 +238,14 @@ pub fn gcode_program(
 ) -> Result<(String, Vec<String>), String> {
     let map = load_heightmap(s)?;
     let g = match &map {
-        None => write_levelled(passes, &s.job(), &s.order(), s.output_units, None)?,
+        None => write_fitted(
+            passes,
+            &s.job(),
+            &s.order(),
+            s.output_units,
+            None,
+            s.arc_fit_tolerance_mm,
+        )?,
         Some(map) => {
             if s.output_units != Unit::Mm {
                 return Err(
@@ -259,8 +266,14 @@ pub fn gcode_program(
                 height_mm: &height,
                 max_segment_mm: s.heightmap_max_segment_mm,
             };
-            let text =
-                write_levelled(passes, &s.job(), &s.order(), s.output_units, Some(&surface))?;
+            let text = write_fitted(
+                passes,
+                &s.job(),
+                &s.order(),
+                s.output_units,
+                Some(&surface),
+                s.arc_fit_tolerance_mm,
+            )?;
             // a comment line, with nothing in the name of the file that could end it
             let name: String = file_name(Path::new(&s.heightmap_file))
                 .chars()
@@ -286,6 +299,54 @@ pub fn gcode_program(
         }
     }
     Ok((g, notes))
+}
+
+/// The program with arcs against the program with every piece straight, for the same passes: the moves each makes, how many arcs there are and how far apart the two cuts are in
+/// length. None when `arc_fit_tolerance_mm` is 0. The longest cut of the two programs is walked by the interpreter, so the comparison is of what a machine would do.
+pub fn arc_comparison(passes: &[Pass], s: &Settings) -> Result<Option<ArcComparison>, String> {
+    if s.arc_fit_tolerance_mm <= 0.0 {
+        return Ok(None);
+    }
+    let mut straight = s.clone();
+    straight.arc_fit_tolerance_mm = 0.0;
+    let (with_arcs, _) = gcode_program(passes, s, true)?;
+    let (polygon, _) = gcode_program(passes, &straight, true)?;
+    let a = crate::simulate::run(&with_arcs, 0.0);
+    let p = crate::simulate::run(&polygon, 0.0);
+    Ok(Some(ArcComparison {
+        polygon_moves: p.moves,
+        fitted_moves: a.moves,
+        arcs: with_arcs
+            .lines()
+            .filter(|l| l.starts_with("G2 ") || l.starts_with("G3 "))
+            .count(),
+        polygon_cut_mm: p.cut_mm,
+        fitted_cut_mm: a.cut_mm,
+    }))
+}
+
+/// The result of [`arc_comparison`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ArcComparison {
+    pub polygon_moves: usize,
+    pub fitted_moves: usize,
+    pub arcs: usize,
+    pub polygon_cut_mm: f64,
+    pub fitted_cut_mm: f64,
+}
+
+impl ArcComparison {
+    /// The sentence for the notes of the window and the command line, in a language.
+    pub fn note(&self, lang: crate::lang::Lang, tol_mm: f64) -> String {
+        crate::lang::fill(
+            crate::lang::Msg::NoteArcsFitted.tr(lang),
+            &[
+                &self.fitted_moves.to_string(),
+                &self.polygon_moves.to_string(),
+                &tol_mm.to_string(),
+            ],
+        )
+    }
 }
 
 /// The isolation passes (already moved by the scale and the reference points) as a plot file. With `plot_outline` the cut round the outline goes first, on its own pen.

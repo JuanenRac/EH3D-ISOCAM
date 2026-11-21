@@ -4,6 +4,7 @@
 //! The copper of a layer is drawn on a fine grid, the exact distance of every point of the board to the copper is worked out, and the paths of the tool are the lines where that
 //! distance equals the radius of the tool (and, for more passes, the radius plus one stepover each time). Overlapping tracks and pads need no special care: the grid has no overlaps.
 
+pub mod arcs;
 pub mod board;
 pub mod browse;
 pub mod clearing;
@@ -22,8 +23,10 @@ pub mod hpgl;
 pub mod lang;
 pub mod machine;
 pub mod preview;
+pub mod report;
 pub mod server;
 pub mod shot;
+pub mod silk;
 pub mod simulate;
 pub mod toolpath;
 pub mod viewport;
