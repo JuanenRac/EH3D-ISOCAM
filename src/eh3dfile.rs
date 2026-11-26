@@ -17,14 +17,36 @@ pub fn copper_layers(path: &Path) -> Result<Vec<JobFile>, String> {
     suite::layers_of(path, "copper")
 }
 
-/// The layer of the job called `layer` (its path inside the job or its file name), or the only choice when none is named.
+/// The layer of the job called `layer` (its path inside the job or its file name), or the only choice when none is named. A file name that two layers share is refused: the path
+/// says which.
 pub fn choose<'a>(layers: &'a [JobFile], layer: &str) -> Result<&'a JobFile, String> {
+    let shared: Vec<&str> = layers
+        .iter()
+        .filter(|f| f.file_name() == layer)
+        .map(|f| f.rel.as_str())
+        .collect();
+    if shared.len() > 1 {
+        return Err(format!(
+            "{layer} is the name of more than one copper layer of the job ({}): give its path",
+            shared.join(", ")
+        ));
+    }
     suite::choose(layers, "copper", layer)
 }
 
-/// The name of the program of a layer inside `result/`: `iso-<name of the layer>.<extension>`.
-pub fn result_name(layer: &JobFile, extension: &str) -> String {
-    suite::result_name("iso", layer, extension)
+/// The name of the program of a layer inside `result/`: `iso-<name of the layer>.<extension>`. When another of the `layers` would get the same name (`board.gtl` and
+/// `board.gbl`), the whole path of the layer is kept after `iso+`, so that the program of one layer never takes the place of the program of another.
+pub fn result_name(layers: &[JobFile], layer: &JobFile, extension: &str) -> String {
+    let short = suite::result_name("iso", layer, extension);
+    let shared = layers.iter().any(|other| {
+        other.rel != layer.rel
+            && suite::result_name("iso", other, extension).to_lowercase() == short.to_lowercase()
+    });
+    if !shared {
+        return short;
+    }
+    let whole = layer.rel.strip_prefix("layers/").unwrap_or(&layer.rel);
+    format!("iso+{}.{extension}", whole.replace('/', "+"))
 }
 
 /// Keeps one program made from a layer of the job. The programs of the other layers that are already there stay when they are up to date; when the job changed since they were made they

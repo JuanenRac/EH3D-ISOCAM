@@ -3,6 +3,7 @@
 //! into it. The sizes of the profiles are the ones written in the documents of EH3D-DRILLPRO; the origin of the table is taken at a corner, as the programs of the suite place the
 //! work. Nothing here has run on a machine.
 
+use crate::drill::Hole;
 use crate::isolate::Pass;
 use eh3d_parser_gcode::{interpret, parse, Dialect, Motion};
 
@@ -185,6 +186,27 @@ pub fn check_program(text: &str, limits: &Limits) -> Result<Checked, String> {
     Ok(Checked {
         moves: trace.segments.len(),
     })
+}
+
+/// Checks the places of the holes against the table before a drill file or a plot of holes is written: the first hole outside the table (less the margin) is told. Only the table
+/// is checked.
+pub fn check_holes(holes: &[Hole], limits: &Limits) -> Result<(), String> {
+    let Some((w, d)) = limits.table_mm else {
+        return Ok(());
+    };
+    let m = limits.margin_mm;
+    let eps = 1e-6;
+    for (n, hole) in holes.iter().enumerate() {
+        let (x, y) = (hole.x_mm, hole.y_mm);
+        if x < m - eps || y < m - eps || x > w - m + eps || y > d - m + eps {
+            return Err(format!(
+                "hole {} of {}: the tool goes to X{x:.3} Y{y:.3}, outside the table ({w} x {d} mm, {m} mm kept from its edges)",
+                n + 1,
+                holes.len()
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Checks the paths of the passes against the table before any G-code is written: the first point of a path that is outside the table (less the margin) stops it, saying the path,

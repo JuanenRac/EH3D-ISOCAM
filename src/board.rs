@@ -17,7 +17,7 @@ use crate::hpgl::{
     isocam_style, set_pen_speed, write_holes_scaled, write_opts, PenBy, PlotOptions,
 };
 use crate::isolate::Pass;
-use crate::machine::{check_passes, check_program};
+use crate::machine::{check_holes, check_passes, check_program};
 use crate::mask;
 use crate::order::{arrange, Cut};
 use crate::transform::{alignment_pattern, lay_out, Axis, Board};
@@ -349,6 +349,40 @@ impl ArcComparison {
     }
 }
 
+/// The cut round the outline that a plot of the isolation carries with `plot_outline`, laid out as the passes are.
+fn plot_cut(s: &Settings, whole: &Bounds, outline: &[Loop]) -> Result<Pass, String> {
+    let o = Outline {
+        closed: shape_outline(outline, s).0,
+        open: Vec::new(),
+    };
+    let mut cut = route_outline(&o, s.route_tool_mm, s.res_mm.min(s.route_tool_mm / 2.0))?;
+    let (t, _) = s.transform(centre_of(whole))?;
+    if !t.is_identity() {
+        let mut one = vec![cut];
+        apply_to_passes(&mut one, &t)?;
+        cut = one.remove(0);
+    }
+    Ok(cut)
+}
+
+/// The first place where a plot of the isolation leaves the table of the machine, the cut round the outline of `plot_outline` included; None when it fits or no table is set.
+pub fn plot_outside_table(
+    passes: &[Pass],
+    s: &Settings,
+    whole: &Bounds,
+    outline: &[Loop],
+) -> Result<Option<String>, String> {
+    let limits = s.machine_limits();
+    if limits.table_mm.is_none() {
+        return Ok(None);
+    }
+    let mut all = passes.to_vec();
+    if s.plot_outline && !outline.is_empty() {
+        all.push(plot_cut(s, whole, outline)?);
+    }
+    Ok(check_passes(&all, &limits).err())
+}
+
 /// The isolation passes (already moved by the scale and the reference points) as a plot file. With `plot_outline` the cut round the outline goes first, on its own pen.
 pub fn isolation_plot(
     passes: &[Pass],
@@ -369,17 +403,7 @@ pub fn isolation_plot(
         if outline.is_empty() {
             return Err("plot_outline needs the outline of the board: give --outline FILE".into());
         }
-        let o = Outline {
-            closed: shape_outline(outline, s).0,
-            open: Vec::new(),
-        };
-        let mut cut = route_outline(&o, s.route_tool_mm, s.res_mm.min(s.route_tool_mm / 2.0))?;
-        let (t, _) = s.transform(centre_of(whole))?;
-        if !t.is_identity() {
-            let mut one = vec![cut];
-            apply_to_passes(&mut one, &t)?;
-            cut = one.remove(0);
-        }
+        let cut = plot_cut(s, whole, outline)?;
         // the pens of the passes as they would be, then the cut in front of them
         let usual = |k: usize, p: &Pass| match pens {
             PenBy::Pass => k + 1,
@@ -440,6 +464,8 @@ pub struct DrillJob {
     /// The distance the drill travels over the holes in the order of the file and in the order written (the same when `drill_order` is `file`), from the starting point, in mm.
     pub travel_file_mm: f64,
     pub travel_mm: f64,
+    /// The first hole that leaves the table of the machine, when the settings describe a table; `None` when they all fit or no table is set.
+    pub outside_table: Option<String>,
 }
 
 /// The holes (already laid out) as a drill file, or as a plot with a pen for each drill. With `align` the holes that hold the board are added first; the scale and the correction
@@ -464,6 +490,7 @@ pub fn drills_job(
         holes = order_holes(&holes, start, s.drill_order);
     }
     let travel_mm = drill_travel_mm(&holes, start);
+    let outside_table = check_holes(&holes, &s.machine_limits()).err();
     let text = if plot {
         finish_plot(
             s,
@@ -490,6 +517,7 @@ pub fn drills_job(
         holes: holes.len(),
         travel_file_mm,
         travel_mm,
+        outside_table,
     })
 }
 

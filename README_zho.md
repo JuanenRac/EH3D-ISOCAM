@@ -9,7 +9,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
+  <img src="https://img.shields.io/badge/Stack-Rust-DEA592.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.1.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
@@ -30,7 +30,7 @@
 |---|---|
 | 版本 | `0.1.7` |
 | 成熟度 | 脚手架 |
-| 测试 | 584 |
+| 测试 | 592 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -48,7 +48,7 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 584 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
+| 测试 | 🟡 | 592 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`）：打开或拖入层、缩放和平移、编辑主要参数、导出；其逻辑已测试，发布版程序可将其绘制为图片（`--shot`），但还没有人在屏幕上实际使用过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -87,7 +87,7 @@
 * **图像中的刀具路径**（`src/toolpath.rs`）：勾选“显示刀具路径”后，会走一遍路径将被写成的 G 代码，并画出机床实际会做的动作来代替各道次的色带：快速移动为灰色，下刀为红色，每段切削的颜色从蓝色（刚好在表面之下）渐变到琥珀色（最深的切削），圆弧按圆弧绘制；图像的缩放、平移和“适应窗口”对它同样有效，设置 `depth_step_mm` 现在也是窗口的一个参数。
 * **避开拐角的连接桥**（`src/drill.rs`）：`tab_corner_clearance_mm`（默认 0，即与以前一样沿每条路径均匀放置连接桥）会把落在切割拐角上的连接桥沿路径按距离的四分之一为步长移动，直到最近的一处：路径在缺口及其两侧该距离范围内的总转角不超过 20 度；找不到这样位置的连接桥保持原位，并被计数和报告（`route` 给出警告，窗口添加一条注释）。连接桥的数量（`tab_count`）、宽度（`tab_width_mm`）和两座桥之间的最短一段（`tab_min_length_mm`）都是窗口的参数。
 * **围绕电路板的切割形状** (`src/corners.rs`)：`outline_corner_radius_mm`（默认为0，保持绘制时的直角）在刀具绕行之前，用该半径的圆弧把外形各闭合路径的每个拐角圆角化；若某个拐角的两边相对该半径太短（圆弧最多占每条边的一半），则采用能放得下的最大半径，并被计数和报告。`outline_min_cutout_mm`（默认为0）会忽略外形中的镂空（板内的闭合路径），其外接框没有任何一边长于该值。两者都适用于 `route` 和 `plot_outline` 的切割，也是窗口的参数，窗口会在提示中说明有多少拐角得到了更小的半径、有多少镂空被忽略。
-* **对照机床工作台检查切割：** 当设置描述了工作台（`machine_profile`，或 `machine_x_mm` 与 `machine_y_mm`，以及 `machine_margin_mm`）时，`route` 和窗口会拒绝超出工作台的切割，并给出路径和其所到之处；命令行中使用 `--force` 会带警告写出。未描述工作台时不做任何检查，与以前相同。
+* **对照机床工作台检查切割：** 当设置描述了工作台（`machine_profile`，或 `machine_x_mm` 与 `machine_y_mm`，以及 `machine_margin_mm`）时，`route` 和窗口会拒绝超出工作台的切割，并给出路径和其所到之处；命令行中使用 `--force` 会带警告写出。未描述工作台时不做任何检查，与以前相同。钻孔文件或钻孔绘图中的孔以及隔离绘图也对照同一工作台检查，并以相同方式拒绝。
 * **用环形路径清除区域**（`src/clearing.rs`）：设置 `rubout_style = rings` 后，`rubout-area` 会用沿边缘向内的封闭环代替往复直线，来填充一个矩形（`--area`）或文件中的封闭路径（`--contour`，奇偶填充，所以套在另一条路径内的路径是孔）；第一圈距边缘半个刀具，之后每圈再向内 `tool * (1 - rubout_overlap)` 一步，若会留下一条窄带，则在中间再加一圈。`rubout_ring_order`（通常为 `outside-in`，或 `inside-out`）无论 `ordering` 如何设置都保留在 G 代码中。写出任何内容之前，会先对照机床工作台检查各条路径，超出的路径会连同序号和所在道次一起被拒绝（`--force` 仍可写出）；该检查同样适用于直线方式。
 * **拟合到路径上的圆弧**（`src/arcs.rs`）：`arc_fit_tolerance_mm`（默认 0，即与以前一样保持所有线段为直线；0.001 到 0.5 mm）把位于同一圆上的一连串短移动替换为一条 `G2` 或 `G3`，与原多边形的距离不超过该值（离圆最远的点与最长线段的弦高之和不超过它）。`isolate` 会说明省下了多少次移动，以及使用圆弧和使用直线段时的切割长度；套件的解释器会走一遍程序，因此机床限位能看到圆弧向外鼓出的位置。仅限 G 代码，不能与高度图同时使用，也是窗口的一个参数。
 * **雕刻丝印层**（`src/silk.rs`）：`eh3d-isocam silk LAYER.gto OUT.nc` 把首尾相接的线条连成一条，沿边缘切割区域，并以 `silk_depth_mm` 的深度、`silk_tool_mm` 宽的刀具雕刻；它会警告线条与刀具一样宽并且是刻进电路板里，指出宽度与刀具不同的线条（`silk_width_tolerance_mm`），并统计被略过的单次盖印焊盘。输出 G 代码或 DXF 图纸，从不输出绘图文件。
@@ -255,7 +255,7 @@ cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # 
 
 ## 🧪 测试
 
-测试套件有 584 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 592 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 

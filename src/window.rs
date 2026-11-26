@@ -573,6 +573,8 @@ pub struct Layer {
     pub name: String,
     pub scene: Scene,
     pub drawing: Drawing,
+    /// The SHA-256 of the bytes the layer was read from: what a program made from it names as its source.
+    pub sha256: Option<String>,
 }
 
 /// What the picture shows: the copper, the holes and the outline, laid out as the parameters say (turned over, repeated on a panel).
@@ -1000,31 +1002,28 @@ impl Window {
             self.status = Status::NoProject;
             return false;
         };
-        let name = eh3dfile::result_name(&file, "nc");
-        let (dir, copy) = match scratch_copy(&file) {
-            Ok(made) => made,
+        let name = eh3dfile::result_name(&self.job_layers, &file, "nc");
+        let dir = match eh3dfile::scratch_dir() {
+            Ok(dir) => dir,
             Err(why) => {
                 self.status = Status::Failed(why);
                 return false;
             }
         };
-        // the header of the program names the file it was made from and its hash, so it is read from the copy
-        let shown = self
-            .layer
-            .as_mut()
-            .map(|l| std::mem::replace(&mut l.path, copy));
         let out = dir.join(&name);
         let made = self.export(&out);
-        if let (Some(layer), Some(path)) = (self.layer.as_mut(), shown) {
-            layer.path = path;
-        }
         let bytes = if made { fs::read(&out).ok() } else { None };
         let _ = fs::remove_dir_all(&dir);
         let Some(bytes) = bytes else {
             return false;
         };
         match eh3dfile::save_program(&project, &file, &name, bytes) {
-            Ok(_) => {
+            Ok(said) => {
+                // a signature that the write removed is told in the words of the window
+                let (words, other) = eh3d_project::suiteview::notices(&said);
+                self.notes
+                    .extend(words.iter().map(|w| w.text(self.lang.code())));
+                self.notes.extend(other);
                 self.status = Status::ProjectSaved { file: name };
                 true
             }
@@ -1421,14 +1420,21 @@ impl Window {
         v.extend(self.outline.as_ref().map(|o| o.path.clone()));
         v.extend(self.mask.as_ref().map(|m| m.path.clone()));
         v.extend(self.marks_file.clone());
+        v.extend(self.project.clone());
+        v.extend(
+            [&self.base.heightmap_file, &self.base.crib_file]
+                .into_iter()
+                .filter(|p| !p.is_empty())
+                .map(PathBuf::from),
+        );
         v
     }
 
-    /// Whether a file may be written there: it may not be one of the files that are open. Says so when it may not.
+    /// Whether a file may be written there: it may not be one of the files that are open, nor a `.eh3d` project. Says so when it may not.
     fn output_allowed(&mut self, out: &Path) -> bool {
         let inputs = self.inputs();
         let refs: Vec<&Path> = inputs.iter().map(PathBuf::as_path).collect();
-        if board::is_input(out, &refs) {
+        if board::extension(out) == "eh3d" || board::is_input(out, &refs) {
             self.status = Status::SameFile;
             false
         } else {
@@ -1472,7 +1478,14 @@ impl Window {
             return false;
         };
         match self.render_paths(&settings, out) {
-            Ok(text) => self.write_out(out, text),
+            Ok((text, warnings)) => {
+                let written = self.write_out(out, text);
+                // written with `force` although it breaks a limit of the machine: said, never silently
+                if written && !warnings.is_empty() {
+                    self.notes = warnings;
+                }
+                written
+            }
             Err(why) => {
                 self.status = Status::Failed(why);
                 false
@@ -1481,19 +1494,29 @@ impl Window {
     }
 
     /// The text of the file of the paths for its name.
-    fn render_paths(&self, s: &Settings, out: &Path) -> Result<String, String> {
+    fn render_paths(&self, s: &Settings, out: &Path) -> Result<(String, Vec<String>), String> {
         let Some(layer) = &self.layer else {
             return Err(String::new());
         };
         match board::extension(out).as_str() {
             "plt" => {
                 let (laid, whole) = self.lay_all(s)?;
-                board::isolation_plot(&self.passes, s, &whole, &laid.outline)
+                let mut warnings = Vec::new();
+                if let Some(why) =
+                    board::plot_outside_table(&self.passes, s, &whole, &laid.outline)?
+                {
+                    if !self.force {
+                        return Err(why);
+                    }
+                    warnings.push(why);
+                }
+                let text = board::isolation_plot(&self.passes, s, &whole, &laid.outline)?;
+                Ok((text, warnings))
             }
-            "dxf" => dxf::write(&self.passes),
+            "dxf" => Ok((dxf::write(&self.passes)?, Vec::new())),
             _ => {
-                let (g, _) = board::gcode_program(&self.passes, s, self.force)?;
-                Ok(format!("{}{g}", gcode_header(&layer.path, s)))
+                let (g, warnings) = board::gcode_program(&self.passes, s, self.force)?;
+                Ok((format!("{}{g}", gcode_header(layer, s)), warnings))
             }
         }
     }
@@ -1575,7 +1598,13 @@ impl Window {
         };
         let plot = board::extension(out) == "plt";
         match board::drills_job(laid.holes, &whole, &settings, self.align, plot) {
-            Ok(job) => self.write_out(out, job.text),
+            Ok(job) => match job.outside_table {
+                Some(why) => {
+                    self.status = Status::Failed(why);
+                    false
+                }
+                None => self.write_out(out, job.text),
+            },
             Err(why) => {
                 self.status = Status::Failed(why);
                 false
@@ -1681,6 +1710,8 @@ impl Window {
 pub fn read_layer(path: &Path, settings: &Settings) -> Result<Layer, String> {
     let name = board::file_name(path);
     let text = board::read_text(path, settings)?;
+    // taken as the layer is read: the file on disk may be another one when a program is written
+    let sha256 = fs::read(path).ok().map(|bytes| sha256_hex(&bytes));
     filetype::expect_gerber(&name, filetype::detect(&text))?;
     let text = settings
         .gerber_text(&text, None)
@@ -1704,6 +1735,7 @@ pub fn read_layer(path: &Path, settings: &Settings) -> Result<Layer, String> {
         name,
         scene,
         drawing,
+        sha256,
     })
 }
 
@@ -1744,9 +1776,8 @@ fn scratch_copy(file: &JobFile) -> Result<(PathBuf, PathBuf), String> {
 }
 
 /// The standard header of a G-code file: the generator and its version, the units, the file the work came from with its SHA-256 and the tools.
-fn gcode_header(layer: &Path, s: &Settings) -> String {
-    let named = fs::read(layer).ok().map(|bytes| sha256_hex(&bytes));
-    let name = board::file_name(layer);
+fn gcode_header(layer: &Layer, s: &Settings) -> String {
+    let name = board::file_name(&layer.path);
     let units = if s.output_units == Unit::Inch {
         "inch (G20)"
     } else {
@@ -1756,7 +1787,7 @@ fn gcode_header(layer: &Path, s: &Settings) -> String {
         &Header {
             generator: "eh3d-isocam",
             version: env!("CARGO_PKG_VERSION"),
-            source: named.map(|hash| (name.as_str(), hash)),
+            source: layer.sha256.clone().map(|hash| (name.as_str(), hash)),
             tools: "one tool per pass, see the comment of each pass",
         },
         units,
@@ -2648,12 +2679,17 @@ M30
         w.notes.clear();
         set(&mut w, "outline_corner_radius_mm", "1");
         // a table smaller than the board: the cut leaves it and nothing is written
-        set(&mut w, "machine_x_mm", "5");
-        set(&mut w, "machine_y_mm", "5");
+        set(&mut w, "machine_x_mm", "10");
+        set(&mut w, "machine_y_mm", "10");
         let out = dir.join("off.ncd");
         assert!(!w.export_route(&out));
         assert!(!out.exists());
-        assert!(matches!(&w.status, Status::Failed(_)), "{:?}", w.status);
+        // refused for the table and not for a value the settings do not take
+        assert!(
+            matches!(&w.status, Status::Failed(why) if why.contains("outside the table")),
+            "{:?}",
+            w.status
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 }
