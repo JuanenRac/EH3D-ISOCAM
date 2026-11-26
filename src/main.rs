@@ -2,7 +2,6 @@
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D). GPL-3.0-or-later.
 #![forbid(unsafe_code)]
 
-use eh3d_gerberviewer::eh3dfile as suite;
 use eh3d_gerberviewer::scene::{from_gerber_with, SceneOptions};
 use eh3d_isocam::board::{
     centre_of, drills_job, finish_plot, gcode_program, isolation_plot, mark_rows, mask_job,
@@ -35,6 +34,7 @@ use eh3d_parser_gcode::emit::{header_with_units, sha256_hex, Header};
 use eh3d_parser_gerber::{
     codes, parse_bytes_with, read_file_limited, InputError, InputLimits, ReadError, Severity,
 };
+use eh3d_project::manufacturing as suite;
 use std::env;
 use std::fs;
 use std::process::ExitCode;
