@@ -492,7 +492,8 @@ fn write_text(cli: &Cli, out_index: usize, out: &str, text: String) -> Result<()
             "{out}: the output file is also an input of this run; write the result to a new file"
         ));
     }
-    fs::write(out, &text).map_err(|e| format!("{out}: {e}"))?;
+    eh3d_isocam::gcode::write_program(std::path::Path::new(out), text.as_bytes())
+        .map_err(|e| format!("{out}: {e}"))?;
     if cli.to_server {
         keep(cli, out, text.as_bytes(), server::media_type(out))?;
     }

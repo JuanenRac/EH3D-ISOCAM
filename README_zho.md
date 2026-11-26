@@ -9,7 +9,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Stack-Rust-DEA592.svg" alt="Rust">
+  <img src="https://img.shields.io/badge/Stack-Rust-DEA595.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.1.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
@@ -30,7 +30,7 @@
 |---|---|
 | 版本 | `0.1.8` |
 | 成熟度 | 脚手架 |
-| 测试 | 592 |
+| 测试 | 595 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -48,7 +48,7 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 592 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
+| 测试 | 🟡 | 595 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`）：打开或拖入层、缩放和平移、编辑主要参数、导出；其逻辑已测试，发布版程序可将其绘制为图片（`--shot`），但还没有人在屏幕上实际使用过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -86,6 +86,7 @@
 * **窗口中的空运行**（`src/window.rs`）：“空运行”按钮会走一遍路径将被写成的 G 代码（不写入任何文件），并以窗口的语言显示其时间、移动范围、最大切削深度和发现的问题；“机床”分组包含快速移动速度和机床限制（`machine_profile`、工作台、边距、最大切削深度和最高主轴转速），超出限制即为一项发现。
 * **图像中的刀具路径**（`src/toolpath.rs`）：勾选“显示刀具路径”后，会走一遍路径将被写成的 G 代码，并画出机床实际会做的动作来代替各道次的色带：快速移动为灰色，下刀为红色，每段切削的颜色从蓝色（刚好在表面之下）渐变到琥珀色（最深的切削），圆弧按圆弧绘制；图像的缩放、平移和“适应窗口”对它同样有效，设置 `depth_step_mm` 现在也是窗口的一个参数。
 * **避开拐角的连接桥**（`src/drill.rs`）：`tab_corner_clearance_mm`（默认 0，即与以前一样沿每条路径均匀放置连接桥）会把落在切割拐角上的连接桥沿路径按距离的四分之一为步长移动，直到最近的一处：路径在缺口及其两侧该距离范围内的总转角不超过 20 度；找不到这样位置的连接桥保持原位，并被计数和报告（`route` 给出警告，窗口添加一条注释）。连接桥的数量（`tab_count`）、宽度（`tab_width_mm`）和两座桥之间的最短一段（`tab_min_length_mm`）都是窗口的参数。
+* **程序文件绝不会只写一半：** 程序写出的每个文件（G-code、HP-GL、钻孔文件、图纸，命令行和窗口都一样）先写到原文件旁的新文件，再改名覆盖原文件，因此中断或磁盘已满时旧文件保持完整；只读文件不会被替换。
 * **围绕电路板的切割形状** (`src/corners.rs`)：`outline_corner_radius_mm`（默认为0，保持绘制时的直角）在刀具绕行之前，用该半径的圆弧把外形各闭合路径的每个拐角圆角化；若某个拐角的两边相对该半径太短（圆弧最多占每条边的一半），则采用能放得下的最大半径，并被计数和报告。`outline_min_cutout_mm`（默认为0）会忽略外形中的镂空（板内的闭合路径），其外接框没有任何一边长于该值。两者都适用于 `route` 和 `plot_outline` 的切割，也是窗口的参数，窗口会在提示中说明有多少拐角得到了更小的半径、有多少镂空被忽略。
 * **对照机床工作台检查切割：** 当设置描述了工作台（`machine_profile`，或 `machine_x_mm` 与 `machine_y_mm`，以及 `machine_margin_mm`）时，`route` 和窗口会拒绝超出工作台的切割，并给出路径和其所到之处；命令行中使用 `--force` 会带警告写出。未描述工作台时不做任何检查，与以前相同。钻孔文件或钻孔绘图中的孔以及隔离绘图也对照同一工作台检查，并以相同方式拒绝。
 * **用环形路径清除区域**（`src/clearing.rs`）：设置 `rubout_style = rings` 后，`rubout-area` 会用沿边缘向内的封闭环代替往复直线，来填充一个矩形（`--area`）或文件中的封闭路径（`--contour`，奇偶填充，所以套在另一条路径内的路径是孔）；第一圈距边缘半个刀具，之后每圈再向内 `tool * (1 - rubout_overlap)` 一步，若会留下一条窄带，则在中间再加一圈。`rubout_ring_order`（通常为 `outside-in`，或 `inside-out`）无论 `ordering` 如何设置都保留在 G 代码中。写出任何内容之前，会先对照机床工作台检查各条路径，超出的路径会连同序号和所在道次一起被拒绝（`--force` 仍可写出）；该检查同样适用于直线方式。
@@ -231,7 +232,7 @@ EH3D-ISOCAM/
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   参与贡献、行为准则和许可证
 ```
 
-**套件项目。** `.eh3d` 文件为每个程序保存一个分支。`project info FILE.eh3d` 显示作业（`manufacturing/` 分支，即一个 `.eh3dproj` 包）的图层和项目中保存的程序；`project isolate FILE.eh3d [--layer NAME] [--plt]` 用与 `isolate` 相同的选项和拒绝条件，对作业的每个铜层（或指定的图层）做隔离铣削，并连同该图层的副本和来源分支的内容只保存到 `isocam/` 分支。之后作业如有改动，`project info` 会提示程序已过期，并以 2 结束。在窗口中，拖入 `.eh3d` 会打开其作业的铜层（从列表中选择），程序可保存回项目。
+**套件项目。** `.eh3d` 文件为每个程序保存一个分支。`project info FILE.eh3d` 显示作业（`manufacturing/` 分支，即一个 `.eh3dproj` 包）的图层和项目中保存的程序；`project isolate FILE.eh3d [--layer NAME] [--plt]` 用与 `isolate` 相同的选项和拒绝条件，对作业的每个铜层（或指定的图层）做隔离铣削，并连同该图层的副本和来源分支的内容只保存到 `isocam/` 分支。之后作业如有改动，`project info` 会提示程序已过期，并以 2 结束。在窗口中，拖入 `.eh3d` 会打开其作业的铜层（从列表中选择），程序可保存回项目。当保存会移除项目或其分支的签名时，窗口会先询问，不同意则什么也不写。
 
 ## ⚙️ 配置
 
@@ -255,7 +256,7 @@ cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # 
 
 ## 🧪 测试
 
-测试套件有 592 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 595 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 

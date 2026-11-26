@@ -10,6 +10,7 @@ use crate::window::{DrillUnits, Job, Section, Status, Window};
 use eframe::egui::{
     self, Color32, FontData, FontDefinitions, FontFamily, Pos2, Rect, Stroke, Vec2,
 };
+use eh3d_project::suitetext::S;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -664,6 +665,38 @@ impl App {
         }
     }
 
+    /// Asks before a write that would remove a signature of the project.
+    fn confirm_window(&mut self, ctx: &egui::Context) {
+        let Some(asked) = &self.win.pending else {
+            return;
+        };
+        let lang = self.win.lang;
+        let lines: Vec<String> = asked.iter().map(|w| w.text(lang.code())).collect();
+        let (mut write, mut cancel) = (false, false);
+        let answer = egui::Modal::new(egui::Id::unique("confirm_signature")).show(ctx, |ui| {
+            ui.set_max_width(420.0);
+            ui.label(
+                egui::RichText::new(S::ConfirmTitle.tr(lang.code()))
+                    .strong()
+                    .color(ACCENT),
+            );
+            ui.separator();
+            for line in &lines {
+                ui.colored_label(DANGER, line.as_str());
+            }
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                write = ui.button(S::Write.tr(lang.code())).clicked();
+                cancel = ui.button(Msg::Cancel.tr(lang)).clicked();
+            });
+        });
+        if write {
+            self.win.confirm_save();
+        } else if cancel || answer.should_close() {
+            self.win.cancel_save();
+        }
+    }
+
     fn dialog_window(&mut self, ctx: &egui::Context) {
         let Some(mut dialog) = self.dialog.take() else {
             return;
@@ -789,6 +822,7 @@ impl eframe::App for App {
         self.side_panel(ui);
         self.canvas(ui);
         self.dialog_window(&ctx);
+        self.confirm_window(&ctx);
         self.dry_run_window(&ctx);
         self.shot_tick(&ctx);
     }

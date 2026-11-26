@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A program is written in one step:** every output of the command line and of the window goes to a new file beside the real one and is renamed over it, so that a cut or a full disk leaves the old program whole and never half of a new one for the machine. A read-only file is not replaced, and a device or a pipe is written to directly.
+- **The window asks before it removes a signature:** saving into a project that is signed, or whose branch `isocam/` is, shows what would be removed and writes nothing until it is agreed.
+- 3 new tests.
+
 ## [0.1.8] - Safer project results, machine limits of drills and plots, and many more tests
 
 - **The program of one side no longer takes the place of the other:** two copper layers with the same name but for the extension (`board.gtl` and `board.gbl`) were both kept as `iso-board.nc`, so the second silently replaced the first. When two layers would share a name, each is now kept with its whole name (`iso+board.gtl.nc`). A file name that two layers share is no longer chosen by guess with `--layer`: the path says which.

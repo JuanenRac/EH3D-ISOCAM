@@ -9,7 +9,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Stack-Rust-DEA592.svg" alt="Rust">
+  <img src="https://img.shields.io/badge/Stack-Rust-DEA595.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.1.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
@@ -17,7 +17,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 592 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il a une fenêtre (compilée avec `--features gui`) qui ouvre une couche, un fichier de perçage, un contour, une couche de masque et une table de points de référence, retourne la carte et la répète sur un panneau, dessine le cuivre, les perçages, le contour et les trajets et écrit les mêmes fichiers que la ligne de commande, mais qui n'a pas encore été vue sur un écran ; il n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 595 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il a une fenêtre (compilée avec `--features gui`) qui ouvre une couche, un fichier de perçage, un contour, une couche de masque et une table de points de référence, retourne la carte et la répète sur un panneau, dessine le cuivre, les perçages, le contour et les trajets et écrit les mêmes fichiers que la ligne de commande, mais qui n'a pas encore été vue sur un écran ; il n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.1.8` |
 | Maturité | Échafaudage |
-| Tests | 592 |
+| Tests | 595 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -48,7 +48,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Fichiers et disposition | 🟡 | lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, ajoute des trous d'alignement et vérifie les règles de conception avec l'endroit de chaque constat ; testé sur un ordinateur, pas avec des fichiers écrits par d'autres programmes ni sur une machine. |
 | Isolation forcée, correction, masque | 🟡 | trajets forcés dans les espaces où l'outil ne passe pas, trajets allégés, échelle et correction par points de référence, ouvertures du masque de soudure, unités et aperçu des passes ; testé sur un ordinateur avec des couches générées et des entrées abîmées, jamais avec de vraies cartes ni sur une machine, et la correction n'a pas été comparée à de vraies mesures d'une caméra. |
 | Ligne de commande | 🟡 | `eh3d-isocam` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 592 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. Elles incluent une simulation à graine fixe de une machine Bungard avec la course de sa table, avec pannes injectées et reprise. |
+| Tests | 🟡 | 595 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. Elles incluent une simulation à graine fixe de une machine Bungard avec la course de sa table, avec pannes injectées et reprise. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🟠 | Écrite (egui, `--features gui`) : ouvrir ou déposer une couche, zoom et déplacement, modifier les principaux paramètres, exporter ; sa logique est testée et le programme d'une version la dessine dans une image (`--shot`), mais personne ne l'a encore utilisée sur un écran. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -86,6 +86,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 * **La passe à blanc dans la fenêtre** (`src/window.rs`) : le bouton « Passe à blanc » parcourt le G-code sous lequel les trajets seraient écrits (rien n'est écrit) et montre son temps, la boîte dans laquelle il se déplace, la coupe la plus profonde et ses constats dans la langue de la fenêtre ; le groupe « Machine » réunit la vitesse rapide et les limites de la machine (`machine_profile`, la table, la marge, la coupe la plus profonde et la broche la plus rapide), et une limite franchie est un constat.
 * **Le parcours de l'outil dans l'image** (`src/toolpath.rs`) : la case « Montrer le parcours de l'outil » parcourt le G-code sous lequel les trajets seraient écrits et dessine ce que ferait la machine à la place des bandes des passes : les déplacements rapides en gris, les plongées en rouge et chaque tronçon de coupe dans une couleur allant du bleu (juste sous la surface) à l'ambre (la coupe la plus profonde), les arcs étant dessinés en arcs ; le zoom, le déplacement et « Ajuster » de l'image y agissent, et le réglage `depth_step_mm` est désormais un paramètre de la fenêtre.
 * **Ponts écartés des coins** (`src/drill.rs`) : `tab_corner_clearance_mm` (0 par défaut, ce qui répartit les ponts également le long de chaque trajet comme avant) déplace un pont qui tomberait sur un coin de la coupe le long du trajet, par pas d'un quart de la distance, jusqu'à l'endroit le plus proche où le trajet tourne d'au plus 20 degrés dans l'espace et la distance de chaque côté ; un pont qui ne trouve pas un tel endroit reste où il était et il est compté et signalé (`route` avertit, la fenêtre ajoute une note). Le nombre de ponts (`tab_count`), leur largeur (`tab_width_mm`) et le plus court tronçon entre deux (`tab_min_length_mm`) sont des paramètres de la fenêtre.
+* **Un programme n'est jamais écrit à moitié :** chaque fichier que le programme écrit (G-code, HP-GL, fichiers de perçage, dessins, depuis la ligne de commande et la fenêtre) va dans un nouveau fichier à côté du vrai puis est renommé par-dessus, si bien qu'une coupure ou un disque plein laisse l'ancien fichier entier ; un fichier en lecture seule n'est pas remplacé.
 * **La forme de la découpe autour de la carte** (`src/corners.rs`) : `outline_corner_radius_mm` (0 par défaut, ce qui garde les coins vifs comme dessinés) arrondit chaque coin des chemins fermés du contour avec un arc de ce rayon avant que l'outil en fasse le tour ; un coin dont les côtés sont trop courts pour le rayon (un arc prend au plus la moitié de chaque côté) reçoit le plus grand rayon possible et est compté et signalé. `outline_min_cutout_mm` (0 par défaut) omet les découpes du contour (chemins fermés à l'intérieur de la carte) dont la boîte n'a aucun côté plus long que cette valeur. Les deux s'appliquent à `route` et à la découpe de `plot_outline`, et sont des paramètres de la fenêtre, qui indique dans ses notes combien de coins ont reçu un rayon plus petit et combien de découpes ont été omises.
 * **La découpe vérifiée par rapport à la table de la machine :** quand les réglages décrivent une table (`machine_profile`, ou `machine_x_mm` et `machine_y_mm`, avec `machine_margin_mm`), `route` et la fenêtre refusent une découpe qui en sort, avec le chemin et l'endroit où il va ; `--force` l'écrit avec un avertissement en ligne de commande. Sans table décrite, rien n'est vérifié, comme avant. Les trous d'un fichier de perçage ou d'un tracé de trous et un tracé de l'isolation sont vérifiés par rapport à la même table et refusés de la même façon.
 * **Dégagement d'une zone par anneaux** (`src/clearing.rs`) : avec `rubout_style = rings`, `rubout-area` remplit un rectangle (`--area`) ou les trajets fermés d'un fichier (`--contour`, remplissage pair-impair : un trajet dans un autre est un trou) par des anneaux fermés qui suivent le bord vers l'intérieur au lieu de lignes en va-et-vient ; le premier anneau est à un demi-outil du bord, les suivants à un pas de `tool * (1 - rubout_overlap)` plus loin, et un anneau le long du milieu s'ajoute quand une bande resterait. `rubout_ring_order` (`outside-in`, l'usage, ou `inside-out`) est gardé dans le G-code quoi que dise `ordering`. Avant d'écrire quoi que ce soit, les trajets sont vérifiés contre la table de la machine et un trajet qui en sort est refusé avec son numéro et sa passe (`--force` l'écrit quand même) ; la vérification vaut aussi pour les lignes.
@@ -231,7 +232,7 @@ EH3D-ISOCAM/
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   contribuer, code de conduite et licence
 ```
 
-**Le projet de la suite.** Un fichier `.eh3d` contient une branche par programme. `project info FICHIER.eh3d` montre les couches du travail (la branche `manufacturing/`, un paquet `.eh3dproj`) et les programmes gardés dans le projet ; `project isolate FICHIER.eh3d [--layer NOM] [--plt]` isole chaque couche de cuivre du travail (ou celle nommée), avec les mêmes options et les mêmes refus que `isolate`, et garde le programme uniquement dans la branche `isocam/`, avec une copie de la couche et le contenu de la branche d'où elle vient. Si le travail change ensuite, `project info` signale que les programmes sont périmés et se termine avec 2. Dans la fenêtre, un `.eh3d` déposé ouvre les couches de cuivre de son travail (choisies dans une liste) et le programme est enregistré dans le projet.
+**Le projet de la suite.** Un fichier `.eh3d` contient une branche par programme. `project info FICHIER.eh3d` montre les couches du travail (la branche `manufacturing/`, un paquet `.eh3dproj`) et les programmes gardés dans le projet ; `project isolate FICHIER.eh3d [--layer NOM] [--plt]` isole chaque couche de cuivre du travail (ou celle nommée), avec les mêmes options et les mêmes refus que `isolate`, et garde le programme uniquement dans la branche `isocam/`, avec une copie de la couche et le contenu de la branche d'où elle vient. Si le travail change ensuite, `project info` signale que les programmes sont périmés et se termine avec 2. Dans la fenêtre, un `.eh3d` déposé ouvre les couches de cuivre de son travail (choisies dans une liste) et le programme est enregistré dans le projet. Quand l'enregistrement retirerait une signature du projet ou de sa branche, la fenêtre demande d'abord et n'écrit rien sans accord.
 
 ## ⚙️ Configuration
 
@@ -255,7 +256,7 @@ Pour prendre une capture de la fenêtre sans l'ouvrir à la main, lancez-la avec
 
 ## 🧪 Tests
 
-La suite compte 592 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 595 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 

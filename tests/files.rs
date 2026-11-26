@@ -5,9 +5,12 @@ use eh3d_isocam::drill::{
     add_tabs, add_tabs_clear_of_corners, join_runs, read_drills, read_outline, route_outline,
     write_drills, write_route_excellon, Hole, Outline, Tabs,
 };
+use eh3d_isocam::gcode::write_program;
 use eh3d_isocam::hpgl::{write_with, PenBy};
 use eh3d_isocam::isolate::Pass;
+use eh3d_isocam::lang::Lang;
 use eh3d_isocam::order::{arrange, is_clockwise, Cut, Order};
+use eh3d_isocam::window::Window;
 
 fn hole(tool: u8, x: f64, y: f64, d: f64) -> Hole {
     Hole {
@@ -722,4 +725,73 @@ fn the_drill_order_setting_is_written_and_read_back() {
     assert!(Settings::parse("drill_order = x\n")
         .unwrap_err()
         .contains("line 1"));
+}
+
+/// The names of the files of a folder, in order.
+fn names(dir: &std::path::Path) -> Vec<String> {
+    let mut all: Vec<String> = std::fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    all.sort();
+    all
+}
+
+#[test]
+fn a_program_replaces_the_old_one_whole_and_leaves_nothing_beside_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("board.nc");
+    write_program(&out, b"first").unwrap();
+    // another name of the old file: written in place, it would change too
+    let other = dir.path().join("other.nc");
+    std::fs::hard_link(&out, &other).unwrap();
+    // a file with a name like the one of a temporary file is not touched
+    let neighbour = dir.path().join("board.nc.tmp");
+    std::fs::write(&neighbour, "mine").unwrap();
+    write_program(&out, b"second").unwrap();
+    assert_eq!(std::fs::read(&out).unwrap(), b"second");
+    assert_eq!(std::fs::read(&other).unwrap(), b"first");
+    assert_eq!(std::fs::read(&neighbour).unwrap(), b"mine");
+    assert_eq!(names(dir.path()), ["board.nc", "board.nc.tmp", "other.nc"]);
+}
+
+#[test]
+fn a_program_that_cannot_be_written_leaves_what_was_there() {
+    let dir = tempfile::tempdir().unwrap();
+    // a folder is not replaced by a file
+    let folder = dir.path().join("folder.nc");
+    std::fs::create_dir(&folder).unwrap();
+    assert!(write_program(&folder, b"new").is_err());
+    assert!(folder.is_dir());
+    // a folder that is not there
+    assert!(write_program(&dir.path().join("none").join("a.nc"), b"new").is_err());
+    // a file that may not be written stays as it was
+    let kept = dir.path().join("kept.nc");
+    std::fs::write(&kept, "old").unwrap();
+    let mut read_only = std::fs::metadata(&kept).unwrap().permissions();
+    read_only.set_readonly(true);
+    std::fs::set_permissions(&kept, read_only.clone()).unwrap();
+    assert!(write_program(&kept, b"new").is_err());
+    assert_eq!(std::fs::read(&kept).unwrap(), b"old");
+    assert_eq!(names(dir.path()), ["folder.nc", "kept.nc"]);
+    // so that the folder can be removed on every system
+    #[allow(clippy::permissions_set_readonly_false)]
+    read_only.set_readonly(false);
+    std::fs::set_permissions(&kept, read_only).unwrap();
+}
+
+#[test]
+fn the_window_replaces_a_program_in_one_step() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("board.nc");
+    let other = dir.path().join("other.nc");
+    std::fs::write(&out, "an old program\n").unwrap();
+    std::fs::hard_link(&out, &other).unwrap();
+    let mut w = Window::new(Lang::En);
+    let sample = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/sample.gtl");
+    assert!(w.open(&sample), "{:?}", w.status);
+    assert!(w.export(&out), "{:?}", w.status);
+    assert_ne!(std::fs::read_to_string(&out).unwrap(), "an old program\n");
+    assert_eq!(std::fs::read_to_string(&other).unwrap(), "an old program\n");
+    assert_eq!(names(dir.path()), ["board.nc", "other.nc"]);
 }

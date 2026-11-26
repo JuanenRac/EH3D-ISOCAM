@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because no board has been milled with these paths and nothing of this program has run on a real machine.
 
-The register has 52 requirements: 42 implemented, 6 prototype, 4 planned and 0 validated. By progress: 42 done, 6 partial, 1 pending and 3 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 54 requirements: 44 implemented, 6 prototype, 4 planned and 0 validated. By progress: 44 done, 6 partial, 1 pending and 3 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -106,3 +106,5 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | ISOC-050 | Each program is kept in the branch `isocam/` only, and a refused isolation leaves the project as it was. | implemented | done | host-test | `project::isolate_keeps_a_program_for_each_copper_layer_in_its_own_branch_only` | - |
 | ISOC-051 | A job that changes makes the programs out of date, and one made again keeps the others only while the job is the same. | implemented | done | host-test | `project::a_job_that_changes_makes_the_programs_out_of_date_until_they_are_made_again` | - |
 | ISOC-052 | The window opens the copper layers of a project and saves their programs. | prototype | partial | host-test | `project::the_window_opens_the_copper_of_a_project_and_saves_its_programs` | The logic is tested without a screen; no person has looked at the window. |
+| ISOC-053 | Every output is written to a new file and renamed over the old one, so that a failure leaves the old file whole, and a read-only file is not replaced. | implemented | done | host-test | `files::a_program_replaces_the_old_one_whole_and_leaves_nothing_beside_it` | A power cut during the rename has not been tried. |
+| ISOC-054 | The window asks before a write that would remove a signature of the project and writes nothing unless it is agreed. | implemented | done | host-test | `project::the_window_says_when_keeping_a_program_removed_the_signature_of_the_project` | - |

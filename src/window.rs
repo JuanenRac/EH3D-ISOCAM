@@ -23,6 +23,8 @@ use eh3d_gerberviewer::scene::{from_gerber_with, Bounds, Scene, SceneOptions};
 use eh3d_parser_gcode::emit::{header_with_units, sha256_hex, Header};
 use eh3d_parser_gerber::{parse_bytes_with, InputLimits};
 use eh3d_project::manufacturing::{self as suite, JobFile};
+use eh3d_project::suitetext::Said;
+use eh3d_project::suiteview;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -655,6 +657,8 @@ pub struct Window {
     pub job_layers: Vec<JobFile>,
     /// The one of `job_layers` that is open.
     pub job_index: Option<usize>,
+    /// What a person has to agree to before the program is written into the project; `None` while nothing is asked.
+    pub pending: Option<Vec<Said>>,
     base: Settings,
 }
 
@@ -689,6 +693,7 @@ impl Window {
             project: None,
             job_layers: Vec::new(),
             job_index: None,
+            pending: None,
             base,
         }
     }
@@ -953,6 +958,7 @@ impl Window {
         );
         self.project = Some(path.to_path_buf());
         self.job_layers = layers;
+        self.pending = None;
         if !self.choose_job_layer(0) {
             (self.project, self.job_layers, self.job_index) = before;
             return false;
@@ -986,6 +992,7 @@ impl Window {
                 layer.path = project.with_file_name(name);
                 self.take_layer(layer);
                 self.job_index = Some(index);
+                self.pending = None;
                 true
             }
             Err(why) => {
@@ -995,8 +1002,50 @@ impl Window {
         }
     }
 
-    /// Makes the G-code of the layer of the job and keeps it in the branch `isocam/` of the project. What stops an export stops this too.
+    /// What writing the program into the project would take away: its signature, or the one of the branch of this program.
+    fn signature_warnings(project: &Path) -> Result<Vec<Said>, String> {
+        let own = eh3dfile::KIT.branch;
+        let seen = suiteview::view(project, own)?.own_hash;
+        // the project as it is now, so that only what is said about its signatures is left to say
+        suiteview::warnings(project, Some(project), seen.as_deref(), own)
+    }
+
+    /// Keeps the program of the layer of the job in the project, but asks first (`pending`) when writing would remove a signature: nothing is written until
+    /// [`Window::confirm_save`].
     pub fn save_project(&mut self) -> bool {
+        self.pending = None;
+        let (Some(project), Some(_)) = (
+            self.project.clone(),
+            self.job_index.and_then(|i| self.job_layers.get(i)),
+        ) else {
+            self.status = Status::NoProject;
+            return false;
+        };
+        match Self::signature_warnings(&project) {
+            Ok(asked) if asked.is_empty() => self.write_project(),
+            Ok(asked) => {
+                self.pending = Some(asked);
+                false
+            }
+            Err(why) => {
+                self.status = Status::Failed(why);
+                false
+            }
+        }
+    }
+
+    /// The person agreed: the program is written. Nothing happens when nothing was asked.
+    pub fn confirm_save(&mut self) -> bool {
+        self.pending.take().is_some() && self.write_project()
+    }
+
+    /// The person did not agree: the project stays as it is.
+    pub fn cancel_save(&mut self) {
+        self.pending = None;
+    }
+
+    /// Makes the G-code of the layer of the job and keeps it in the branch `isocam/` of the project. What stops an export stops this too.
+    fn write_project(&mut self) -> bool {
         let file = self.job_index.and_then(|i| self.job_layers.get(i)).cloned();
         let (Some(project), Some(file)) = (self.project.clone(), file) else {
             self.status = Status::NoProject;
@@ -1054,6 +1103,7 @@ impl Window {
                 self.project = None;
                 self.job_layers.clear();
                 self.job_index = None;
+                self.pending = None;
                 self.layer = Some(layer);
                 self.passes.clear();
                 self.unfixed = 0;
@@ -1444,7 +1494,7 @@ impl Window {
 
     /// Writes a file and says where.
     fn write_out(&mut self, out: &Path, text: String) -> bool {
-        match fs::write(out, text) {
+        match crate::gcode::write_program(out, text.as_bytes()) {
             Ok(()) => {
                 self.status = Status::Exported {
                     file: board::file_name(out),
