@@ -3,6 +3,9 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+
+## [0.1.7] - Isolation programs straight from the shared project of the suite
+
 - **The reading and writing of the job of an `.eh3d` project are shared:** they are the module `eh3d_project::manufacturing` of EH3D-COMMON, the same for every manufacturing program; the commands, the window and the files of a project do not change.
 - **The project of the suite (`.eh3d`):** `project info FILE` shows the layers of the job (the branch `manufacturing/`, a `.eh3dproj` package) and the programs kept in the project, and `project isolate FILE` isolates each copper layer of the job (or the one named with `--layer`) into a program kept in the branch `isocam/` only, with a copy of the layer and a reference to the content of the job. A job that changes afterwards makes the programs out of date (exit 2). In the window, a dropped `.eh3d` file opens the copper layers of its job, chosen from a list, and the program can be saved back to the project; the words are in the eight languages and no person has looked at the window yet. 5 new tests with invented projects.
 - The crate `eh3d-project` of EH3D-COMMON is now used; Rust 1.89 or newer is needed.
