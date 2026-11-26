@@ -6,7 +6,7 @@ EH3D-ISOCAM is a working program on a computer: a library (`eh3d_isocam`), a com
 
 ## Capabilities
 
-The official state of each capability is in `REQUIREMENTS.md`. The register has 52 requirements: 42 implemented, 6 prototype, 4 planned and 0 validated. By progress: 42 done, 6 partial, 1 pending and 3 blocked. This page never states a state that `REQUIREMENTS.md` does not.
+The official state of each capability is in `REQUIREMENTS.md`. The register has 54 requirements: 44 implemented, 6 prototype, 4 planned and 0 validated. By progress: 44 done, 6 partial, 1 pending and 3 blocked. This page never states a state that `REQUIREMENTS.md` does not.
 
 ## Open questions
 

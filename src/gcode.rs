@@ -6,6 +6,8 @@ use crate::isolate::Pass;
 use crate::order::{arrange, Order};
 use crate::units::Unit;
 use eh3d_parser_gcode::emit::number;
+use std::io::Write;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Job {
@@ -396,4 +398,48 @@ pub fn write_fitted(
     }
     g.push_str("M5\nM2\n");
     Ok(g)
+}
+
+/// Writes a program (or any other output) in one step: `data` goes to a new file beside `file`, which is then renamed over it, so that a cut, a full disk or a program that is
+/// closed leaves the old file whole and never half of the new one for the machine to run. When anything fails the new file is removed. A file that may not be written stays as it
+/// is, and what is there and is not a file (a device, a pipe) is written to directly, because it cannot be replaced.
+pub fn write_program(file: &std::path::Path, data: &[u8]) -> std::io::Result<()> {
+    // two writes of the same process never share the name of their new file
+    static COUNT: AtomicU64 = AtomicU64::new(0);
+    let old = std::fs::metadata(file).ok();
+    if old.as_ref().is_some_and(|m| !m.is_file()) {
+        return std::fs::write(file, data);
+    }
+    if old.as_ref().is_some_and(|m| m.permissions().readonly()) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "the file is read-only",
+        ));
+    }
+    let mut name = file.as_os_str().to_owned();
+    name.push(format!(
+        ".{}-{}.tmp",
+        std::process::id(),
+        COUNT.fetch_add(1, Ordering::Relaxed)
+    ));
+    let new = std::path::PathBuf::from(name);
+    // `create_new`: a file that is there with that name is not ours, so it is neither written over nor removed
+    let mut handle = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&new)?;
+    let done = handle
+        .write_all(data)
+        .and_then(|()| match &old {
+            // the program keeps the permissions it had
+            Some(m) => handle.set_permissions(m.permissions()),
+            None => Ok(()),
+        })
+        .and_then(|()| handle.sync_all());
+    drop(handle);
+    let done = done.and_then(|()| std::fs::rename(&new, file));
+    if done.is_err() {
+        let _ = std::fs::remove_file(&new);
+    }
+    done
 }

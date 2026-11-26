@@ -349,10 +349,37 @@ fn the_window_says_when_keeping_a_program_removed_the_signature_of_the_project()
         .unwrap();
     let mut w = Window::new(Lang::En);
     assert!(w.open(&path), "{:?}", w.status);
-    assert!(w.save_project(), "{:?}", w.status);
+    // the window asks first, and nothing is written until the person agrees
+    let before = std::fs::read(&path).unwrap();
+    assert!(!w.save_project(), "{:?}", w.status);
+    let asked: Vec<String> = w
+        .pending
+        .as_ref()
+        .expect("the window asks")
+        .iter()
+        .map(|s| s.text("en"))
+        .collect();
+    assert!(asked.iter().any(|n| n.contains("signature")), "{asked:?}");
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    // not agreeing leaves the project as it was, and agreeing afterwards does nothing
+    w.cancel_save();
+    assert!(w.pending.is_none() && !w.confirm_save());
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    // opening again forgets the question
+    assert!(!w.save_project());
+    assert!(w.open(&path), "{:?}", w.status);
+    assert!(w.pending.is_none() && !w.confirm_save());
+    // agreeing writes and tells what was removed
+    assert!(!w.save_project());
+    assert!(w.confirm_save(), "{:?}", w.status);
+    assert!(w.pending.is_none());
     assert!(
         w.notes.iter().any(|n| n.contains("signature")),
         "{:?}",
         w.notes
     );
+    // with no signature left there is nothing to ask
+    assert!(w.open(&path), "{:?}", w.status);
+    assert!(w.save_project(), "{:?}", w.status);
+    assert!(w.pending.is_none());
 }

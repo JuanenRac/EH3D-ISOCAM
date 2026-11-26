@@ -9,7 +9,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Stack-Rust-DEA592.svg" alt="Rust">
+  <img src="https://img.shields.io/badge/Stack-Rust-DEA595.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.1.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 592 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 595 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.1.8` |
 | Maturità | Impalcatura |
-| Test | 592 |
+| Test | 595 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,7 +48,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 592 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
+| Test | 🟡 | 595 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata e il programma di una versione la disegna in un'immagine (`--shot`), ma nessuno l'ha ancora usata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -86,6 +86,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **La prova a vuoto nella finestra** (`src/window.rs`): il pulsante «Prova a vuoto» percorre il G-code con cui sarebbero scritti i percorsi (non si scrive nulla) e mostra il tempo, la scatola in cui si muove, il taglio più profondo e i suoi rilievi nella lingua della finestra; il gruppo «Macchina» raccoglie la velocità rapida e i limiti della macchina (`machine_profile`, il piano, il margine, il taglio più profondo e il mandrino più veloce), e un limite superato è un rilievo.
 * **Il percorso dell'utensile nell'immagine** (`src/toolpath.rs`): la casella «Mostra il percorso dell'utensile» percorre il G-code con cui sarebbero scritti i percorsi e disegna ciò che farebbe la macchina al posto delle bande delle passate: i movimenti rapidi in grigio, le discese in rosso e ogni tratto di taglio in un colore dal blu (appena sotto la superficie) all'ambra (il taglio più profondo), con gli archi disegnati come archi; lo zoom, lo spostamento e «Adatta» dell'immagine agiscono su di esso, e l'impostazione `depth_step_mm` è ora un parametro della finestra.
 * **Ponti lontani dagli angoli** (`src/drill.rs`): `tab_corner_clearance_mm` (0 per impostazione predefinita, che distribuisce i ponti in modo uniforme lungo ogni percorso come prima) sposta un ponte che cadrebbe su un angolo del taglio lungo il percorso, a passi di un quarto della distanza, fino al punto più vicino in cui il percorso gira al massimo di 20 gradi entro il varco e la distanza da ogni lato; un ponte che non trova un tale punto resta dov'era ed è contato e segnalato (`route` avvisa, la finestra aggiunge una nota). Il numero dei ponti (`tab_count`), la loro larghezza (`tab_width_mm`) e il tratto più corto fra due (`tab_min_length_mm`) sono parametri della finestra.
+* **Un programma non resta mai scritto a metà:** ogni file che il programma scrive (G-code, HP-GL, file di foratura, disegni, dalla riga di comando e dalla finestra) va in un nuovo file accanto a quello vero e viene rinominato sopra di esso, così un'interruzione o un disco pieno lasciano intero il file vecchio; un file di sola lettura non viene sostituito.
 * **La forma del taglio attorno alla scheda** (`src/corners.rs`): `outline_corner_radius_mm` (0 per impostazione predefinita, che lascia gli angoli vivi come disegnati) arrotonda ogni angolo dei percorsi chiusi del contorno con un arco di quel raggio prima che l'utensile lo percorra; un angolo i cui lati sono troppo corti per il raggio (un arco occupa al massimo metà di ogni lato) riceve il raggio più grande che entra e viene contato e segnalato. `outline_min_cutout_mm` (0 per impostazione predefinita) omette i ritagli del contorno (percorsi chiusi dentro la scheda) il cui riquadro non ha alcun lato più lungo di quel valore. Entrambi valgono per `route` e per il taglio di `plot_outline` e sono parametri della finestra, che nelle sue note dice quanti angoli hanno ricevuto un raggio minore e quanti ritagli sono stati omessi.
 * **Il taglio verificato rispetto al piano della macchina:** quando le impostazioni descrivono un piano (`machine_profile`, oppure `machine_x_mm` e `machine_y_mm`, con `machine_margin_mm`), `route` e la finestra rifiutano un taglio che ne esce, con il percorso e il punto in cui va; `--force` lo scrive con un avviso sulla riga di comando. Senza un piano descritto non si controlla nulla, come prima. I fori di un file di foratura o di un plot di fori e un plot dell'isolamento sono verificati rispetto allo stesso piano e rifiutati allo stesso modo.
 * **Svuotamento di un'area con anelli** (`src/clearing.rs`): con `rubout_style = rings`, `rubout-area` riempie un rettangolo (`--area`) o i percorsi chiusi di un file (`--contour`, riempimento pari-dispari: un percorso dentro un altro è un foro) con anelli chiusi che seguono il bordo verso l'interno invece di linee avanti e indietro; il primo anello è a mezzo utensile dal bordo, i successivi a un passo di `tool * (1 - rubout_overlap)` più dentro, e si aggiunge un anello lungo il centro quando resterebbe una striscia. `rubout_ring_order` (`outside-in`, l'uso normale, o `inside-out`) resta nel G-code qualunque cosa dica `ordering`. Prima di scrivere qualcosa, i percorsi sono controllati contro il piano della macchina e un percorso che ne esce è rifiutato con il suo numero e la sua passata (`--force` lo scrive comunque); il controllo vale anche per le linee.
@@ -231,7 +232,7 @@ EH3D-ISOCAM/
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   come contribuire, codice di condotta e licenza
 ```
 
-**Il progetto della suite.** Un file `.eh3d` ha un ramo per ogni programma. `project info FILE.eh3d` mostra i livelli del lavoro (il ramo `manufacturing/`, un pacchetto `.eh3dproj`) e i programmi tenuti nel progetto; `project isolate FILE.eh3d [--layer NOME] [--plt]` isola ogni livello rame del lavoro (o quello nominato), con le stesse opzioni e gli stessi rifiuti di `isolate`, e tiene il programma solo nel ramo `isocam/`, con una copia del livello e il contenuto del ramo da cui viene. Se poi il lavoro cambia, `project info` avvisa che i programmi sono superati e termina con 2. Nella finestra, un `.eh3d` trascinato apre i livelli rame del suo lavoro (scelti da un elenco) e il programma si salva nel progetto.
+**Il progetto della suite.** Un file `.eh3d` ha un ramo per ogni programma. `project info FILE.eh3d` mostra i livelli del lavoro (il ramo `manufacturing/`, un pacchetto `.eh3dproj`) e i programmi tenuti nel progetto; `project isolate FILE.eh3d [--layer NOME] [--plt]` isola ogni livello rame del lavoro (o quello nominato), con le stesse opzioni e gli stessi rifiuti di `isolate`, e tiene il programma solo nel ramo `isocam/`, con una copia del livello e il contenuto del ramo da cui viene. Se poi il lavoro cambia, `project info` avvisa che i programmi sono superati e termina con 2. Nella finestra, un `.eh3d` trascinato apre i livelli rame del suo lavoro (scelti da un elenco) e il programma si salva nel progetto. Quando il salvataggio toglierebbe una firma del progetto o del suo ramo, la finestra chiede prima e senza consenso non scrive nulla.
 
 ## ⚙️ Configurazione
 
@@ -255,7 +256,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 592 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 595 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
