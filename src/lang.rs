@@ -221,10 +221,16 @@ pub enum Msg {
     ChecksFound,
     ChecksClean,
     NoteArcsFitted,
+    SaveProject,
+    JobLayer,
+    ProjectOpened,
+    ProjectSaved,
+    ProjectStale,
+    NoProject,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 133] = [
+    pub const ALL: [Msg; 139] = [
         Msg::Open,
         Msg::Export,
         Msg::Compute,
@@ -358,6 +364,12 @@ impl Msg {
         Msg::ChecksFound,
         Msg::ChecksClean,
         Msg::NoteArcsFitted,
+        Msg::SaveProject,
+        Msg::JobLayer,
+        Msg::ProjectOpened,
+        Msg::ProjectSaved,
+        Msg::ProjectStale,
+        Msg::NoProject,
     ];
 
     /// The words in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese.
@@ -1692,6 +1704,66 @@ impl Msg {
                 "{1} 回ではなく {0} 回の移動: 円弧を {2} mm 以内で当てはめました",
                 "{0} 次移动而不是 {1} 次：圆弧拟合误差在 {2} mm 以内",
                 "{0} movimentos em vez de {1}: arcos ajustados a {2} mm",
+            ],
+            Msg::SaveProject => [
+                "Save to the project",
+                "Guardar en el proyecto",
+                "Im Projekt speichern",
+                "Enregistrer dans le projet",
+                "Salva nel progetto",
+                "プロジェクトに保存",
+                "保存到项目",
+                "Guardar no projeto",
+            ],
+            Msg::JobLayer => [
+                "Copper layer of the job",
+                "Capa de cobre del trabajo",
+                "Kupferebene des Auftrags",
+                "Couche de cuivre du travail",
+                "Livello rame del lavoro",
+                "ジョブの銅レイヤー",
+                "作业的铜层",
+                "Camada de cobre do trabalho",
+            ],
+            Msg::ProjectOpened => [
+                "{0}: {1} copper layers of the job",
+                "{0}: {1} capas de cobre del trabajo",
+                "{0}: {1} Kupferebenen des Auftrags",
+                "{0} : {1} couches de cuivre du travail",
+                "{0}: {1} livelli rame del lavoro",
+                "{0}：ジョブの銅レイヤー {1} 個",
+                "{0}：作业中的 {1} 个铜层",
+                "{0}: {1} camadas de cobre do trabalho",
+            ],
+            Msg::ProjectSaved => [
+                "{0} saved in the project",
+                "{0} guardado en el proyecto",
+                "{0} im Projekt gespeichert",
+                "{0} enregistré dans le projet",
+                "{0} salvato nel progetto",
+                "{0} をプロジェクトに保存しました",
+                "{0} 已保存到项目",
+                "{0} guardado no projeto",
+            ],
+            Msg::ProjectStale => [
+                "{0}: the saved programs are out of date, the job changed",
+                "{0}: los programas guardados están desactualizados, el trabajo cambió",
+                "{0}: die gespeicherten Programme sind veraltet, der Auftrag hat sich geändert",
+                "{0} : les programmes enregistrés sont périmés, le travail a changé",
+                "{0}: i programmi salvati non sono aggiornati, il lavoro è cambiato",
+                "{0}：保存したプログラムは古くなっています。ジョブが変更されました",
+                "{0}：已保存的程序已过期，作业已更改",
+                "{0}: os programas guardados estão desatualizados, o trabalho mudou",
+            ],
+            Msg::NoProject => [
+                "Open a .eh3d project first",
+                "Abra primero un proyecto .eh3d",
+                "Öffnen Sie zuerst ein .eh3d-Projekt",
+                "Ouvrez d'abord un projet .eh3d",
+                "Apri prima un progetto .eh3d",
+                "先に .eh3d プロジェクトを開いてください",
+                "请先打开 .eh3d 项目",
+                "Abra primeiro um projeto .eh3d",
             ],
         }
     }

@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because no board has been milled with these paths and nothing of this program has run on a real machine.
 
-The register has 48 requirements: 39 implemented, 5 prototype, 4 planned and 0 validated. By progress: 39 done, 5 partial, 1 pending and 3 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 52 requirements: 42 implemented, 6 prototype, 4 planned and 0 validated. By progress: 42 done, 6 partial, 1 pending and 3 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -97,3 +97,12 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | ISOC-046 | The report of a job tells its passes, paths, tools, arcs, time and the findings of the dry run, in the eight languages. | implemented | done | host-test | `job_report::the_report_lists_the_passes_the_tools_and_what_is_not_checked` | The time is estimated from the speeds, not measured. |
 | ISOC-047 | Every tool of the job is set against the tool crib by the width it cuts at the depth of the job, and a tool the crib lacks is a finding. | implemented | done | host-test | `job_report::every_tool_is_set_against_the_crib_by_the_width_it_cuts` | Read from the CSV table of the crib program, not from its JSON file. |
 | ISOC-048 | A verification that is not passed ends the command with the exit code 2. | implemented | done | host-test | `job_report::the_command_tells_the_report_and_ends_with_2_when_there_is_something_to_look_at` | Only `report` ends with 2; the other commands keep 1 for a failure. |
+
+## The project of the suite
+
+| ID | Requirement | State | Progress | Evidence | Test | Limits |
+|---|---|---|---|---|---|---|
+| ISOC-049 | The copper layers are read from the job of a `.eh3d` project, chosen by path or file name, and a job without one is refused. | implemented | done | host-test | `project::the_copper_layers_are_chosen_by_path_or_name_and_name_their_programs` | Invented projects; no project of a real board. The drills and the outline of the job are not taken yet. |
+| ISOC-050 | Each program is kept in the branch `isocam/` only, and a refused isolation leaves the project as it was. | implemented | done | host-test | `project::isolate_keeps_a_program_for_each_copper_layer_in_its_own_branch_only` | - |
+| ISOC-051 | A job that changes makes the programs out of date, and one made again keeps the others only while the job is the same. | implemented | done | host-test | `project::a_job_that_changes_makes_the_programs_out_of_date_until_they_are_made_again` | - |
+| ISOC-052 | The window opens the copper layers of a project and saves their programs. | prototype | partial | host-test | `project::the_window_opens_the_copper_of_a_project_and_saves_its_programs` | The logic is tested without a screen; no person has looked at the window. |

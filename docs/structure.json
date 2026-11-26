@@ -158,6 +158,19 @@
           }
         },
         {
+          "name": "eh3dfile.rs",
+          "desc": {
+            "en": "the .eh3d project: the copper of the job in, the programs in their own branch",
+            "es": "el proyecto .eh3d: entra el cobre del trabajo, los programas quedan en su rama",
+            "de": "das .eh3d-Projekt: Kupfer des Auftrags hinein, Programme in den eigenen Zweig",
+            "fr": "le projet .eh3d : le cuivre du travail entre, les programmes vont dans leur branche",
+            "it": "il progetto .eh3d: entra il rame del lavoro, i programmi nel loro ramo",
+            "ja": ".eh3d プロジェクト：ジョブの銅を読み、プログラムは自分のブランチに保存",
+            "zh": ".eh3d 项目：读入作业的铜层，程序存入自己的分支",
+            "pt": "o projeto .eh3d: entra o cobre do trabalho, os programas ficam no seu ramo"
+          }
+        },
+        {
           "name": "filetype.rs",
           "desc": {
             "en": "what kind of file an input is",
@@ -643,6 +656,19 @@
             "ja": "要件一覧のテスト",
             "zh": "需求登记表的测试",
             "pt": "testes do registo de requisitos"
+          }
+        },
+        {
+          "name": "project.rs",
+          "desc": {
+            "en": "tests of the project: branches, out of date, command line and window",
+            "es": "pruebas del proyecto: ramas, desactualizado, línea de comandos y ventana",
+            "de": "Tests des Projekts: Zweige, Veraltetes, Befehlszeile und Fenster",
+            "fr": "tests du projet : branches, périmé, ligne de commande et fenêtre",
+            "it": "test del progetto: rami, superato, riga di comando e finestra",
+            "ja": "プロジェクトのテスト：ブランチ、古さ、コマンドライン、ウィンドウ",
+            "zh": "项目测试：分支、过期、命令行和窗口",
+            "pt": "testes do projeto: ramos, desatualizado, linha de comandos e janela"
           }
         }
       ]

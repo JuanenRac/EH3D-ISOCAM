@@ -17,7 +17,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 579 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il a une fenêtre (compilée avec `--features gui`) qui ouvre une couche, un fichier de perçage, un contour, une couche de masque et une table de points de référence, retourne la carte et la répète sur un panneau, dessine le cuivre, les perçages, le contour et les trajets et écrit les mêmes fichiers que la ligne de commande, mais qui n'a pas encore été vue sur un écran ; il n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-isocam`) avec 584 tests qui s'exécutent sur un ordinateur : trace les trajets d'une ou de plusieurs fraises autour du cuivre d'une couche Gerber, retire le cuivre restant, choisit le sens, les points de départ et l'ordre des coupes, lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, vérifie les règles de conception et écrit du G-code ou du HP-GL. Il a une fenêtre (compilée avec `--features gui`) qui ouvre une couche, un fichier de perçage, un contour, une couche de masque et une table de points de référence, retourne la carte et la répète sur un panneau, dessine le cuivre, les perçages, le contour et les trajets et écrit les mêmes fichiers que la ligne de commande, mais qui n'a pas encore été vue sur un écran ; il n'a pas été essayé sur une machine et n'a pas été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.1.6` |
 | Maturité | Échafaudage |
-| Tests | 579 |
+| Tests | 584 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -48,7 +48,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Fichiers et disposition | 🟡 | lit et écrit des fichiers de perçage et des contours de carte, dispose la carte pour les deux faces et pour un panneau, ajoute des trous d'alignement et vérifie les règles de conception avec l'endroit de chaque constat ; testé sur un ordinateur, pas avec des fichiers écrits par d'autres programmes ni sur une machine. |
 | Isolation forcée, correction, masque | 🟡 | trajets forcés dans les espaces où l'outil ne passe pas, trajets allégés, échelle et correction par points de référence, ouvertures du masque de soudure, unités et aperçu des passes ; testé sur un ordinateur avec des couches générées et des entrées abîmées, jamais avec de vraies cartes ni sur une machine, et la correction n'a pas été comparée à de vraies mesures d'une caméra. |
 | Ligne de commande | 🟡 | `eh3d-isocam` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 579 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. Elles incluent une simulation à graine fixe de une machine Bungard avec la course de sa table, avec pannes injectées et reprise. |
+| Tests | 🟡 | 584 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. Elles incluent une simulation à graine fixe de une machine Bungard avec la course de sa table, avec pannes injectées et reprise. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🟠 | Écrite (egui, `--features gui`) : ouvrir ou déposer une couche, zoom et déplacement, modifier les principaux paramètres, exporter ; sa logique est testée et le programme d'une version la dessine dans une image (`--shot`), mais personne ne l'a encore utilisée sur un écran. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -181,6 +181,7 @@ EH3D-ISOCAM/
 │   ├── draw.rs                                  ce que dessine la fenêtre : les formes et les triangles des régions
 │   ├── drill.rs                                 perçages et contour de la carte, lus et écrits
 │   ├── dxf.rs                                   les passes en dessin DXF
+│   ├── eh3dfile.rs                              le projet .eh3d : le cuivre du travail entre, les programmes vont dans leur branche
 │   ├── filetype.rs                              de quel type est un fichier d'entrée
 │   ├── gcode.rs                                 les trajets en G-code
 │   ├── gui.rs                                   la fenêtre (egui, avec la fonctionnalité gui) : dessine l'état et transmet ce que fait la personne
@@ -230,6 +231,8 @@ EH3D-ISOCAM/
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   contribuer, code de conduite et licence
 ```
 
+**Le projet de la suite.** Un fichier `.eh3d` contient une branche par programme. `project info FICHIER.eh3d` montre les couches du travail (la branche `manufacturing/`, un paquet `.eh3dproj`) et les programmes gardés dans le projet ; `project isolate FICHIER.eh3d [--layer NOM] [--plt]` isole chaque couche de cuivre du travail (ou celle nommée), avec les mêmes options et les mêmes refus que `isolate`, et garde le programme uniquement dans la branche `isocam/`, avec une copie de la couche et le contenu de la branche d'où elle vient. Si le travail change ensuite, `project info` signale que les programmes sont périmés et se termine avec 2. Dans la fenêtre, un `.eh3d` déposé ouvre les couches de cuivre de son travail (choisies dans une liste) et le programme est enregistré dans le projet.
+
 ## ⚙️ Configuration
 
 Chaque valeur réglable est un réglage avec une valeur par défaut : diamètres, passes et décalage de l'outil fin et du gros outil, le retrait du cuivre restant, la profondeur, l'avance et la vitesse, le sens, le point de départ, le début de chaque trajet et l'ordre, l'outil qui découpe la carte, les trous d'alignement, le miroir, la rotation et le panneau, et les règles de conception. `eh3d-isocam config` les affiche tous sous forme de fichier (`examples/isocam.cfg` est ce fichier) ; `--config FICHIER` en lit un, et tout réglage peut être donné sur la ligne de commande comme option du même nom (`--fine-tool-mm 0.15`), qui l'emporte sur le fichier. Une valeur absurde est une erreur qui indique la ligne. Les limites fixes vivent dans le code comme constantes nommées et sont couvertes par des tests. L'isolation forcée, les trajets allégés, l'échelle et les points de référence, la marge du masque de soudure, les unités et la largeur de l'aperçu en texte sont aussi des réglages. Le format des coordonnées d'un fichier de perçage (`excellon_format` : `auto` ou `2.4`) est aussi un réglage.
@@ -238,7 +241,7 @@ Chaque valeur réglable est un réglage avec une valeur par défaut : diamètres
 
 ## 🚀 Démarrage rapide
 
-Il faut une chaîne d'outils Rust stable (1.88 ou plus récente).
+Il faut une chaîne d'outils Rust stable (1.89 ou plus récente).
 
 ```bash
 cargo build --release
@@ -252,7 +255,7 @@ Pour prendre une capture de la fenêtre sans l'ouvrir à la main, lancez-la avec
 
 ## 🧪 Tests
 
-La suite compte 579 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 584 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -284,6 +287,7 @@ EH3D-ISOCAM/
 │   ├── draw.rs                                  ce que dessine la fenêtre : les formes et les triangles des régions
 │   ├── drill.rs                                 perçages et contour de la carte, lus et écrits
 │   ├── dxf.rs                                   les passes en dessin DXF
+│   ├── eh3dfile.rs                              le projet .eh3d : le cuivre du travail entre, les programmes vont dans leur branche
 │   ├── filetype.rs                              de quel type est un fichier d'entrée
 │   ├── gcode.rs                                 les trajets en G-code
 │   ├── gui.rs                                   la fenêtre (egui, avec la fonctionnalité gui) : dessine l'état et transmet ce que fait la personne
@@ -321,7 +325,8 @@ EH3D-ISOCAM/
 │   ├── readme.rs                                tests qui exécutent ce que promettent le README et les scripts run
 │   ├── window_checks.rs                         tests des vérifications et du rapport dans la fenêtre
 │   ├── window_cli.rs                            tests qu'une compilation sans la fonctionnalité gui reste une ligne de commande
-│   └── reqs.rs                                  tests du registre des exigences
+│   ├── reqs.rs                                  tests du registre des exigences
+│   └── project.rs                               tests du projet : branches, périmé, ligne de commande et fenêtre
 ├── examples/
 │   ├── crib.csv                                 un magasin d'exemple (CSV) pour essayer --crib
 │   ├── isocam.cfg                               tous les réglages avec leur valeur par défaut, à copier et modifier

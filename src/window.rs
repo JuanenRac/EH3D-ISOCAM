@@ -7,6 +7,7 @@ use crate::config::Settings;
 use crate::contour::Loop;
 use crate::draw::Drawing;
 use crate::drill::Hole;
+use crate::eh3dfile;
 use crate::forced::{forced_passes, insert};
 use crate::isolate::{plan_with_pads, Pass};
 use crate::lang::{fill, Lang, Msg};
@@ -18,6 +19,7 @@ use crate::transform::{Axis, Board};
 use crate::units::Unit;
 use crate::viewport::Viewport;
 use crate::{dxf, filetype};
+use eh3d_gerberviewer::eh3dfile::{self as suite, JobFile};
 use eh3d_gerberviewer::scene::{from_gerber_with, Bounds, Scene, SceneOptions};
 use eh3d_parser_gcode::emit::{header_with_units, sha256_hex, Header};
 use eh3d_parser_gerber::{parse_bytes_with, InputLimits};
@@ -25,9 +27,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// The extensions of the files the window offers to open as a Gerber layer.
-pub const LAYER_EXTENSIONS: [&str; 14] = [
+pub const LAYER_EXTENSIONS: [&str; 15] = [
     "gtl", "gbl", "gts", "gbs", "gto", "gbo", "gtp", "gbp", "gko", "gm1", "gbr", "ger", "pho",
-    "art",
+    "art", "eh3d",
 ];
 
 /// The extensions of the files the window offers to open as a drill file.
@@ -425,6 +427,20 @@ pub enum Status {
         moves: usize,
         findings: usize,
     },
+    /// A copper layer of the job of a project was opened.
+    ProjectOpened {
+        name: String,
+        layers: usize,
+    },
+    /// The program was kept in the branch of this program.
+    ProjectSaved {
+        file: String,
+    },
+    /// The programs of the project were made from an older job.
+    ProjectStale {
+        name: String,
+    },
+    NoProject,
 }
 
 impl Status {
@@ -521,6 +537,13 @@ impl Status {
                 Msg::Simulated.tr(lang),
                 &[moves.to_string().as_str(), findings.to_string().as_str()],
             ),
+            Status::ProjectOpened { name, layers } => fill(
+                Msg::ProjectOpened.tr(lang),
+                &[name.as_str(), layers.to_string().as_str()],
+            ),
+            Status::ProjectSaved { file } => fill(Msg::ProjectSaved.tr(lang), &[file.as_str()]),
+            Status::ProjectStale { name } => fill(Msg::ProjectStale.tr(lang), &[name.as_str()]),
+            Status::NoProject => Msg::NoProject.tr(lang).to_string(),
         }
     }
 
@@ -533,7 +556,9 @@ impl Status {
             | Status::Exported { .. }
             | Status::HolesOpened { .. }
             | Status::MaskOpened { .. }
-            | Status::MarksLoaded(_) => false,
+            | Status::MarksLoaded(_)
+            | Status::ProjectOpened { .. }
+            | Status::ProjectSaved { .. } => false,
             Status::Simulated { findings, .. } => *findings > 0,
             Status::OutlineOpened { open_runs, .. } => *open_runs > 0,
             _ => true,
@@ -622,6 +647,12 @@ pub struct Window {
     pub toolpath_on: bool,
     /// The path of the tool of the program the paths would be written as, kept while `toolpath_on` and the paths are up to date.
     pub toolpath: Option<Trace>,
+    /// The project whose job is open.
+    pub project: Option<PathBuf>,
+    /// The copper layers of that job.
+    pub job_layers: Vec<JobFile>,
+    /// The one of `job_layers` that is open.
+    pub job_index: Option<usize>,
     base: Settings,
 }
 
@@ -653,6 +684,9 @@ impl Window {
             dry_run: None,
             toolpath_on: false,
             toolpath: None,
+            project: None,
+            job_layers: Vec::new(),
+            job_index: None,
             base,
         }
     }
@@ -899,10 +933,128 @@ impl Window {
         }
     }
 
-    /// Opens a Gerber layer and works out the paths with the parameters. The layer stays closed (and the old one open) when it cannot be read.
+    /// Opens the first copper layer of the job of a project, and says when the programs kept in it are out of date. The old layer stays open when the job cannot be used.
+    pub fn open_project(&mut self, path: &Path) -> bool {
+        let read = eh3dfile::copper_layers(path)
+            .and_then(|layers| Ok((layers, suite::state(&eh3dfile::KIT, path)?)));
+        let (layers, state) = match read {
+            Ok(found) => found,
+            Err(why) => {
+                self.status = Status::Failed(why);
+                return false;
+            }
+        };
+        let before = (
+            self.project.take(),
+            std::mem::take(&mut self.job_layers),
+            self.job_index.take(),
+        );
+        self.project = Some(path.to_path_buf());
+        self.job_layers = layers;
+        if !self.choose_job_layer(0) {
+            (self.project, self.job_layers, self.job_index) = before;
+            return false;
+        }
+        let name = board::file_name(path);
+        if state.out_of_date {
+            self.status = Status::ProjectStale { name };
+        } else if !self.status.is_problem() {
+            self.status = Status::ProjectOpened {
+                name,
+                layers: self.job_layers.len(),
+            };
+        }
+        true
+    }
+
+    /// Works with the copper layer of the job at `index`.
+    pub fn choose_job_layer(&mut self, index: usize) -> bool {
+        let (Some(project), Some(file)) = (self.project.clone(), self.job_layers.get(index)) else {
+            return false;
+        };
+        let name = file.file_name().to_string();
+        let read = scratch_copy(file).and_then(|(dir, copy)| {
+            let layer = read_layer(&copy, &self.base);
+            let _ = fs::remove_dir_all(&dir);
+            layer
+        });
+        match read {
+            Ok(mut layer) => {
+                // the programs are suggested next to the project, with the name of the layer
+                layer.path = project.with_file_name(name);
+                self.take_layer(layer);
+                self.job_index = Some(index);
+                true
+            }
+            Err(why) => {
+                self.status = Status::Failed(why);
+                false
+            }
+        }
+    }
+
+    /// Makes the G-code of the layer of the job and keeps it in the branch `isocam/` of the project. What stops an export stops this too.
+    pub fn save_project(&mut self) -> bool {
+        let file = self.job_index.and_then(|i| self.job_layers.get(i)).cloned();
+        let (Some(project), Some(file)) = (self.project.clone(), file) else {
+            self.status = Status::NoProject;
+            return false;
+        };
+        let name = eh3dfile::result_name(&file, "nc");
+        let (dir, copy) = match scratch_copy(&file) {
+            Ok(made) => made,
+            Err(why) => {
+                self.status = Status::Failed(why);
+                return false;
+            }
+        };
+        // the header of the program names the file it was made from and its hash, so it is read from the copy
+        let shown = self
+            .layer
+            .as_mut()
+            .map(|l| std::mem::replace(&mut l.path, copy));
+        let out = dir.join(&name);
+        let made = self.export(&out);
+        if let (Some(layer), Some(path)) = (self.layer.as_mut(), shown) {
+            layer.path = path;
+        }
+        let bytes = if made { fs::read(&out).ok() } else { None };
+        let _ = fs::remove_dir_all(&dir);
+        let Some(bytes) = bytes else {
+            return false;
+        };
+        match eh3dfile::save_program(&project, &file, &name, bytes) {
+            Ok(_) => {
+                self.status = Status::ProjectSaved { file: name };
+                true
+            }
+            Err(why) => {
+                self.status = Status::Failed(why);
+                false
+            }
+        }
+    }
+
+    fn take_layer(&mut self, layer: Layer) {
+        self.layer = Some(layer);
+        self.passes.clear();
+        self.unfixed = 0;
+        self.stale = false;
+        self.view = self.raw_view();
+        self.compute();
+    }
+
+    /// Opens a Gerber layer and works out the paths with the parameters. The layer stays closed (and the old one open) when it cannot be read. A `.eh3d` project opens the copper of
+    /// its job.
     pub fn open(&mut self, path: &Path) -> bool {
+        if suite::is_project(path) {
+            return self.open_project(path);
+        }
         match read_layer(path, &self.base) {
             Ok(layer) => {
+                self.project = None;
+                self.job_layers.clear();
+                self.job_index = None;
                 self.layer = Some(layer);
                 self.passes.clear();
                 self.unfixed = 0;
@@ -1018,6 +1170,9 @@ impl Window {
 
     /// Opens a file by what it is: a drill file, an outline (a DXF drawing, a plot file or an outline layer) or else a copper layer.
     pub fn open_dropped(&mut self, path: &Path) -> bool {
+        if suite::is_project(path) {
+            return self.open_project(path);
+        }
         let text = match board::read_text(path, &self.base) {
             Ok(t) => t,
             Err(why) => {
@@ -1575,6 +1730,17 @@ fn build(scene: &Scene, s: &Settings) -> Result<(Vec<Pass>, usize), String> {
         optimize_passes(&mut passes, &o)?;
     }
     Ok((passes, unfixed))
+}
+
+/// A copy of a file of the job in a new folder of the system, with its name; the caller removes the folder.
+fn scratch_copy(file: &JobFile) -> Result<(PathBuf, PathBuf), String> {
+    let dir = eh3dfile::scratch_dir()?;
+    let copy = dir.join(file.file_name());
+    if let Err(e) = fs::write(&copy, &file.bytes) {
+        let _ = fs::remove_dir_all(&dir);
+        return Err(format!("{}: {e}", copy.display()));
+    }
+    Ok((dir, copy))
 }
 
 /// The standard header of a G-code file: the generator and its version, the units, the file the work came from with its SHA-256 and the tools.

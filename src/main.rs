@@ -2,6 +2,7 @@
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D). GPL-3.0-or-later.
 #![forbid(unsafe_code)]
 
+use eh3d_gerberviewer::eh3dfile as suite;
 use eh3d_gerberviewer::scene::{from_gerber_with, SceneOptions};
 use eh3d_isocam::board::{
     centre_of, drills_job, finish_plot, gcode_program, isolation_plot, mark_rows, mask_job,
@@ -13,6 +14,7 @@ use eh3d_isocam::crib;
 use eh3d_isocam::drc;
 use eh3d_isocam::drill::{read_drills_with_format, read_outline};
 use eh3d_isocam::dxf;
+use eh3d_isocam::eh3dfile;
 use eh3d_isocam::fiducial::apply_to_passes;
 use eh3d_isocam::filetype;
 use eh3d_isocam::fill::{rubout_contours, Fill};
@@ -52,6 +54,8 @@ const HELP: &str = "eh3d-isocam: isolation milling of copper from a Gerber layer
   eh3d-isocam report LAYER.gtl                   what to look at before the job: its passes, tools set against the crib table (crib_file), arcs, time, the dry run and the checks; ends with 2 when there is something to look at
   eh3d-isocam kind FILE...                       say what kind of file each one is (Gerber, old-style Gerber, Excellon, HP-GL, DXF)
   eh3d-isocam simulate PROGRAM.nc                a dry run of a G-code program: its time, the box it moves in, the deepest cut and what is wrong with it (the machine limits of the settings apply)
+  eh3d-isocam project info FILE.eh3d             the copper layers of the job of a project, the programs kept in it and whether they are out of date (then it ends with 2)
+  eh3d-isocam project isolate FILE.eh3d [--layer NAME] [--plt] [options of isolate]   a program for each copper layer of the job (or the one named), kept in the branch isocam/ of the project
   eh3d-isocam config                             every setting with its default, as a configuration file
   eh3d-isocam server status [--config FILE]      the link to the EH3D server (the keys server_address, server_token, server_machine, server_timeout_s, server_retries, server_mdns and server_max_answer_mib of the configuration file) and what the server answers
   eh3d-isocam [gui] [LAYER.gtl]                  the window (a build with --features gui): with no arguments, or with a single layer, it opens; the commands above never open it
@@ -667,6 +671,85 @@ fn apply_crib(cli: &mut Cli) -> Result<(), String> {
     cli.settings.validate()
 }
 
+/// `project info FILE` and `project isolate FILE [--layer NAME] [--plt] [options of isolate]`: the copper layers of the job of a `.eh3d` project and the programs kept in the branch
+/// `isocam/`. Each layer is isolated by `isolate` itself, with the same options and the same refusals.
+fn project(mut args: Vec<String>) -> Result<(), String> {
+    const USAGE: &str = "project needs info or isolate and a project (usage: project info FILE.eh3d, project isolate FILE.eh3d [--layer NAME] [--plt] [options of isolate])";
+    if args.len() < 2 {
+        return Err(USAGE.into());
+    }
+    let what = args.remove(0);
+    let file = std::path::PathBuf::from(args.remove(0));
+    match what.as_str() {
+        "info" => {
+            if let Some(extra) = args.first() {
+                return Err(format!("{extra}: unknown option (see help)"));
+            }
+            let (lines, state) = suite::describe(&eh3dfile::KIT, &file)?;
+            for line in lines {
+                println!("{line}");
+            }
+            if state.out_of_date {
+                return Err(
+                    "verification not passed: the programs of isocam are OUT OF DATE: manufacturing changed since they were made"
+                        .into(),
+                );
+            }
+            Ok(())
+        }
+        "isolate" => {
+            let named = match args.iter().position(|a| a == "--layer") {
+                Some(i) if i + 1 < args.len() => args.drain(i..=i + 1).nth(1),
+                Some(_) => return Err("--layer needs a name".into()),
+                None => None,
+            };
+            let plt = args.iter().any(|a| a == "--plt");
+            args.retain(|a| a != "--plt");
+            let layers = eh3dfile::copper_layers(&file)?;
+            let chosen = match &named {
+                Some(name) => vec![eh3dfile::choose(&layers, name)?.clone()],
+                None => layers,
+            };
+            // every program is made before one is kept, so a refusal leaves the project as it was
+            let mut made = Vec::new();
+            for layer in chosen {
+                let name = eh3dfile::result_name(&layer, if plt { "plt" } else { "nc" });
+                let dir = eh3dfile::scratch_dir()?;
+                let input = dir.join(layer.file_name());
+                let output = dir.join(&name);
+                let bytes = fs::write(&input, &layer.bytes)
+                    .map_err(|e| format!("{}: {e}", input.display()))
+                    .and_then(|()| {
+                        let mut line = vec![
+                            "isolate".to_string(),
+                            input.to_string_lossy().into_owned(),
+                            output.to_string_lossy().into_owned(),
+                        ];
+                        line.extend(args.iter().cloned());
+                        run(line)
+                    })
+                    .and_then(|()| {
+                        fs::read(&output).map_err(|e| format!("{}: {e}", output.display()))
+                    });
+                let _ = fs::remove_dir_all(&dir);
+                made.push((layer, name, bytes?));
+            }
+            for (layer, name, bytes) in made {
+                for notice in eh3dfile::save_program(&file, &layer, &name, bytes)? {
+                    eprintln!("note: {notice}");
+                }
+                println!(
+                    "{name} kept in the branch {} of {}",
+                    eh3dfile::KIT.branch,
+                    file.display()
+                );
+            }
+            Ok(())
+        }
+        _ => Err(USAGE.into()),
+    }
+}
+
 fn run(mut args: Vec<String>) -> Result<(), String> {
     if args.is_empty() || matches!(args[0].as_str(), "help" | "--help" | "-h") {
         println!("{HELP}");
@@ -676,6 +759,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
     if cmd == "gui" {
         // a build with the window never gets here (main opens it): this one is only a command line
         return Err("this build has no window: build it with --features gui".into());
+    }
+    if cmd == "project" {
+        return project(args);
     }
     let mut cli = parse_cli(args)?;
     cli.command = cmd.clone();
