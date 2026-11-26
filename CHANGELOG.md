@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.8] - Safer project results, machine limits of drills and plots, and many more tests
+
 - **The program of one side no longer takes the place of the other:** two copper layers with the same name but for the extension (`board.gtl` and `board.gbl`) were both kept as `iso-board.nc`, so the second silently replaced the first. When two layers would share a name, each is now kept with its whole name (`iso+board.gtl.nc`). A file name that two layers share is no longer chosen by guess with `--layer`: the path says which.
 - **The limits of the machine reach every program:** a drill file or a plot of holes and a plot of the isolation were written without looking at the table of the machine; they are refused now when they leave it (`--force` writes them from the command line and says why). In the window, a program written with the box that forces it now says which limit it breaks instead of saying nothing.
 - **The header names the layer that was really read:** the window took the SHA-256 of the header from whatever lay on disk at that name when it wrote (another file next to a project, or a layer changed since it was opened); it is the one of the bytes that were read.
