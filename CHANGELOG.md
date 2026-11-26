@@ -8,6 +8,7 @@ All notable changes to this project are documented here.
 - The crate `eh3d-project` of EH3D-COMMON is now used; Rust 1.89 or newer is needed.
 - **An artifact cannot be named `.` or `..`, nor with a character that reverses or hides text:** the name of a file kept on the server was cut to the last part of its path, but `..` (or `dir/..`) was a name of its own, and a right-to-left override could make a name read as another file; they are refused now. 34 new tests cover base64 against the standard, the media types, the pen map and the range of a plot, the times and the depths of a job, the settings text and damaged or huge drill files.
 - The shared workflow checker (`tools/workflow_hygiene.py`) is the current one of the documentation hub: the filters under a trigger (branches, paths, types) are no longer read as events.
+- **Built against the released shared library:** the workflows take the tag v0.3.3 of EH3D-COMMON instead of its main branch; EH3D-GERBERVIEWER is still taken at main until it has a tag with the code this program uses.
 
 ## [0.1.6] - Arcs fitted to the paths of the cut, the silkscreen layer engraved, a report of the job before it is cut with the tools checked against the crib and a check of the limits of the machine that sees where an arc bulges
 
