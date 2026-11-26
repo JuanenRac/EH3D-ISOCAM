@@ -145,6 +145,15 @@ impl App {
                 {
                     self.fit_pending = true;
                 }
+                if ui
+                    .add_enabled(
+                        self.win.project.is_some(),
+                        egui::Button::new(Msg::SaveProject.tr(lang)),
+                    )
+                    .clicked()
+                {
+                    self.win.save_project();
+                }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     egui::ComboBox::from_id_salt("language")
                         .selected_text(self.win.lang.name())
@@ -159,12 +168,43 @@ impl App {
         });
     }
 
+    /// The copper layer of the job of the project that is open, to choose.
+    fn project_group(&mut self, ui: &mut egui::Ui) {
+        if self.win.job_layers.is_empty() {
+            return;
+        }
+        ui.label(Msg::JobLayer.tr(self.win.lang));
+        let current = self
+            .win
+            .job_index
+            .and_then(|i| self.win.job_layers.get(i))
+            .map(|f| f.rel.clone())
+            .unwrap_or_default();
+        let mut picked = None;
+        egui::ComboBox::from_id_salt("job_layer")
+            .selected_text(current.clone())
+            .show_ui(ui, |ui| {
+                for (i, f) in self.win.job_layers.iter().enumerate() {
+                    if ui.selectable_label(f.rel == current, &f.rel).clicked() {
+                        picked = Some(i);
+                    }
+                }
+            });
+        if let Some(i) = picked {
+            if self.win.choose_job_layer(i) {
+                self.fit_pending = true;
+            }
+        }
+        ui.add_space(8.0);
+    }
+
     fn side_panel(&mut self, ui: &mut egui::Ui) {
         egui::Panel::left("parameters")
             .default_size(290.0)
             .show(ui, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(4.0);
+                    self.project_group(ui);
                     self.isolation_group(ui);
                     self.drills_group(ui);
                     self.outline_group(ui);

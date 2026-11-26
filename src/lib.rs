@@ -14,6 +14,7 @@ pub mod crib;
 pub mod draw;
 pub mod drill;
 pub mod dxf;
+pub mod eh3dfile;
 pub mod filetype;
 pub mod gcode;
 #[cfg(feature = "gui")]
