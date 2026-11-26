@@ -673,7 +673,7 @@ impl App {
         let lang = self.win.lang;
         let lines: Vec<String> = asked.iter().map(|w| w.text(lang.code())).collect();
         let (mut write, mut cancel) = (false, false);
-        let answer = egui::Modal::new(egui::Id::new("confirm_signature")).show(ctx, |ui| {
+        let answer = egui::Modal::new(egui::Id::unique("confirm_signature")).show(ctx, |ui| {
             ui.set_max_width(420.0);
             ui.label(
                 egui::RichText::new(S::ConfirmTitle.tr(lang.code()))

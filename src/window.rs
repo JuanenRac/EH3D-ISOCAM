@@ -23,7 +23,8 @@ use eh3d_gerberviewer::scene::{from_gerber_with, Bounds, Scene, SceneOptions};
 use eh3d_parser_gcode::emit::{header_with_units, sha256_hex, Header};
 use eh3d_parser_gerber::{parse_bytes_with, InputLimits};
 use eh3d_project::manufacturing::{self as suite, JobFile};
-use eh3d_project::suiteview::{self, Said};
+use eh3d_project::suitetext::Said;
+use eh3d_project::suiteview;
 use std::fs;
 use std::path::{Path, PathBuf};
 
