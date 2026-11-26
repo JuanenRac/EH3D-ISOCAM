@@ -391,7 +391,7 @@ fn a_hole_outside_the_table_stops_the_drill_file_and_the_plot_of_the_holes() {
 fn a_plot_of_the_isolation_outside_the_table_is_refused() {
     let d = dir("plot");
     let out = d.join("out.plt");
-    let table = ["--machine-x-mm", "5", "--machine-y-mm", "5"];
+    let table = ["--machine-x-mm", "10", "--machine-y-mm", "10"];
     let (ok, _, err) = isolate(&out, &table);
     assert!(!ok);
     assert!(err.contains("outside the table"), "{err}");
@@ -417,8 +417,8 @@ fn the_window_says_what_a_forced_program_breaks_and_refuses_holes_outside_the_ta
         let i = w.fields.iter().position(|f| f.key == key).unwrap();
         w.set_field(i, text.to_string());
     };
-    set(&mut w, "machine_x_mm", "5");
-    set(&mut w, "machine_y_mm", "5");
+    set(&mut w, "machine_x_mm", "10");
+    set(&mut w, "machine_y_mm", "10");
     for name in ["no.nc", "no.plt"] {
         assert!(!w.export(&d.join(name)), "{name}");
         assert!(!d.join(name).exists(), "{name}");

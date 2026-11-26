@@ -2679,12 +2679,17 @@ M30
         w.notes.clear();
         set(&mut w, "outline_corner_radius_mm", "1");
         // a table smaller than the board: the cut leaves it and nothing is written
-        set(&mut w, "machine_x_mm", "5");
-        set(&mut w, "machine_y_mm", "5");
+        set(&mut w, "machine_x_mm", "10");
+        set(&mut w, "machine_y_mm", "10");
         let out = dir.join("off.ncd");
         assert!(!w.export_route(&out));
         assert!(!out.exists());
-        assert!(matches!(&w.status, Status::Failed(_)), "{:?}", w.status);
+        // refused for the table and not for a value the settings do not take
+        assert!(
+            matches!(&w.status, Status::Failed(why) if why.contains("outside the table")),
+            "{:?}",
+            w.status
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 }
