@@ -90,7 +90,7 @@ fn the_copper_layers_are_chosen_by_path_or_name_and_name_their_programs() {
     let top = eh3dfile::choose(&layers, "top.gtl").unwrap();
     assert_eq!(top, eh3dfile::choose(&layers, "layers/top.gtl").unwrap());
     assert!(eh3dfile::choose(&layers, "inner.g2").is_err());
-    assert_eq!(eh3dfile::result_name(top, "nc"), "iso-top.nc");
+    assert_eq!(eh3dfile::result_name(&layers, top, "nc"), "iso-top.nc");
     write_branch(
         &path,
         SOURCE_BRANCH,
@@ -191,4 +191,168 @@ fn the_window_opens_the_copper_of_a_project_and_saves_its_programs() {
     write_job(&path, OTHER);
     assert!(w.open(&path));
     assert!(matches!(w.status, Status::ProjectStale { .. }));
+}
+
+/// A job whose copper layers have these paths inside `manufacturing/`.
+fn write_layers(path: &Path, files: &[(&str, &str)]) {
+    let layers: Vec<String> = files
+        .iter()
+        .map(|(rel, _)| format!(r#"{{"path":"{rel}","kind":"copper","name":"{rel}"}}"#))
+        .collect();
+    let record = format!(
+        r#"{{"format_version":"1.0.0","layers":[{}]}}"#,
+        layers.join(",")
+    );
+    let mut entries: Vec<(&str, &[u8])> = vec![("project.json", record.as_bytes())];
+    entries.extend(files.iter().map(|(rel, text)| (*rel, text.as_bytes())));
+    write_branch(path, SOURCE_BRANCH, &entries);
+}
+
+#[test]
+fn two_layers_with_the_same_stem_each_keep_their_own_program() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = project(dir.path());
+    write_layers(
+        &path,
+        &[("layers/board.gtl", COPPER), ("layers/board.gbl", OTHER)],
+    );
+    let out = run(&path, &["isolate"]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let state = suite::state(&KIT, &path).unwrap();
+    assert_eq!(state.results, ["iso+board.gbl.nc", "iso+board.gtl.nc"]);
+    for (name, source) in [
+        ("iso+board.gtl.nc", "board.gtl"),
+        ("iso+board.gbl.nc", "board.gbl"),
+    ] {
+        let code = String::from_utf8(suite::read_result(&KIT, &path, name).unwrap()).unwrap();
+        assert!(code.contains(source), "{name}: {code}");
+    }
+    // one layer at a time keeps the other, and the window names them the same way
+    assert!(run(&path, &["isolate", "--layer", "board.gtl"])
+        .status
+        .success());
+    let mut w = Window::new(Lang::En);
+    assert!(w.open(&path), "{:?}", w.status);
+    assert!(w.choose_job_layer(1));
+    assert!(w.save_project(), "{:?}", w.status);
+    assert_eq!(
+        suite::state(&KIT, &path).unwrap().results,
+        ["iso+board.gbl.nc", "iso+board.gtl.nc"]
+    );
+}
+
+#[test]
+fn a_file_name_that_two_layers_share_is_not_chosen_by_guess() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = project(dir.path());
+    write_layers(
+        &path,
+        &[("layers/a/top.gtl", COPPER), ("layers/b/top.gtl", OTHER)],
+    );
+    let layers = eh3dfile::copper_layers(&path).unwrap();
+    let why = eh3dfile::choose(&layers, "top.gtl").unwrap_err();
+    assert!(
+        why.contains("layers/a/top.gtl") && why.contains("layers/b/top.gtl"),
+        "{why}"
+    );
+    let second = eh3dfile::choose(&layers, "layers/b/top.gtl").unwrap();
+    assert_eq!(second.bytes, OTHER.as_bytes());
+    assert_eq!(
+        eh3dfile::result_name(&layers, second, "nc"),
+        "iso+b+top.gtl.nc"
+    );
+    let before = std::fs::read(&path).unwrap();
+    assert!(!run(&path, &["isolate", "--layer", "top.gtl"])
+        .status
+        .success());
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+}
+
+#[test]
+fn no_program_is_written_over_a_project_or_the_settings_it_reads() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = project(dir.path());
+    let before = std::fs::read(&path).unwrap();
+    let layer = dir.path().join("one.gtl");
+    std::fs::write(&layer, COPPER).unwrap();
+    let isolate = |out: &Path, extra: &[&std::ffi::OsStr]| {
+        Command::new(BIN)
+            .arg("isolate")
+            .arg(&layer)
+            .arg(out)
+            .args(extra)
+            .output()
+            .expect("the program runs")
+    };
+    let out = isolate(&path, &[]);
+    assert!(!out.status.success());
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("project"),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    let settings = dir.path().join("my.cfg");
+    std::fs::write(&settings, "depth_mm = 0.05\n").unwrap();
+    let out = isolate(&settings, &["--config".as_ref(), settings.as_os_str()]);
+    assert!(!out.status.success());
+    assert_eq!(
+        std::fs::read_to_string(&settings).unwrap(),
+        "depth_mm = 0.05\n"
+    );
+
+    let mut w = Window::new(Lang::En);
+    assert!(w.open(&path), "{:?}", w.status);
+    assert!(!w.export(&path));
+    assert_eq!(w.status, Status::SameFile);
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+}
+
+#[test]
+fn the_header_names_the_hash_of_the_layer_that_was_read_not_of_what_is_on_disk_later() {
+    let hash_of = |text: &str| eh3d_parser_gcode::emit::sha256_hex(text.as_bytes());
+    let dir = tempfile::tempdir().unwrap();
+    // a layer that changes on disk after it was opened
+    let layer = dir.path().join("one.gtl");
+    std::fs::write(&layer, COPPER).unwrap();
+    let mut w = Window::new(Lang::En);
+    assert!(w.open(&layer), "{:?}", w.status);
+    std::fs::write(&layer, OTHER).unwrap();
+    let out = dir.path().join("one.nc");
+    assert!(w.export(&out), "{:?}", w.status);
+    let code = std::fs::read_to_string(&out).unwrap();
+    assert!(code.contains(&hash_of(COPPER)), "{code}");
+    // a file with the name of the layer of the job lies next to the project and is not the layer
+    let path = project(dir.path());
+    std::fs::write(dir.path().join("top.gtl"), OTHER).unwrap();
+    assert!(w.open(&path), "{:?}", w.status);
+    let beside = dir.path().join("beside.nc");
+    assert!(w.export(&beside), "{:?}", w.status);
+    let code = std::fs::read_to_string(&beside).unwrap();
+    assert!(code.contains(&hash_of(COPPER)), "{code}");
+    assert!(!code.contains(&hash_of(OTHER)), "{code}");
+}
+
+#[test]
+fn the_window_says_when_keeping_a_program_removed_the_signature_of_the_project() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = project(dir.path());
+    let signer = eh3d_project::Ed25519Signer::from_seed(&[7; 32]);
+    Project::open(&path, &OpenOptions::default())
+        .unwrap()
+        .sign_project(&signer, &SaveOptions::default())
+        .unwrap();
+    let mut w = Window::new(Lang::En);
+    assert!(w.open(&path), "{:?}", w.status);
+    assert!(w.save_project(), "{:?}", w.status);
+    assert!(
+        w.notes.iter().any(|n| n.contains("signature")),
+        "{:?}",
+        w.notes
+    );
 }

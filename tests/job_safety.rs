@@ -352,3 +352,96 @@ fn the_dry_run_applies_the_limits_of_the_machine() {
     assert_eq!(out.status.code(), Some(64));
     let _ = std::fs::remove_dir_all(&d);
 }
+
+#[test]
+fn a_hole_outside_the_table_stops_the_drill_file_and_the_plot_of_the_holes() {
+    let d = dir("holes");
+    let holes = d.join("board.drl");
+    std::fs::write(
+        &holes,
+        "M48\nMETRIC,TZ\nT01C0.8\n%\nT01\nX1.0Y2.0\nX20.0Y2.0\nM30\n",
+    )
+    .unwrap();
+    for name in ["out.ncd", "out.plt"] {
+        let out = d.join(name);
+        let line = |extra: &[&str]| {
+            let mut args = vec!["drills", holes.to_str().unwrap(), out.to_str().unwrap()];
+            args.extend_from_slice(extra);
+            run(&args)
+        };
+        let table = ["--machine-x-mm", "10", "--machine-y-mm", "10"];
+        let (ok, _, err) = line(&table);
+        assert!(!ok, "{name}");
+        assert!(
+            err.contains("hole 2 of 2") && err.contains("outside the table"),
+            "{name}: {err}"
+        );
+        assert!(!out.exists(), "{name}");
+        let (ok, _, err) = line(&[&table[..], &["--force"]].concat());
+        assert!(ok && err.contains("outside the table"), "{name}: {err}");
+        assert!(out.exists(), "{name}");
+        // with no table nothing is checked, as before
+        let (ok, _, err) = line(&[]);
+        assert!(ok, "{name}: {err}");
+    }
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
+fn a_plot_of_the_isolation_outside_the_table_is_refused() {
+    let d = dir("plot");
+    let out = d.join("out.plt");
+    let table = ["--machine-x-mm", "5", "--machine-y-mm", "5"];
+    let (ok, _, err) = isolate(&out, &table);
+    assert!(!ok);
+    assert!(err.contains("outside the table"), "{err}");
+    assert!(!out.exists());
+    let (ok, _, err) = isolate(&out, &[&table[..], &["--force"]].concat());
+    assert!(ok && err.contains("outside the table"), "{err}");
+    assert!(out.exists());
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
+fn the_window_says_what_a_forced_program_breaks_and_refuses_holes_outside_the_table() {
+    use eh3d_isocam::lang::Lang;
+    use eh3d_isocam::window::{Status, Window};
+    let d = dir("window");
+    let mut w = Window::new(Lang::En);
+    assert!(
+        w.open(&root().join("examples/sample.gtl")),
+        "{:?}",
+        w.status
+    );
+    let set = |w: &mut Window, key: &str, text: &str| {
+        let i = w.fields.iter().position(|f| f.key == key).unwrap();
+        w.set_field(i, text.to_string());
+    };
+    set(&mut w, "machine_x_mm", "5");
+    set(&mut w, "machine_y_mm", "5");
+    for name in ["no.nc", "no.plt"] {
+        assert!(!w.export(&d.join(name)), "{name}");
+        assert!(!d.join(name).exists(), "{name}");
+    }
+    w.set_force(true);
+    for name in ["forced.nc", "forced.plt"] {
+        w.notes.clear();
+        assert!(w.export(&d.join(name)), "{name}: {:?}", w.status);
+        assert!(
+            w.notes.iter().any(|n| n.contains("outside the table")),
+            "{name}: {:?}",
+            w.notes
+        );
+    }
+    let holes = d.join("board.drl");
+    std::fs::write(&holes, "M48\nMETRIC,TZ\nT01C0.8\n%\nT01\nX20.0Y2.0\nM30\n").unwrap();
+    assert!(w.open_drills(&holes), "{:?}", w.status);
+    assert!(!w.export_drills(&d.join("holes.ncd")));
+    assert!(!d.join("holes.ncd").exists());
+    assert!(
+        matches!(&w.status, Status::Failed(why) if why.contains("outside the table")),
+        "{:?}",
+        w.status
+    );
+    let _ = std::fs::remove_dir_all(&d);
+}

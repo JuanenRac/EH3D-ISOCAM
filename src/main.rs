@@ -5,7 +5,7 @@
 use eh3d_gerberviewer::scene::{from_gerber_with, SceneOptions};
 use eh3d_isocam::board::{
     centre_of, drills_job, finish_plot, gcode_program, isolation_plot, mark_rows, mask_job,
-    plot_options, route_job,
+    plot_options, plot_outside_table, route_job,
 };
 use eh3d_isocam::clearing::{fill_rings, Rings, Style as RuboutStyle};
 use eh3d_isocam::config::Settings;
@@ -114,6 +114,8 @@ struct Cli {
     to_server: bool,
     /// The command that is run, told to the server with the artifact.
     command: String,
+    /// The files read while the command line was understood (the settings file and the table of marks).
+    read_files: Vec<String>,
 }
 
 /// Numbers separated by commas, each one a length that may carry its unit.
@@ -148,6 +150,7 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
         units: None,
         to_server: false,
         command: String::new(),
+        read_files: Vec::new(),
     };
     // the configuration file first, so that the options on the command line win over it
     if let Some(i) = args.iter().position(|a| a == "--config") {
@@ -157,6 +160,7 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
         let text = read_settings_file(file)?;
         cli.settings = Settings::parse(&text).map_err(|e| format!("{file}: {e}"))?;
         cli.max_bytes = (cli.settings.max_input_mb * 1_048_576.0) as usize;
+        cli.read_files.push(file.clone());
     }
     // the unit of the bare numbers counts wherever it is on the line
     if let Some(i) = args.iter().position(|a| a == "--input-units") {
@@ -208,6 +212,7 @@ fn parse_cli(args: Vec<String>) -> Result<Cli, String> {
                         .set("fiducial", line)
                         .map_err(|e| format!("{file}: {e}"))?;
                 }
+                cli.read_files.push(file);
             }
             "--hide" => {
                 let v = it.next().ok_or_else(|| format!("{a} needs a value"))?;
@@ -448,8 +453,9 @@ fn gcode_header(cli: &Cli, source: Option<&str>) -> String {
     )
 }
 
-/// Writes an output file. The output may not be a file the run reads (the layer, the outline, the holes, the mask or the apertures): that would destroy the input. `out_index` is the place
-/// of the output among the positional arguments, so that it is not compared with itself.
+/// Writes an output file. The output may not be a file the run reads (the layer, the outline, the holes, the mask, the apertures, the settings, the table of marks, the height map or
+/// the table of tools): that would destroy the input. Nor may it be a `.eh3d` project, which holds the work of other programs. `out_index` is the place of the output among the
+/// positional arguments, so that it is not compared with itself.
 fn write_text(cli: &Cli, out_index: usize, out: &str, text: String) -> Result<(), String> {
     let same = |other: &str| match (fs::canonicalize(other), fs::canonicalize(out)) {
         (Ok(a), Ok(b)) => a == b,
@@ -462,6 +468,15 @@ fn write_text(cli: &Cli, out_index: usize, out: &str, text: String) -> Result<()
         &cli.apertures,
         &cli.contour,
     ];
+    let named = [&cli.settings.heightmap_file, &cli.settings.crib_file];
+    if std::path::Path::new(out)
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("eh3d"))
+    {
+        return Err(format!(
+            "{out}: nothing is written over a project (.eh3d); `project isolate` keeps a program inside it"
+        ));
+    }
     let reads = cli
         .positional
         .iter()
@@ -469,6 +484,8 @@ fn write_text(cli: &Cli, out_index: usize, out: &str, text: String) -> Result<()
         .filter(|(i, _)| *i != out_index)
         .map(|(_, p)| p)
         .chain(extras.into_iter().flatten())
+        .chain(cli.read_files.iter())
+        .chain(named.into_iter().filter(|p| !p.is_empty()))
         .any(|p| same(p));
     if reads {
         return Err(format!(
@@ -708,12 +725,12 @@ fn project(mut args: Vec<String>) -> Result<(), String> {
             let layers = eh3dfile::copper_layers(&file)?;
             let chosen = match &named {
                 Some(name) => vec![eh3dfile::choose(&layers, name)?.clone()],
-                None => layers,
+                None => layers.clone(),
             };
             // every program is made before one is kept, so a refusal leaves the project as it was
             let mut made = Vec::new();
             for layer in chosen {
-                let name = eh3dfile::result_name(&layer, if plt { "plt" } else { "nc" });
+                let name = eh3dfile::result_name(&layers, &layer, if plt { "plt" } else { "nc" });
                 let dir = eh3dfile::scratch_dir()?;
                 let input = dir.join(layer.file_name());
                 let output = dir.join(&name);
@@ -914,6 +931,13 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             }
             let out = arg(&cli, 1, "isolate needs an output file")?;
             let text = if is_plot(out) {
+                if let Some(why) = plot_outside_table(&passes, s, &whole, &board.outline)? {
+                    if cli.force {
+                        eprintln!("warning: {why}");
+                    } else {
+                        return Err(format!("{why}; --force writes it anyway"));
+                    }
+                }
                 isolation_plot(&passes, s, &whole, &board.outline)?
             } else if is_dxf(out) {
                 dxf::write(&passes)?
@@ -1207,6 +1231,13 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             cli2.drills = Some(input.to_string());
             let (board, whole) = load_board(&cli2, None)?;
             let job = drills_job(board.holes, &whole, s, cli.align, is_plot(out))?;
+            if let Some(why) = &job.outside_table {
+                if cli.force {
+                    eprintln!("warning: {why}");
+                } else {
+                    return Err(format!("the holes: {why}; --force writes it anyway"));
+                }
+            }
             write_text(&cli, 1, out, job.text)?;
             if s.drill_order != eh3d_isocam::drill::DrillOrder::File {
                 eprintln!(

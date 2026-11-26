@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The program of one side no longer takes the place of the other:** two copper layers with the same name but for the extension (`board.gtl` and `board.gbl`) were both kept as `iso-board.nc`, so the second silently replaced the first. When two layers would share a name, each is now kept with its whole name (`iso+board.gtl.nc`). A file name that two layers share is no longer chosen by guess with `--layer`: the path says which.
+- **The limits of the machine reach every program:** a drill file or a plot of holes and a plot of the isolation were written without looking at the table of the machine; they are refused now when they leave it (`--force` writes them from the command line and says why). In the window, a program written with the box that forces it now says which limit it breaks instead of saying nothing.
+- **The header names the layer that was really read:** the window took the SHA-256 of the header from whatever lay on disk at that name when it wrote (another file next to a project, or a layer changed since it was opened); it is the one of the bytes that were read.
+- **Nothing is written over a project or over a file the run reads:** an output that ends in `.eh3d` is refused, and so is one that is the settings file, the table of marks, the height map or the table of tools.
+- **The window says when keeping a program removed a signature** of the project.
+- 8 new tests with invented projects and layers.
+
 ## [0.1.7] - Isolation programs straight from the shared project of the suite
 
 - **The reading and writing of the job of an `.eh3d` project are shared:** they are the module `eh3d_project::manufacturing` of EH3D-COMMON, the same for every manufacturing program; the commands, the window and the files of a project do not change.
