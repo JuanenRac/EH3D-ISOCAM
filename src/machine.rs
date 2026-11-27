@@ -168,6 +168,8 @@ pub fn check_program(text: &str, limits: &Limits) -> Result<Checked, String> {
             d.severity == Severity::Error
                 || d.code == codes::POSITION_UNTRACKED
                 || d.code == codes::SYSTEM_COMMAND_IGNORED
+                || d.code == codes::CHARACTER_IGNORED
+                || d.code == codes::TEXT_AFTER_END
         }) {
             return Err(format!(
                 "line {}: the program cannot be judged against the limits: {}",
