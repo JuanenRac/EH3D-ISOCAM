@@ -84,10 +84,17 @@ fn read_whole_mils(text: &str) -> Option<Result<Drills, String>> {
             diameter_mm: dia(h.tool),
         })
         .collect();
-    Some(check_holes(Drills {
-        holes,
-        notes: Vec::new(),
-    }))
+    // slots and routed moves are not holes: the reader keeps them apart, and they are said so that none vanishes without a word
+    let mut notes = Vec::new();
+    if let Some(first) = f.ignored.first() {
+        notes.push(format!(
+            "{} lines of slots or routed moves in the file are not holes and were left out (first: line {}, {})",
+            f.ignored.len() + f.ignored_more,
+            first.line,
+            first.text
+        ));
+    }
+    Some(check_holes(Drills { holes, notes }))
 }
 
 /// Reads an Excellon drill file. A Bungard file in mils is read with the reader of those files; a metric file, or one with decimal coordinates, with the reader of the suite.
@@ -601,6 +608,10 @@ pub fn read_outline(name: &str, text: &str) -> Result<Outline, String> {
     let plot = if ext == dxf::EXTENSION {
         dxf::outline_default(text)?
     } else if matches!(ext, "plt" | "hpgl" | "hp" | "hgl") {
+        // a number the reader would drop moves every coordinate after it to another place: such a plot is not taken
+        if let Some(problem) = plotter::diagnose(text).into_iter().next() {
+            return Err(problem.to_string());
+        }
         plotter::parse(text)
     } else {
         gerber::outline_default(text)?

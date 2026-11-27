@@ -7,6 +7,7 @@
 
 use eh3d_project::appbranch::BranchKit;
 use eh3d_project::manufacturing::{self as suite, JobFile};
+use eh3d_project::suiteview;
 use std::path::{Path, PathBuf};
 
 /// The branch of this program.
@@ -51,13 +52,23 @@ pub fn result_name(layers: &[JobFile], layer: &JobFile, extension: &str) -> Stri
 
 /// Keeps one program made from a layer of the job. The programs of the other layers that are already there stay when they are up to date; when the job changed since they were made they
 /// go, because what they were made from is no longer the job. Returns what a person should be told.
-pub fn save_program(
+///
+/// `seen` is the mark of the project as it was read ([`mark_of`]). When another program saved the file since, nothing is written
+/// (`EH3D-PKG-025`); what this program wrote itself does not count.
+pub fn save_program_since(
     path: &Path,
+    seen: &str,
     layer: &JobFile,
     name: &str,
     bytes: Vec<u8>,
 ) -> Result<Vec<String>, String> {
-    suite::keep_result(&KIT, path, layer, name, bytes)
+    suite::keep_result_since(&KIT, path, seen, layer, name, bytes)
+}
+
+/// The mark of the project as it is now, to be taken before its layers are read.
+pub fn mark_of(path: &Path) -> Result<String, String> {
+    let view = suiteview::view(path, KIT.branch)?;
+    Ok(view.own_hash.unwrap_or_default())
 }
 
 /// A new empty folder of the system to work in; the caller removes it.

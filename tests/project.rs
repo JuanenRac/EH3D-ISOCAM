@@ -455,3 +455,25 @@ fn a_save_by_another_program_while_a_question_waits_refuses_the_agreed_write() {
     w.dismiss_changed();
     assert!(w.changed.is_none());
 }
+
+#[test]
+fn a_program_made_while_another_program_saved_the_project_is_not_kept_over_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = project(dir.path());
+    let seen = eh3dfile::mark_of(&path).unwrap();
+    let layers = eh3dfile::copper_layers(&path).unwrap();
+    saved_by_another(&path, "{\"made\":4}");
+    let bytes = std::fs::read(&path).unwrap();
+    let name = eh3dfile::result_name(&layers, &layers[0], "nc");
+    let keep =
+        |seen: &str| eh3dfile::save_program_since(&path, seen, &layers[0], &name, b"M2\n".to_vec());
+    let why = keep(&seen).unwrap_err();
+    assert!(why.contains("EH3D-PKG-025"), "{why}");
+    // a text that is no mark of an opening shows nothing and is refused too
+    assert!(keep("").unwrap_err().contains("EH3D-PKG-025"));
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    // with a fresh mark it is kept, and what this program wrote itself does not count
+    let seen = eh3dfile::mark_of(&path).unwrap();
+    keep(&seen).unwrap();
+    keep(&seen).unwrap();
+}

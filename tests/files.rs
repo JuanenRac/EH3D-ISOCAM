@@ -795,3 +795,34 @@ fn the_window_replaces_a_program_in_one_step() {
     assert_eq!(std::fs::read_to_string(&other).unwrap(), "an old program\n");
     assert_eq!(names(dir.path()), ["board.nc", "other.nc"]);
 }
+
+#[test]
+fn the_slots_of_a_drill_file_in_mils_are_said_and_do_not_vanish() {
+    let text = "%\nT01\nX1000Y1000\nG00X2000Y2000\nM15\nG01X3000Y2000\nM16\nX5000Y5000\n";
+    let d = read_drills(text).unwrap();
+    assert_eq!(d.holes.len(), 2);
+    assert_eq!(d.notes.len(), 1, "{:?}", d.notes);
+    assert!(
+        d.notes[0].starts_with("4 lines") && d.notes[0].contains("line 4"),
+        "{:?}",
+        d.notes
+    );
+    // a file with holes only says nothing
+    assert!(read_drills("%\nT01\nX1000Y1000\n")
+        .unwrap()
+        .notes
+        .is_empty());
+}
+
+#[test]
+fn a_plot_with_a_number_that_cannot_be_read_is_not_taken_as_an_outline() {
+    let good = "IN;SP1;PU0,0;PD800,0,800,400,0,400,0,0;";
+    assert!(read_outline("board.plt", good).is_ok());
+    for bad in [
+        "IN;SP1;PU0,0;PD800,0,80O,400,0,400,0,0;",
+        "IN;SP1;PU0,0;PD800,0,800,400,0,400,0;",
+    ] {
+        let why = read_outline("board.plt", bad).unwrap_err();
+        assert!(why.contains("EH3D-FORMATS"), "{why}");
+    }
+}

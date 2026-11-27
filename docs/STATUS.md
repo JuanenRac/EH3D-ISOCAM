@@ -17,7 +17,7 @@ The official state of each capability is in `REQUIREMENTS.md`. The register has 
 
 ## What it needs from other repositories
 
-* `EH3D-CORE-LIBS`, `EH3D-GERBERVIEWER` and `EH3D-COMMON`, as sibling folders at the versions named in the workflows (EH3D-COMMON at the tag v0.3.7; EH3D-GERBERVIEWER at the tag v0.1.0).
+* `EH3D-CORE-LIBS`, `EH3D-GERBERVIEWER` and `EH3D-COMMON`, as sibling folders at the versions named in the workflows (EH3D-COMMON at the tag v0.3.8; EH3D-GERBERVIEWER at the tag v0.1.0).
 * The tool crib program for the CSV table, and the autolevel program for the height map.
 * A milling machine, a board and a person, for the only validation that counts.
 
