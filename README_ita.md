@@ -9,7 +9,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Stack-Rust-DEA595.svg" alt="Rust">
+  <img src="https://img.shields.io/badge/Stack-Rust-DEA597.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.1.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
@@ -17,7 +17,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 595 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-isocam`) con 597 test che girano su un computer: traccia i percorsi di una o più frese attorno al rame di un livello Gerber, rimuove il rame residuo, sceglie il verso, i punti di partenza e l'ordine dei tagli, legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, controlla le regole di progetto e scrive G-code o HP-GL. Ha una finestra (compilata con `--features gui`) che apre un livello, un file di foratura, un contorno, un livello maschera e una tabella di punti di riferimento, capovolge la scheda e la ripete su un pannello, disegna il rame, i fori, il contorno e i percorsi e scrive gli stessi file della riga di comando, ma che non è ancora stata vista su uno schermo; non è stato provato su una macchina e non è stato verificato con una raccolta di file reali.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versione | `0.1.8` |
 | Maturità | Impalcatura |
-| Test | 595 |
+| Test | 597 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -48,7 +48,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | File e disposizione | 🟡 | legge e scrive file di foratura e contorni della scheda, dispone la scheda per le due facce e per un pannello, aggiunge fori di allineamento e controlla le regole di progetto con la posizione di ogni rilievo; provato su un computer, non con file scritti da altri programmi né su una macchina. |
 | Isolamento forzato, correzione, maschera | 🟡 | percorsi forzati negli spazi in cui l'utensile non entra, percorsi più leggeri, scala e correzione con punti di riferimento, aperture della maschera di saldatura, unità e anteprima delle passate; provato su un computer con livelli generati e input danneggiati, mai con schede vere né su una macchina, e la correzione non è stata confrontata con misure reali di una telecamera. |
 | Riga di comando | 🟡 | `eh3d-isocam` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 595 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
+| Test | 🟡 | 597 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. Includono una simulazione a seme fisso di una macchina Bungard con la corsa del suo piano, con guasti iniettati e ripristino. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`): aprire o trascinare un livello, zoom e spostamento, modificare i parametri principali, esportare; la sua logica è testata e il programma di una versione la disegna in un'immagine (`--shot`), ma nessuno l'ha ancora usata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -232,7 +232,7 @@ EH3D-ISOCAM/
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   come contribuire, codice di condotta e licenza
 ```
 
-**Il progetto della suite.** Un file `.eh3d` ha un ramo per ogni programma. `project info FILE.eh3d` mostra i livelli del lavoro (il ramo `manufacturing/`, un pacchetto `.eh3dproj`) e i programmi tenuti nel progetto; `project isolate FILE.eh3d [--layer NOME] [--plt]` isola ogni livello rame del lavoro (o quello nominato), con le stesse opzioni e gli stessi rifiuti di `isolate`, e tiene il programma solo nel ramo `isocam/`, con una copia del livello e il contenuto del ramo da cui viene. Se poi il lavoro cambia, `project info` avvisa che i programmi sono superati e termina con 2. Nella finestra, un `.eh3d` trascinato apre i livelli rame del suo lavoro (scelti da un elenco) e il programma si salva nel progetto. Quando il salvataggio toglierebbe una firma del progetto o del suo ramo, la finestra chiede prima e senza consenso non scrive nulla.
+**Il progetto della suite.** Un file `.eh3d` ha un ramo per ogni programma. `project info FILE.eh3d` mostra i livelli del lavoro (il ramo `manufacturing/`, un pacchetto `.eh3dproj`) e i programmi tenuti nel progetto; `project isolate FILE.eh3d [--layer NOME] [--plt]` isola ogni livello rame del lavoro (o quello nominato), con le stesse opzioni e gli stessi rifiuti di `isolate`, e tiene il programma solo nel ramo `isocam/`, con una copia del livello e il contenuto del ramo da cui viene. Se poi il lavoro cambia, `project info` avvisa che i programmi sono superati e termina con 2. Nella finestra, un `.eh3d` trascinato apre i livelli rame del suo lavoro (scelti da un elenco) e il programma si salva nel progetto. Quando il salvataggio toglierebbe una firma del progetto o del suo ramo, la finestra chiede prima e senza consenso non scrive nulla. La finestra non scrive sopra un progetto che un altro programma ha salvato da quando è stato aperto o salvato in essa, neanche se è stato salvato mentre una domanda attendeva: lo dice e offre di rileggere il progetto (con lo stesso livello se il lavoro lo ha ancora), di salvarne una copia con un altro nome con il programma dentro, o di chiudere.
 
 ## ⚙️ Configurazione
 
@@ -256,7 +256,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 595 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 597 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

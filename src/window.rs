@@ -23,7 +23,7 @@ use eh3d_gerberviewer::scene::{from_gerber_with, Bounds, Scene, SceneOptions};
 use eh3d_parser_gcode::emit::{header_with_units, sha256_hex, Header};
 use eh3d_parser_gerber::{parse_bytes_with, InputLimits};
 use eh3d_project::manufacturing::{self as suite, JobFile};
-use eh3d_project::suitetext::Said;
+use eh3d_project::suitetext::{Said, S};
 use eh3d_project::suiteview;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -72,6 +72,8 @@ pub enum Job {
     ExportDrills,
     ExportRoute,
     ExportMask,
+    /// A copy of the project under another name, with the program in it.
+    SaveProjectAs,
 }
 
 impl Job {
@@ -79,7 +81,11 @@ impl Job {
     pub fn is_export(self) -> bool {
         matches!(
             self,
-            Job::ExportPaths | Job::ExportDrills | Job::ExportRoute | Job::ExportMask
+            Job::ExportPaths
+                | Job::ExportDrills
+                | Job::ExportRoute
+                | Job::ExportMask
+                | Job::SaveProjectAs
         )
     }
 
@@ -95,6 +101,7 @@ impl Job {
             Job::ExportDrills => &DRILL_OUT_EXTENSIONS,
             Job::ExportRoute => &ROUTE_EXTENSIONS,
             Job::ExportMask => &MASK_OUT_EXTENSIONS,
+            Job::SaveProjectAs => &["eh3d"],
         }
     }
 
@@ -110,6 +117,8 @@ impl Job {
             Job::ExportDrills => Msg::TitleExportDrills,
             Job::ExportRoute => Msg::TitleExportRoute,
             Job::ExportMask => Msg::TitleExportMask,
+            // the window of files writes the words of the suite over this one
+            Job::SaveProjectAs => Msg::SaveProject,
         }
     }
 }
@@ -443,6 +452,10 @@ pub enum Status {
         name: String,
     },
     NoProject,
+    /// Another program saved the project since it was read here: nothing was written.
+    ProjectChanged {
+        name: String,
+    },
 }
 
 impl Status {
@@ -546,6 +559,9 @@ impl Status {
             Status::ProjectSaved { file } => fill(Msg::ProjectSaved.tr(lang), &[file.as_str()]),
             Status::ProjectStale { name } => fill(Msg::ProjectStale.tr(lang), &[name.as_str()]),
             Status::NoProject => Msg::NoProject.tr(lang).to_string(),
+            Status::ProjectChanged { name } => {
+                Said(S::ChangedOnDisk, vec![name.clone()]).text(lang.code())
+            }
         }
     }
 
@@ -659,6 +675,10 @@ pub struct Window {
     pub job_index: Option<usize>,
     /// What a person has to agree to before the program is written into the project; `None` while nothing is asked.
     pub pending: Option<Vec<Said>>,
+    /// The project a write was refused for because another program saved it meanwhile, until the person chooses what to do.
+    pub changed: Option<PathBuf>,
+    /// The mark of the project when it was read or written here: what another program saved since then is not written over.
+    seen: Option<String>,
     base: Settings,
 }
 
@@ -694,6 +714,8 @@ impl Window {
             job_layers: Vec::new(),
             job_index: None,
             pending: None,
+            changed: None,
+            seen: None,
             base,
         }
     }
@@ -942,9 +964,12 @@ impl Window {
 
     /// Opens the first copper layer of the job of a project, and says when the programs kept in it are out of date. The old layer stays open when the job cannot be used.
     pub fn open_project(&mut self, path: &Path) -> bool {
-        let read = eh3dfile::copper_layers(path)
-            .and_then(|layers| Ok((layers, suite::state(&eh3dfile::KIT, path)?)));
-        let (layers, state) = match read {
+        // the mark is taken before the layers are read: what is saved after it is not written over
+        let read = suiteview::view(path, eh3dfile::KIT.branch).and_then(|view| {
+            let layers = eh3dfile::copper_layers(path)?;
+            Ok((view.own_hash, layers, suite::state(&eh3dfile::KIT, path)?))
+        });
+        let (mark, layers, state) = match read {
             Ok(found) => found,
             Err(why) => {
                 self.status = Status::Failed(why);
@@ -963,6 +988,8 @@ impl Window {
             (self.project, self.job_layers, self.job_index) = before;
             return false;
         }
+        self.seen = mark;
+        self.changed = None;
         let name = board::file_name(path);
         if state.out_of_date {
             self.status = Status::ProjectStale { name };
@@ -1002,18 +1029,103 @@ impl Window {
         }
     }
 
-    /// What writing the program into the project would take away: its signature, or the one of the branch of this program.
-    fn signature_warnings(project: &Path) -> Result<Vec<Said>, String> {
-        let own = eh3dfile::KIT.branch;
-        let seen = suiteview::view(project, own)?.own_hash;
-        // the project as it is now, so that only what is said about its signatures is left to say
-        suiteview::warnings(project, Some(project), seen.as_deref(), own)
+    /// Reads again the project that another program saved, with the same copper layer when the job still has it.
+    pub fn reopen_project(&mut self) -> bool {
+        let Some(path) = self.changed.take() else {
+            return false;
+        };
+        let layer = self
+            .job_index
+            .and_then(|i| self.job_layers.get(i))
+            .map(|f| f.rel.clone());
+        if !self.open_project(&path) {
+            self.changed = Some(path);
+            return false;
+        }
+        let at = self
+            .job_layers
+            .iter()
+            .position(|f| Some(&f.rel) == layer.as_ref());
+        if let Some(at) = at.filter(|at| Some(*at) != self.job_index) {
+            self.choose_job_layer(at);
+        }
+        true
+    }
+
+    /// What writing the program into the project would take away: its signature, or the one of the branch of this program. Refused when another
+    /// program saved the project since the mark `seen` was taken.
+    fn signature_warnings(project: &Path, seen: Option<&str>) -> Result<Vec<Said>, String> {
+        suiteview::warnings(project, Some(project), seen, eh3dfile::KIT.branch)
+    }
+
+    /// The mark of the project as it is now.
+    fn mark_of(project: &Path) -> Option<String> {
+        suiteview::view(project, eh3dfile::KIT.branch)
+            .ok()
+            .and_then(|view| view.own_hash)
+    }
+
+    /// A write that failed. When the reason is that another program saved the project, it is said in the language of the window and
+    /// the window offers to read it again or to save under another name.
+    fn refused(&mut self, project: &Path, why: String) {
+        if suiteview::is_changed_refusal(&why) {
+            self.changed = Some(project.to_path_buf());
+            self.status = Status::ProjectChanged {
+                name: project
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+            };
+        } else {
+            self.status = Status::Failed(why);
+        }
+    }
+
+    /// The person closed the notice of a project that another program saved: nothing is read and nothing is written.
+    pub fn dismiss_changed(&mut self) {
+        self.changed = None;
+    }
+
+    /// Keeps the program in a copy of the project under another name, with every branch as it is now: the way out when another program saved
+    /// the project meanwhile. A file that is there is never written over.
+    pub fn save_project_as(&mut self, target: &Path) -> bool {
+        let Some(from) = self.project.clone() else {
+            self.status = Status::NoProject;
+            return false;
+        };
+        let target = suiteview::with_extension(target);
+        if !suiteview::is_project(&target) {
+            self.status = Status::Failed(S::NeedExtension.tr(self.lang.code()).to_string());
+            return false;
+        }
+        if target.exists() {
+            let name = target.display().to_string();
+            self.status = Status::Failed(fill(Msg::ProjectExists.tr(self.lang), &[name.as_str()]));
+            return false;
+        }
+        if let Err(why) = suiteview::copy_project(&from, &target) {
+            self.status = Status::Failed(why);
+            return false;
+        }
+        let before = self.seen.clone();
+        self.project = Some(target.clone());
+        self.seen = Self::mark_of(&target);
+        if self.save_project() || self.pending.is_some() {
+            return true;
+        }
+        // a copy that could not be written to is not left behind
+        let _ = fs::remove_file(&target);
+        self.project = Some(from);
+        self.seen = before;
+        self.changed = None;
+        false
     }
 
     /// Keeps the program of the layer of the job in the project, but asks first (`pending`) when writing would remove a signature: nothing is written until
     /// [`Window::confirm_save`].
     pub fn save_project(&mut self) -> bool {
         self.pending = None;
+        self.changed = None;
         let (Some(project), Some(_)) = (
             self.project.clone(),
             self.job_index.and_then(|i| self.job_layers.get(i)),
@@ -1021,14 +1133,14 @@ impl Window {
             self.status = Status::NoProject;
             return false;
         };
-        match Self::signature_warnings(&project) {
+        match Self::signature_warnings(&project, self.seen.as_deref()) {
             Ok(asked) if asked.is_empty() => self.write_project(),
             Ok(asked) => {
                 self.pending = Some(asked);
                 false
             }
             Err(why) => {
-                self.status = Status::Failed(why);
+                self.refused(&project, why);
                 false
             }
         }
@@ -1066,6 +1178,15 @@ impl Window {
         let Some(bytes) = bytes else {
             return false;
         };
+        // the person may have taken long to answer, and the program takes time to make: look again just before the write
+        if let Some(Err(why)) = self
+            .seen
+            .as_deref()
+            .map(|seen| suiteview::check_unchanged(&project, seen))
+        {
+            self.refused(&project, why);
+            return false;
+        }
         match eh3dfile::save_program(&project, &file, &name, bytes) {
             Ok(said) => {
                 // a signature that the write removed is told in the words of the window
@@ -1073,11 +1194,12 @@ impl Window {
                 self.notes
                     .extend(words.iter().map(|w| w.text(self.lang.code())));
                 self.notes.extend(other);
+                self.seen = Self::mark_of(&project);
                 self.status = Status::ProjectSaved { file: name };
                 true
             }
             Err(why) => {
-                self.status = Status::Failed(why);
+                self.refused(&project, why);
                 false
             }
         }
@@ -1104,6 +1226,8 @@ impl Window {
                 self.job_layers.clear();
                 self.job_index = None;
                 self.pending = None;
+                self.changed = None;
+                self.seen = None;
                 self.layer = Some(layer);
                 self.passes.clear();
                 self.unfixed = 0;
@@ -1281,6 +1405,7 @@ impl Window {
             Job::ExportDrills => self.export_drills(path),
             Job::ExportRoute => self.export_route(path),
             Job::ExportMask => self.export_mask(path),
+            Job::SaveProjectAs => self.save_project_as(path),
         }
     }
 
@@ -1453,6 +1578,10 @@ impl Window {
                 .layer
                 .as_ref()
                 .map(|l| beside(l.path.as_path(), "-mask", "gts")),
+            Job::SaveProjectAs => self
+                .project
+                .as_ref()
+                .map(|p| beside(p.as_path(), "-isocam", "eh3d")),
             _ => None,
         }
     }

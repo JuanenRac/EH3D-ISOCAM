@@ -383,3 +383,75 @@ fn the_window_says_when_keeping_a_program_removed_the_signature_of_the_project()
     assert!(w.save_project(), "{:?}", w.status);
     assert!(w.pending.is_none());
 }
+
+/// Saves the project the way another program does: the change is made on a copy and the file is replaced with it, so this
+/// process has no memory of that write.
+fn saved_by_another(path: &Path, text: &str) {
+    let copy = path.with_file_name("another.eh3d");
+    std::fs::copy(path, &copy).unwrap();
+    write_branch(&copy, "pcb", &[("board.json", text.as_bytes())]);
+    std::fs::copy(&copy, path).unwrap();
+    std::fs::remove_file(&copy).unwrap();
+}
+
+#[test]
+fn a_project_another_program_saved_is_not_written_over_and_can_be_read_again_or_saved_apart() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = project(dir.path());
+    let mut w = Window::new(Lang::En);
+    assert!(w.open(&path), "{:?}", w.status);
+    saved_by_another(&path, "{\"made\":1}");
+    let bytes = std::fs::read(&path).unwrap();
+    assert!(!w.save_project());
+    assert!(
+        matches!(w.status, Status::ProjectChanged { .. }),
+        "{:?}",
+        w.status
+    );
+    assert!(w.status.is_problem());
+    assert!(w.status.text(Lang::En).contains("board.eh3d"));
+    assert_eq!(w.changed.as_deref(), Some(path.as_path()));
+    assert!(w.pending.is_none() && !w.confirm_save());
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    // a file that is there is never written over, under another name the work goes beside what the other program saved
+    assert!(!w.save_project_as(&path));
+    let apart = dir.path().join("mine.eh3d");
+    assert!(w.save_project_as(&apart), "{:?}", w.status);
+    assert_eq!(w.project.as_deref(), Some(apart.as_path()));
+    assert_eq!(hash(&apart, "pcb"), hash(&path, "pcb"));
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    // what the window wrote itself does not count
+    assert!(w.save_project(), "{:?}", w.status);
+    // reading it again takes the offer away and lets it be saved
+    saved_by_another(&apart, "{\"made\":2}");
+    assert!(!w.save_project());
+    assert!(w.reopen_project(), "{:?}", w.status);
+    assert!(w.changed.is_none() && !w.reopen_project());
+    assert!(w.save_project(), "{:?}", w.status);
+}
+
+#[test]
+fn a_save_by_another_program_while_a_question_waits_refuses_the_agreed_write() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = project(dir.path());
+    let signer = eh3d_project::Ed25519Signer::from_seed(&[7; 32]);
+    Project::open(&path, &OpenOptions::default())
+        .unwrap()
+        .sign_project(&signer, &SaveOptions::default())
+        .unwrap();
+    let mut w = Window::new(Lang::En);
+    assert!(w.open(&path), "{:?}", w.status);
+    assert!(!w.save_project(), "{:?}", w.status);
+    assert!(w.pending.is_some());
+    saved_by_another(&path, "{\"made\":3}");
+    let bytes = std::fs::read(&path).unwrap();
+    assert!(!w.confirm_save());
+    assert!(
+        matches!(w.status, Status::ProjectChanged { .. }),
+        "{:?}",
+        w.status
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    w.dismiss_changed();
+    assert!(w.changed.is_none());
+}

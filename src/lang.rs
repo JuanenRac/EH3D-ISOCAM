@@ -222,6 +222,7 @@ pub enum Msg {
     ChecksClean,
     NoteArcsFitted,
     SaveProject,
+    ProjectExists,
     JobLayer,
     ProjectOpened,
     ProjectSaved,
@@ -230,7 +231,7 @@ pub enum Msg {
 }
 
 impl Msg {
-    pub const ALL: [Msg; 139] = [
+    pub const ALL: [Msg; 140] = [
         Msg::Open,
         Msg::Export,
         Msg::Compute,
@@ -365,6 +366,7 @@ impl Msg {
         Msg::ChecksClean,
         Msg::NoteArcsFitted,
         Msg::SaveProject,
+        Msg::ProjectExists,
         Msg::JobLayer,
         Msg::ProjectOpened,
         Msg::ProjectSaved,
@@ -1704,6 +1706,16 @@ impl Msg {
                 "{1} 回ではなく {0} 回の移動: 円弧を {2} mm 以内で当てはめました",
                 "{0} 次移动而不是 {1} 次：圆弧拟合误差在 {2} mm 以内",
                 "{0} movimentos em vez de {1}: arcos ajustados a {2} mm",
+            ],
+            Msg::ProjectExists => [
+                "{0} is there already: choose a name that is not taken",
+                "{0} ya existe: elija un nombre que no esté usado",
+                "{0} ist schon vorhanden: wählen Sie einen freien Namen",
+                "{0} existe déjà : choisissez un nom libre",
+                "{0} esiste già: scegli un nome libero",
+                "{0} はすでに存在します。使われていない名前を選んでください",
+                "{0} 已存在：请选择未被使用的名称",
+                "{0} já existe: escolha um nome que não esteja usado",
             ],
             Msg::SaveProject => [
                 "Save to the project",
