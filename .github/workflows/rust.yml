@@ -92,7 +92,7 @@ jobs:
         run: cargo clippy --all-targets --features gui -- -D warnings
         working-directory: EH3D-ISOCAM
       - name: Tests
-        run: cargo test --all-targets
+        run: cargo test --no-fail-fast --all-targets
         working-directory: EH3D-ISOCAM
 
   main-against-main:

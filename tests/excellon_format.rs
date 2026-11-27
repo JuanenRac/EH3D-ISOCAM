@@ -194,7 +194,15 @@ fn the_automatic_format_still_writes_whole_mils() {
         text.contains("X1000Y1000\n") && text.contains("whole mils"),
         "{text}"
     );
-    assert!(!text.contains("FILE_FORMAT"), "{text}");
+    // the format of the whole mils is declared, so no reader has to suppose it
+    assert!(
+        text.contains(
+            ";FILE_FORMAT=3:3
+INCH,TZ
+"
+        ),
+        "{text}"
+    );
 }
 
 #[test]
