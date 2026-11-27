@@ -62,7 +62,7 @@ impl ExcellonFormat {
 /// The most a coordinate of the 2.4 format can hold: 99.9999 in, written as six digits.
 const MAX_TWO_FOUR: i64 = 999_999;
 
-pub use eh3d_bungard_formats::ncd::NumberFormat;
+pub use eh3d_bungard_formats::ncd::{how_to_choose, NumberFormat};
 
 /// The code a refusal for an undeclared format starts with.
 pub const FORMAT_NEEDED: &str = "EH3D-FORMATS-014";
