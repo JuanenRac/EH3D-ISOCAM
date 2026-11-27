@@ -501,7 +501,10 @@ impl Status {
             }
             Status::Exported { file } => fill(Msg::Exported.tr(lang), &[file.as_str()]),
             Status::NoLayer => Msg::NoLayer.tr(lang).to_string(),
-            Status::Failed(why) => fill(Msg::Failed.tr(lang), &[why.as_str()]),
+            Status::Failed(why) => fill(
+                Msg::Failed.tr(lang),
+                &[crate::drill::explain(why, lang.code()).as_str()],
+            ),
             Status::Gaps(n) => fill(Msg::Gaps.tr(lang), &[n.to_string().as_str()]),
             Status::NotDrawn(why) => fill(Msg::NotDrawn.tr(lang), &[why.as_str()]),
             Status::Stale => Msg::Stale.tr(lang).to_string(),

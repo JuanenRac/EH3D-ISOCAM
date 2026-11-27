@@ -2,7 +2,7 @@
 //! keys as options (`--fine-tool-mm 0.15` is `fine_tool_mm = 0.15`), so nothing tuned is hidden in the code.
 
 use crate::drc::Rules;
-use crate::drill::{DrillOrder, ExcellonFormat};
+use crate::drill::{DrillOrder, ExcellonFormat, NumberFormat};
 use crate::fiducial::{fit, Affine, Fit, Limits, Model, Pair};
 use crate::forced::Forced;
 use crate::gcode::Job;
@@ -174,6 +174,8 @@ pub struct Settings {
     /// The format of the coordinates of a drill file (read and written) and of a routing file (written) that have no decimal point: `auto` (what the file says; whole mils for inches that say nothing) or `2.4` (two digits before the
     /// point and four after, read and written).
     pub excellon_format: ExcellonFormat,
+    /// How a drill file that does not declare its number format is read (`ask`, `mils`, `inch-2.4-tz`...); `ask` refuses it.
+    pub drill_format: Option<NumberFormat>,
     /// A CSV table of the tool crib of EH3D-TOOL-MANAGER (`--crib FILE`); empty reads none. Only read when a tool of it is chosen.
     pub crib_file: String,
     /// The number of the crib tool that is the fine tool (replaces `fine_tool_mm`); 0 takes `fine_tool_mm`.
@@ -324,6 +326,7 @@ impl Default for Settings {
             ncd_isocam_style: false,
             ncd_digits: 0,
             excellon_format: ExcellonFormat::Auto,
+            drill_format: None,
             crib_file: String::new(),
             crib_fine: 0,
             crib_coarse: 0,
@@ -561,6 +564,11 @@ impl Settings {
                 self.ncd_digits = n as u8;
             }
             "excellon_format" => self.excellon_format = ExcellonFormat::parse(v)?,
+            "drill_format" => {
+                self.drill_format = NumberFormat::from_setting(v).map_err(|wrong| {
+                    format!("drill_format '{wrong}' is not ask, mils, inch-2.4-tz, inch-2.4-lz, metric-3.3-tz or metric-3.3-lz")
+                })?;
+            }
             "crib_file" => {
                 if v.contains(['#', '\n', '\r']) {
                     return Err(format!(
@@ -709,6 +717,7 @@ min_tool_mm = {}
 rapid_mm_min = {}
 arc_tolerance_mm = {}
 excellon_format = {}
+drill_format = {}
 crib_file = {}
 crib_fine = {}
 crib_coarse = {}
@@ -754,6 +763,7 @@ rubout_ring_order = {}
             self.rapid_mm_min,
             self.arc_tolerance_mm,
             self.excellon_format.name(),
+            NumberFormat::setting(self.drill_format),
             self.crib_file,
             self.crib_fine,
             self.crib_coarse,

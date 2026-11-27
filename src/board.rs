@@ -5,7 +5,7 @@ use crate::config::Settings;
 use crate::contour::Loop;
 use crate::corners::{drop_small_cutouts, round_outline};
 use crate::drill::{
-    add_tabs_clear_of_corners, drill_travel_mm, order_holes, read_drills_with_format, read_outline,
+    add_tabs_clear_of_corners, drill_travel_mm, order_holes, read_drills_chosen, read_outline,
     route_outline, write_drills_in_format, write_route_excellon_in_format, DrillOrder, DrillStyle,
     Hole, Outline, TabReport, Tabs,
 };
@@ -102,7 +102,7 @@ pub fn read_drill_file(
     let name = file_name(path);
     let text = read_text(path, s)?;
     filetype::expect_drills(&name, filetype::detect(&text))?;
-    let d = read_drills_with_format(&text, units, s.excellon_format)
+    let d = read_drills_chosen(&text, units, s.excellon_format, s.drill_format)
         .map_err(|e| format!("{name}: {e}"))?;
     Ok(DrillFile {
         path: path.to_path_buf(),
