@@ -387,13 +387,10 @@ fn the_routing_file_in_whole_mils_is_what_it_was() {
     let auto = write_route_excellon_in_format(&cuts, 1.0, 1, ExcellonFormat::Auto).unwrap();
     assert_eq!(auto, write_route_excellon(&cuts, 1.0, 1).unwrap());
     assert!(
-        auto.starts_with("M48\nINCH\nT1C0.0394\n%\nT1\nG00X0Y0\nM15\n"),
+        auto.starts_with("M48\n;FILE_FORMAT=3:3\nINCH,TZ\nT1C0.0394\n%\nT1\nG00X0Y0\nM15\n"),
         "{auto}"
     );
-    assert!(
-        auto.contains("G01X1000Y0\n") && !auto.contains("FILE_FORMAT"),
-        "{auto}"
-    );
+    assert!(auto.contains("G01X1000Y0\n"), "{auto}");
 }
 
 #[test]
@@ -477,7 +474,7 @@ fn the_command_line_routes_in_2_4_with_the_option_and_with_a_configuration_file(
     assert!(ok, "{err}");
     let plain = std::fs::read_to_string(&out3).unwrap();
     assert!(
-        plain.starts_with("M48\nINCH\nT1C0.0787\n") && !plain.contains("FILE_FORMAT"),
+        plain.starts_with("M48\n;FILE_FORMAT=3:3\nINCH,TZ\nT1C0.0787\n"),
         "{plain}"
     );
 }
