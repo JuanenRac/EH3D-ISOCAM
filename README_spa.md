@@ -17,7 +17,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 604 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-isocam`) con 606 pruebas que se ejecutan en un ordenador: traza las trayectorias de una o varias fresas alrededor del cobre de una capa Gerber, retira el cobre sobrante, elige el sentido, los puntos de inicio y el orden de los cortes, lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, comprueba las reglas de diseño y escribe G-code o HP-GL. Tiene una ventana (se compila con `--features gui`) que abre una capa, un fichero de taladros, un contorno, una capa de máscara y una tabla de puntos de referencia, da la vuelta a la placa y la repite en un panel, dibuja el cobre, los taladros, el contorno y las trayectorias y escribe los mismos ficheros que la línea de comandos, pero esa ventana todavía no se ha visto en una pantalla; no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Versión | `0.2.0` |
 | Madurez | Andamiaje |
-| Pruebas | 604 |
+| Pruebas | 606 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -48,7 +48,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Ficheros y disposición | 🟡 | lee y escribe ficheros de taladros y contornos de placa, coloca la placa para las dos caras y para un panel, añade agujeros de alineación y comprueba las reglas de diseño con la posición de cada hallazgo; probado en un ordenador, no con ficheros escritos por otros programas ni en una máquina. |
 | Aislamiento forzado, corrección, máscara | 🟡 | caminos forzados por los huecos donde no cabe la herramienta, trayectorias más ligeras, escala y corrección con puntos de referencia, las aberturas de la máscara de soldadura, unidades y vista previa de las pasadas; probado en un ordenador con capas generadas y entradas dañadas, nunca con placas reales ni en una máquina, y la corrección no se ha comparado con mediciones reales de una cámara. |
 | Línea de comandos | 🟡 | `eh3d-isocam` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 604 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. Incluyen una simulación con semilla fija de una máquina Bungard con el recorrido de su mesa, con fallos inyectados y recuperación. |
+| Pruebas | 🟡 | 606 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. Incluyen una simulación con semilla fija de una máquina Bungard con el recorrido de su mesa, con fallos inyectados y recuperación. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🟠 | Escrita (egui, `--features gui`): abrir o soltar una capa, zoom y desplazamiento, editar los parámetros principales, exportar; su lógica está probada y el programa de una versión la dibuja en una imagen (`--shot`), pero nadie la ha usado todavía en una pantalla. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -84,6 +84,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 * **La profundidad para un ancho de pista** (`src/crib.rs`): `--crib-fine-width-mm W` calcula la profundidad a la que la fresa en V o el grabador del almacén corta una pista de ancho `W` y la usa como `depth_mm`; se rechaza un ancho que la herramienta no puede cortar, o una fresa cilíndrica.
 * **Un camino corto para el taladro** (`src/drill.rs`): `drill_order = nearest|optimized` (`--drill-order`) pone los agujeros de cada herramienta en un camino corto desde el punto de partida de la herramienta, manteniendo el orden de las herramientas, y `drills` dice cuánto más corto es el recorrido que en el orden del fichero; `file` (por defecto) conserva el orden del fichero.
 * **El tiempo del trabajo** (`src/simulate.rs`): con `rapid_mm_min` puesto, `isolate` imprime además el tiempo estimado del G-code que ha escrito (el mismo recorrido del programa que hace `simulate`, sin las esperas del husillo); sin velocidad de movimientos rápidos no imprime nada más, y un trazado o un dibujo DXF no tiene tiempo.
+* **El formato de taladrado en la ventana** (`src/window.rs`): La ventana también lo pregunta: un taladrado rechazado abre una pregunta con los formatos (ninguno marcado, solo un clic elige) y la lista de la sección de taladros lo cambia; la ventana guarda la elección solo mientras está abierta.
 * **La pasada en seco en la ventana** (`src/window.rs`): el botón «Pasada en seco» recorre el G-code con el que se escribirían las trayectorias (no se escribe nada) y muestra su tiempo, la caja en la que se mueve, el corte más profundo y sus hallazgos en el idioma de la ventana; el grupo «Máquina» reúne la velocidad en rápido y los límites de la máquina (`machine_profile`, la mesa, el margen, el corte más profundo y el husillo más rápido), y un límite que se rompe es un hallazgo.
 * **El recorrido de la herramienta en la imagen** (`src/toolpath.rs`): la casilla «Mostrar el recorrido de la herramienta» recorre el G-code con el que se escribirían las trayectorias y dibuja lo que haría la máquina en lugar de las bandas de las pasadas: los movimientos rápidos en gris, las bajadas en rojo y cada tramo de corte en un color de azul (justo bajo la superficie) a ámbar (el corte más profundo), con los arcos dibujados como arcos; el zoom, el desplazamiento y «Ajustar» de la imagen actúan sobre él, y el ajuste `depth_step_mm` es ahora un parámetro de la ventana.
 * **Puentes apartados de las esquinas** (`src/drill.rs`): `tab_corner_clearance_mm` (0 por defecto, que reparte los puentes por igual a lo largo de cada trayectoria como antes) desplaza un puente que caería en una esquina del corte a lo largo de la trayectoria, en pasos de un cuarto de la distancia, hasta el lugar más cercano donde la trayectoria gira como mucho 20 grados dentro del hueco y de la distancia a cada lado; un puente que no encuentra ese lugar se queda donde estaba y se cuenta y se avisa (`route` advierte, la ventana añade una nota). El número de puentes (`tab_count`), su ancho (`tab_width_mm`) y el tramo más corto entre dos (`tab_min_length_mm`) son parámetros de la ventana.
@@ -258,7 +259,7 @@ Para sacar una captura de la ventana sin abrirla a mano, ejecútelo con `--shot 
 
 ## 🧪 Pruebas
 
-El conjunto tiene 604 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 606 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 

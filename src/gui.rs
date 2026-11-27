@@ -2,6 +2,7 @@
 //! decided there, in code that is tested.
 
 use crate::browse::{self, Browser};
+use crate::drill::NumberFormat;
 use crate::lang::{Lang, Msg};
 use crate::shot::{ShotRequest, ShotTheme, PATIENCE_FRAMES};
 use crate::toolpath;
@@ -307,6 +308,27 @@ impl App {
                     });
                 if units != self.win.drill_units {
                     self.win.set_drill_units(units);
+                }
+                ui.label(Msg::DrillFormat.tr(lang));
+                let mut format = self.win.drill_format();
+                let name = |f: Option<NumberFormat>| {
+                    f.map_or_else(
+                        || Msg::DrillFormatNone.tr(lang).to_string(),
+                        NumberFormat::name,
+                    )
+                };
+                egui::ComboBox::from_id_salt("drill_format")
+                    .selected_text(name(format))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut format, None, name(None));
+                        for f in NumberFormat::PRESETS {
+                            ui.selectable_value(&mut format, Some(f), name(Some(f)));
+                        }
+                    })
+                    .response
+                    .on_hover_text(crate::drill::how_to_choose(lang.code()));
+                if format != self.win.drill_format() {
+                    self.win.set_drill_format(format);
                 }
                 self.fields_of(ui, Section::Drills);
                 let mut align = self.win.align;
@@ -697,6 +719,40 @@ impl App {
         }
     }
 
+    /// Asks for the number format of a drill file that does not declare it. No format is marked: only a click on one chooses it.
+    fn format_window(&mut self, ctx: &egui::Context) {
+        let Some(file) = &self.win.format_ask else {
+            return;
+        };
+        let lang = self.win.lang;
+        let name = file
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let (mut chosen, mut cancel) = (None, false);
+        let answer = egui::Modal::new(egui::Id::unique("drill_format_ask")).show(ctx, |ui| {
+            ui.set_max_width(460.0);
+            ui.label(egui::RichText::new(name.as_str()).strong().color(ACCENT));
+            ui.separator();
+            ui.label(crate::drill::how_to_choose(lang.code()));
+            ui.add_space(8.0);
+            for f in NumberFormat::PRESETS {
+                if ui.button(f.name()).clicked() {
+                    chosen = Some(f);
+                }
+            }
+            ui.add_space(8.0);
+            ui.label(egui::RichText::new(Msg::DrillFormatKept.tr(lang)).color(DIM));
+            cancel = ui.button(Msg::Cancel.tr(lang)).clicked();
+        });
+        if let Some(f) = chosen {
+            self.win.set_drill_format(Some(f));
+            self.fit_pending = true;
+        } else if cancel || answer.should_close() {
+            self.win.dismiss_format();
+        }
+    }
+
     /// What is offered when a write is refused because another program saved the project: read it again, or save under another name.
     fn changed_window(&mut self, ctx: &egui::Context) {
         let Some(file) = &self.win.changed else {
@@ -863,6 +919,7 @@ impl eframe::App for App {
         self.dialog_window(&ctx);
         self.confirm_window(&ctx);
         self.changed_window(&ctx);
+        self.format_window(&ctx);
         self.dry_run_window(&ctx);
         self.shot_tick(&ctx);
     }

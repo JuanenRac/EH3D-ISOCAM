@@ -17,7 +17,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 604 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-isocam`) mit 606 Tests, die auf einem Computer laufen: zeichnet die Bahnen eines oder mehrerer Fräswerkzeuge um das Kupfer einer Gerber-Lage, räumt das Restkupfer ab, wählt Richtung, Startpunkte und Reihenfolge der Schnitte, liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, prüft die Entwurfsregeln und schreibt G-Code oder HP-GL. Es hat ein Fenster (Build mit `--features gui`), das eine Ebene, eine Bohrdatei, einen Umriss, eine Maskenebene und eine Tabelle von Referenzpunkten öffnet, die Platine wendet und auf einem Nutzen wiederholt, das Kupfer, die Bohrungen, den Umriss und die Bahnen zeichnet und dieselben Dateien schreibt wie die Kommandozeile, das aber noch auf keinem Bildschirm angesehen wurde; es wurde auf keiner Maschine erprobt und nicht an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -30,7 +30,7 @@
 |---|---|
 | Version | `0.2.0` |
 | Reifegrad | Gerüst |
-| Tests | 604 |
+| Tests | 606 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -48,7 +48,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Dateien und Anordnung | 🟡 | liest und schreibt Bohrdateien und Platinenkonturen, richtet eine Platine für beide Seiten und für einen Nutzen aus, setzt Passlöcher und prüft die Entwurfsregeln mit dem Ort jedes Befunds; auf einem Computer getestet, nicht mit Dateien anderer Programme und nicht auf einer Maschine. |
 | Erzwungene Isolation, Korrektur, Maske | 🟡 | erzwungene Pfade durch Lücken, in die das Werkzeug nicht passt, leichtere Bahnen, Skalierung und Korrektur mit Referenzpunkten, die Öffnungen der Lötstoppmaske, Einheiten und die Vorschau der Durchgänge; auf einem Computer mit erzeugten Lagen und beschädigten Eingaben getestet, nie mit echten Platinen und nie auf einer Maschine, und die Korrektur wurde nicht mit echten Kameramessungen verglichen. |
 | Kommandozeile | 🟡 | `eh3d-isocam` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 604 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. Dazu gehört eine Simulation mit festem Seed für eine Bungard-Maschine mit dem Verfahrweg ihres Tisches, mit eingespeisten Fehlern und Wiederherstellung. |
+| Tests | 🟡 | 606 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. Dazu gehört eine Simulation mit festem Seed für eine Bungard-Maschine mit dem Verfahrweg ihres Tisches, mit eingespeisten Fehlern und Wiederherstellung. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`): Ebene öffnen oder hineinziehen, Zoom und Verschieben, die wichtigsten Parameter ändern, exportieren; die Logik ist getestet und das Programm einer Version zeichnet es in ein Bild (`--shot`), aber noch niemand hat es auf einem Bildschirm benutzt. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -84,6 +84,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 * **Die Tiefe für eine Leiterbahnbreite** (`src/crib.rs`): `--crib-fine-width-mm W` berechnet die Tiefe, bei der der V-Fräser oder Gravierstichel des Lagers eine Bahn der Breite `W` schneidet, und verwendet sie als `depth_mm`; eine Breite, die das Werkzeug nicht schneiden kann, oder ein Schaftfräser wird abgelehnt.
 * **Ein kurzer Weg für den Bohrer** (`src/drill.rs`): `drill_order = nearest|optimized` (`--drill-order`) ordnet die Löcher jedes Werkzeugs auf einem kurzen Weg ab dem Startpunkt des Werkzeugs, wobei die Werkzeuge ihre Reihenfolge behalten, und `drills` meldet, um wie viel kürzer der Weg als in der Reihenfolge der Datei ist; `file` (Standard) behält die Reihenfolge der Datei bei.
 * **Die Zeit des Auftrags** (`src/simulate.rs`): ist `rapid_mm_min` gesetzt, gibt `isolate` zusätzlich die geschätzte Zeit des geschriebenen G-Codes aus (derselbe Durchlauf des Programms wie bei `simulate`, ohne die Wartezeiten der Spindel); ohne Eilgang-Geschwindigkeit wird nichts weiter ausgegeben, und ein Plot oder eine DXF-Zeichnung hat keine Zeit.
+* **Das Bohrformat im Fenster** (`src/window.rs`): Auch das Fenster fragt danach: eine abgelehnte Bohrdatei öffnet eine Frage mit den Formaten (keines ist markiert, nur ein Klick wählt) und die Liste im Bohrabschnitt ändert es; das Fenster behält die Wahl nur, solange es offen ist.
 * **Der Trockenlauf im Fenster** (`src/window.rs`): die Schaltfläche „Trockenlauf“ durchläuft den G-Code, als der die Bahnen geschrieben würden (es wird nichts geschrieben), und zeigt seine Zeit, den Bereich, in dem er sich bewegt, den tiefsten Schnitt und seine Befunde in der Sprache des Fensters; die Gruppe „Maschine“ enthält die Eilganggeschwindigkeit und die Grenzen der Maschine (`machine_profile`, den Tisch, den Abstand, den tiefsten Schnitt und die schnellste Spindel), und eine verletzte Grenze ist ein Befund.
 * **Der Werkzeugweg im Bild** (`src/toolpath.rs`): das Feld „Werkzeugweg zeigen“ durchläuft den G-Code, als der die Bahnen geschrieben würden, und zeichnet statt der Bänder der Durchgänge, was die Maschine tun würde: Eilgänge grau, Eintauchbewegungen rot und jede Schnittstrecke in einer Farbe von Blau (knapp unter der Oberfläche) bis Bernstein (der tiefste Schnitt), Bögen als Bögen; Zoom, Verschieben und „Einpassen“ des Bildes wirken darauf, und die Einstellung `depth_step_mm` ist jetzt ein Parameter des Fensters.
 * **Stege abseits der Ecken** (`src/drill.rs`): `tab_corner_clearance_mm` (standardmäßig 0, was die Stege wie bisher gleichmäßig entlang jeder Bahn verteilt) verschiebt einen Steg, der auf eine Ecke des Schnitts fiele, entlang der Bahn in Schritten eines Viertels des Abstands zur nächsten Stelle, an der die Bahn innerhalb der Lücke und des Abstands zu beiden Seiten höchstens 20 Grad abbiegt; ein Steg, der keine solche Stelle findet, bleibt, wo er war, und wird gezählt und gemeldet (`route` warnt, das Fenster fügt einen Hinweis hinzu). Die Zahl der Stege (`tab_count`), ihre Breite (`tab_width_mm`) und das kürzeste Stück zwischen zweien (`tab_min_length_mm`) sind Parameter des Fensters.
@@ -258,7 +259,7 @@ Um ein Bild des Fensters aufzunehmen, ohne es von Hand zu öffnen, starten Sie e
 
 ## 🧪 Tests
 
-Die Suite hat 604 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 606 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
