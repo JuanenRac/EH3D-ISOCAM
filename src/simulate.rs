@@ -124,14 +124,33 @@ pub fn run(text: &str, rapid_mm_min: f64) -> Report {
         rapid_known: rapid_mm_min.is_finite() && rapid_mm_min > 0.0,
         ..Report::default()
     };
+    let mut spinning = false;
     for b in &program.blocks {
+        for w in &b.words {
+            if w.letter == 'M' && (w.value == 3.0 || w.value == 4.0) {
+                spinning = true;
+            } else if w.letter == 'M' && [2.0, 5.0, 30.0].contains(&w.value) {
+                spinning = false;
+            }
+        }
         match (b.get('G'), b.get('M')) {
             (Some(4.0), _) => {
                 if let Some(p) = b.get('P').filter(|p| p.is_finite() && *p > 0.0) {
                     r.dwell_s += p;
                 }
             }
-            (_, Some(0.0 | 1.0)) => r.stops += 1,
+            (_, Some(0.0 | 1.0)) => {
+                r.stops += 1;
+                // a stop is where the tool is changed by hand
+                if spinning {
+                    r.warnings.push(Warning {
+                        line: b.line,
+                        kind: Kind::Reader(
+                            "the program stops (M0 or M1) with the spindle on".to_string(),
+                        ),
+                    });
+                }
+            }
             _ => {}
         }
     }

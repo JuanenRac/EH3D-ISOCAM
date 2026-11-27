@@ -278,7 +278,10 @@ pub fn gcode_program(
             let name: String = file_name(Path::new(&s.heightmap_file))
                 .chars()
                 .map(|c| {
-                    if matches!(c, '(' | ')' | ';' | '\n' | '\r') {
+                    // and nothing GRBL takes out of the stream and obeys, even inside a comment
+                    if matches!(c, '(' | ')' | ';' | '!' | '~' | '?')
+                        || !(c == ' ' || c.is_ascii_graphic())
+                    {
                         '_'
                     } else {
                         c

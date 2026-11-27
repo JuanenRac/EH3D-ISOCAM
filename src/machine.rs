@@ -5,7 +5,7 @@
 
 use crate::drill::Hole;
 use crate::isolate::Pass;
-use eh3d_parser_gcode::{interpret, parse, Dialect, Motion};
+use eh3d_parser_gcode::{codes, interpret, parse, Dialect, Motion, Program, Severity};
 
 /// A machine whose table is known.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -138,10 +138,53 @@ fn arc_reach(
         .collect()
 }
 
-/// Walks the program and stops at the first move that goes beyond a limit, saying the line, where the tool was going and how many moves had been made before it.
+/// The first block that turns the spindle faster than `max_rpm`, whether or not anything moves at that speed: its line and the speed.
+fn started_too_fast(program: &Program, max_rpm: f64) -> Option<(usize, f64)> {
+    let (mut on, mut speed) = (false, 0.0_f64);
+    for block in &program.blocks {
+        speed = block.get('S').filter(|s| *s >= 0.0).unwrap_or(speed);
+        for w in &block.words {
+            if w.letter == 'M' && (w.value == 3.0 || w.value == 4.0) {
+                on = true;
+            } else if w.letter == 'M' && [2.0, 5.0, 30.0].contains(&w.value) {
+                on = false;
+            }
+        }
+        if on && speed > max_rpm + 1e-6 {
+            return Some((block.line, speed));
+        }
+    }
+    None
+}
+
+/// Walks the program and stops at the first move that goes beyond a limit, saying the line, where the tool was going and how many moves had been made before it. A program
+/// with a part that cannot be read, a command of the controller, or a code that moves the origin or the reference of the positions cannot be judged and is stopped too.
 pub fn check_program(text: &str, limits: &Limits) -> Result<Checked, String> {
-    let trace = interpret(&parse(text, Dialect::Grbl));
+    let program = parse(text, Dialect::Grbl);
+    let trace = interpret(&program);
     let eps = 1e-6;
+    if !limits.is_off() {
+        if let Some(d) = trace.diagnostics.iter().find(|d| {
+            d.severity == Severity::Error
+                || d.code == codes::POSITION_UNTRACKED
+                || d.code == codes::SYSTEM_COMMAND_IGNORED
+                || d.code == codes::CHARACTER_IGNORED
+                || d.code == codes::TEXT_AFTER_END
+        }) {
+            return Err(format!(
+                "line {}: the program cannot be judged against the limits: {}",
+                d.line, d.message
+            ));
+        }
+    }
+    if limits.max_rpm > 0.0 {
+        if let Some((line, speed)) = started_too_fast(&program, limits.max_rpm) {
+            return Err(format!(
+                "line {line}: the spindle runs at {speed} rpm, faster than the {} rpm the machine may be sent",
+                limits.max_rpm
+            ));
+        }
+    }
     for (made, s) in trace.segments.iter().enumerate() {
         // a move up or down in Z does not travel on the table, wherever the tool stands
         let travels = s.to.x != s.from.x || s.to.y != s.from.y;

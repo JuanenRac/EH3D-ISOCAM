@@ -445,3 +445,91 @@ fn the_window_says_what_a_forced_program_breaks_and_refuses_holes_outside_the_ta
     );
     let _ = std::fs::remove_dir_all(&d);
 }
+
+fn small_table() -> eh3d_isocam::machine::Limits {
+    eh3d_isocam::machine::Limits {
+        table_mm: Some((100.0, 60.0)),
+        max_rpm: 30000.0,
+        ..Default::default()
+    }
+}
+
+#[test]
+fn a_program_that_cannot_be_judged_does_not_keep_the_limits() {
+    use eh3d_isocam::machine::check_program;
+    for line in [
+        "$H",
+        "$130=999",
+        "G92 X0",
+        "G53 G0 X0",
+        "G28",
+        "G10 L20 P1 X0",
+        "G1 X5 #3 F100",
+        "G1 X[900] F100",
+        "G91.5",
+        "M2\nG0 X900",
+    ] {
+        let program = format!("G21\nG90\nG0 X1 Y1\n{line}\n");
+        let said = check_program(&program, &small_table());
+        // an unknown code with no axis words only warns: the others stop the check
+        if line == "G91.5" {
+            continue;
+        }
+        assert!(said.is_err(), "{line:?}: {said:?}");
+        assert!(
+            said.unwrap_err().contains("line 4") || line.contains('\n'),
+            "{line:?}"
+        );
+    }
+    assert!(check_program("G21\nG90\nM3 S24000\nG0 X1 Y1\nM5\nM2\n", &small_table()).is_ok());
+}
+
+#[test]
+fn a_spindle_started_too_fast_is_found_even_when_nothing_moves_at_that_speed() {
+    use eh3d_isocam::machine::check_program;
+    let said = check_program("G21\nM3 S99999\nS100\nG0 X1 Y1\nM5\n", &small_table());
+    assert!(said.unwrap_err().contains("99999"));
+    assert!(check_program("G21\nS99999\nM3 S100\nG0 X1 Y1\nM5\n", &small_table()).is_ok());
+}
+
+#[test]
+fn a_pause_with_the_spindle_on_is_a_finding_of_the_dry_run() {
+    let text =
+        |stop: &str| format!("G21\nG90\nG0 Z2\nM3 S24000\n{stop}\nG1 Z-0.1 F60\nG0 Z2\nM5\nM2\n");
+    for stop in ["M0", "M1"] {
+        let r = eh3d_isocam::simulate::run(&text(stop), 3000.0);
+        assert!(
+            r.warnings
+                .iter()
+                .any(|w| w.line == 5 && format!("{:?}", w.kind).contains("spindle on")),
+            "{stop}: {:?}",
+            r.warnings
+        );
+    }
+    assert!(eh3d_isocam::simulate::run(&text("M5\nM0\nM3"), 3000.0)
+        .warnings
+        .is_empty());
+}
+
+#[test]
+fn the_name_of_the_height_map_cannot_stop_or_resume_the_controller() {
+    use eh3d_isocam::isolate::Pass;
+    let d = dir("realtime_name");
+    let map = d.join("bench!~.map");
+    std::fs::write(&map, "levelling 1\ngrid 0 0 10 10 2 2\n0 0\n0 0.1\n").unwrap();
+    let s = Settings {
+        heightmap_file: map.to_string_lossy().into_owned(),
+        ..Settings::default()
+    };
+    let pass = Pass {
+        paths: vec![vec![(0.0, 0.0), (5.0, 0.0), (5.0, 5.0)]],
+        diameter_mm: 0.2,
+        ..Pass::default()
+    };
+    let (program, _) = eh3d_isocam::board::gcode_program(&[pass], &s, false).unwrap();
+    assert!(
+        !program.contains(['!', '~', '?']),
+        "{}",
+        program.lines().next().unwrap()
+    );
+}

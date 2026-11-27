@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The check against the machine stops what it cannot judge:** a program with an unreadable part, a `$` command, a code that moves the origin (`G92`, `G28`, `G53`, `G10`) or blocks after its end kept the limits without being looked at; a spindle started too fast with no move at that speed is found; the dry run says when the program stops (`M0`, `M1`) with the spindle on; the name of a height map written in a comment holds no character that the controller obeys at once. Host-tested only.
+
 ## [0.1.9] - A project saved by another program is not written over, and a copy can be saved under another name
 
 - **A project saved by another program is not written over:** the window keeps the mark of the project from the moment it opens or saves it, looks at it again after a question and just before the write, and refuses to keep the program when another program wrote the file meanwhile. It says so in the eight languages and offers to read the project again, to save a copy under another name or to close. 2 new tests.
