@@ -170,6 +170,9 @@ pub enum Msg {
     UnitsAuto,
     UnitsMm,
     UnitsInch,
+    DrillFormat,
+    DrillFormatNone,
+    DrillFormatKept,
     MarksHint,
     MarksFit,
     LegendHoles,
@@ -231,7 +234,7 @@ pub enum Msg {
 }
 
 impl Msg {
-    pub const ALL: [Msg; 140] = [
+    pub const ALL: [Msg; 143] = [
         Msg::Open,
         Msg::Export,
         Msg::Compute,
@@ -314,6 +317,9 @@ impl Msg {
         Msg::UnitsAuto,
         Msg::UnitsMm,
         Msg::UnitsInch,
+        Msg::DrillFormat,
+        Msg::DrillFormatNone,
+        Msg::DrillFormatKept,
         Msg::MarksHint,
         Msg::MarksFit,
         Msg::LegendHoles,
@@ -1176,6 +1182,36 @@ impl Msg {
                 "ファイルの指定",
                 "按文件",
                 "As do ficheiro",
+            ],
+            Msg::DrillFormat => [
+                "Number format of a drill file that does not say it",
+                "Formato numérico de un taladrado que no lo declara",
+                "Zahlenformat einer Bohrdatei ohne Angabe",
+                "Format numérique d'un perçage qui ne le déclare pas",
+                "Formato numerico di una foratura che non lo dichiara",
+                "書式を宣言しないドリルファイルの数値書式",
+                "未声明格式的钻孔文件的数值格式",
+                "Formato numérico de uma furação que não o declara",
+            ],
+            Msg::DrillFormatNone => [
+                "None (refuse)",
+                "Ninguno (rechazar)",
+                "Keines (ablehnen)",
+                "Aucun (refuser)",
+                "Nessuno (rifiuta)",
+                "選ばない（拒否）",
+                "不选择（拒绝）",
+                "Nenhum (recusar)",
+            ],
+            Msg::DrillFormatKept => [
+                "The choice lasts while the window is open; drill_format = NAME keeps it in a configuration file",
+                "La elección dura mientras la ventana esté abierta; drill_format = NOMBRE la guarda en un fichero de configuración",
+                "Die Wahl gilt, solange das Fenster offen ist; drill_format = NAME hält sie in einer Konfigurationsdatei fest",
+                "Le choix dure tant que la fenêtre est ouverte ; drill_format = NOM le garde dans un fichier de configuration",
+                "La scelta vale finché la finestra è aperta; drill_format = NOME la conserva in un file di configurazione",
+                "選択はウィンドウを開いている間だけ有効です。設定ファイルの drill_format = 名前 で保存できます",
+                "此选择仅在窗口打开期间有效；在配置文件中写 drill_format = 名称 可长期保留",
+                "A escolha dura enquanto a janela estiver aberta; drill_format = NOME guarda-a num ficheiro de configuração",
             ],
             Msg::UnitsMm => [
                 "Millimetres",

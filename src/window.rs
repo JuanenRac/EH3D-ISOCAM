@@ -6,7 +6,7 @@ use crate::board::{self, DrillFile, OutlineFile};
 use crate::config::Settings;
 use crate::contour::Loop;
 use crate::draw::Drawing;
-use crate::drill::Hole;
+use crate::drill::{Hole, NumberFormat};
 use crate::eh3dfile;
 use crate::forced::{forced_passes, insert};
 use crate::isolate::{plan_with_pads, Pass};
@@ -652,6 +652,8 @@ pub struct Window {
     pub plot_outline: bool,
     /// The units of the drill file when it does not say them.
     pub drill_units: DrillUnits,
+    /// A drill file that was refused because it does not declare its number format, while the person is asked for it.
+    pub format_ask: Option<PathBuf>,
     pub passes: Vec<Pass>,
     /// The places where the tool does not fit and no path was laid.
     pub unfixed: usize,
@@ -702,6 +704,7 @@ impl Window {
             align: false,
             plot_outline: false,
             drill_units: DrillUnits::Auto,
+            format_ask: None,
             passes: Vec::new(),
             unfixed: 0,
             status: Status::Ready,
@@ -779,6 +782,35 @@ impl Window {
         if let Some(path) = self.drills.as_ref().map(|d| d.path.clone()) {
             self.open_drills(&path);
         }
+    }
+
+    /// How a drill file that does not declare its number format is read; `None` refuses it.
+    pub fn drill_format(&self) -> Option<NumberFormat> {
+        self.base.drill_format
+    }
+
+    /// Chooses that format for as long as the window is open. The drill file that is open, or the one that was refused, is read again with it; holes read with another
+    /// choice do not stay.
+    pub fn set_drill_format(&mut self, chosen: Option<NumberFormat>) {
+        let refused = self.format_ask.take();
+        if self.base.drill_format == chosen && refused.is_none() {
+            return;
+        }
+        self.base.drill_format = chosen;
+        let open = self.drills.as_ref().map(|d| d.path.clone());
+        let asked = refused.is_some();
+        if let Some(path) = refused.or(open) {
+            if !self.open_drills(&path) && !asked {
+                let why = std::mem::replace(&mut self.status, Status::Ready);
+                self.clear_drills();
+                self.status = why;
+            }
+        }
+    }
+
+    /// Leaves the refused file refused.
+    pub fn dismiss_format(&mut self) {
+        self.format_ask = None;
     }
 
     /// Whether there is anything to show: a layer, drills or an outline.
@@ -1241,6 +1273,7 @@ impl Window {
 
     /// Opens a drill file (Excellon) and shows its holes. It is refused when it is not a drill file.
     pub fn open_drills(&mut self, path: &Path) -> bool {
+        self.format_ask = None;
         match board::read_drill_file(path, &self.base, self.drill_units.units()) {
             Ok(d) => {
                 let opened = Status::HolesOpened {
@@ -1254,6 +1287,10 @@ impl Window {
                 true
             }
             Err(why) => {
+                // a file that does not say how its numbers are written is not guessed: the person is asked
+                if why.contains(crate::drill::FORMAT_NEEDED) {
+                    self.format_ask = Some(path.to_path_buf());
+                }
                 self.status = Status::Failed(why);
                 false
             }
@@ -2009,6 +2046,38 @@ mod tests {
         let mut w = Window::new(Lang::En);
         w.set_field(1, "0".into());
         assert!(w.settings().is_err());
+    }
+
+    #[test]
+    fn a_refused_drill_file_asks_for_its_format_and_nothing_is_chosen_by_itself() {
+        let dir = scratch("format-ask");
+        let bare = dir.join("bare.ncd");
+        std::fs::write(&bare, "%\r\nT01\r\nX1000Y2000\r\nM30\r\n").unwrap();
+        let mut w = Window::new(Lang::En);
+        assert!(!w.open_drills(&bare));
+        assert_eq!(w.format_ask.as_deref(), Some(bare.as_path()));
+        assert_eq!(w.drill_format(), None);
+        assert!(w.drills.is_none());
+        // leaving the question leaves the file refused
+        w.dismiss_format();
+        assert!(w.drills.is_none() && w.format_ask.is_none());
+        assert!(!w.open_drills(&bare));
+        w.set_drill_format(Some(NumberFormat::Mils));
+        assert!(w.format_ask.is_none());
+        assert_eq!(w.drills.as_ref().map(|d| d.holes.len()), Some(1));
+    }
+
+    #[test]
+    fn taking_the_format_away_does_not_keep_the_holes_that_were_read_with_it() {
+        let dir = scratch("format-away");
+        let bare = dir.join("bare.ncd");
+        std::fs::write(&bare, "%\r\nT01\r\nX1000Y2000\r\nM30\r\n").unwrap();
+        let mut w = Window::new(Lang::En);
+        w.set_drill_format(Some(NumberFormat::Mils));
+        assert!(w.open_drills(&bare));
+        w.set_drill_format(None);
+        assert!(w.drills.is_none());
+        assert!(w.format_ask.is_some());
     }
 
     #[test]
