@@ -9,7 +9,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Stack-Rust-DEA597.svg" alt="Rust">
+  <img src="https://img.shields.io/badge/Stack-Rust-DEA601.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.1.9-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
@@ -30,7 +30,7 @@
 |---|---|
 | 版本 | `0.1.9` |
 | 成熟度 | 脚手架 |
-| 测试 | 597 |
+| 测试 | 601 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -48,7 +48,7 @@
 | 文件与布置 | 🟡 | 读写钻孔文件和板框，为双面和拼板布置电路板，添加对位孔，并按位置检查设计规则；已在电脑上测试，未用其他程序写出的文件测试，也未在机器上试过。 |
 | 强制隔离、补偿、阻焊 | 🟡 | 沿刀具放不进去的间隙铺设强制路径、更轻的路径、用参考点做缩放与补偿、阻焊开窗、单位以及各遍路径的预览；已在电脑上用生成的层和损坏的输入测试，从未用真实电路板或在机器上试过，补偿也没有与相机的真实测量值比较过。 |
 | 命令行 | 🟡 | `eh3d-isocam` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 597 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
+| 测试 | 🟡 | 601 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。其中包括对带工作台行程的 Bungard 机器的固定种子模拟，含注入故障与恢复。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`）：打开或拖入层、缩放和平移、编辑主要参数、导出；其逻辑已测试，发布版程序可将其绘制为图片（`--shot`），但还没有人在屏幕上实际使用过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -78,6 +78,7 @@
 * **读取与按代码的提示（命令行）：** 文件带大小限制读取（`--max-bytes N` 或 `max_input_mb`，默认 64 MiB），非 UTF-8 文本按 Latin-1 读取并给出警告（`input-not-utf8`）；Gerber 读取器的提示连同稳定代码一起显示，`--hide CODE[,CODE]` 可省略这些代码。关于简化路径的说明和关于切割桥的说明，只在确实改变了内容时才输出。 `arc_tolerance_mm` 设定图层圆弧的跟随精度。 `min_tool_mm`（默认 0.02）设定任何刀具设置所能使用的最细刀具，更细的刀具会连同设置名称一起被拒绝；`rapid_mm_min`（默认 0，不估算）是快速移动的速度，`info` 据此追加作业时间的估算（切削、下刀、移动；主轴等待和手动换刀不计入）。 `hpgl_units_per_mm`（默认 40，范围 10 到 1000）设定绘图文件每毫米的单位数，32767 单位的范围检查随之变化（100 时为 327 毫米）。
 * **来自刀具库的刀具**（`src/crib.rs`）：`--crib 文件`（或 `crib_file`）读取 `eh3d-tools` 导出的 CSV 表，`--crib-fine N`、`--crib-coarse N` 和 `--crib-route N` 从中取出对应编号的刀具：立铣刀、V 形刀或雕刻刀在 `depth_mm` 深度的切削宽度成为 `fine_tool_mm` 或 `coarse_tool_mm`（V 形刀宽度为 `2 * 深度 * tan(角度 / 2) + crib_vbit_flat_mm`，最大为其直径，向下取整到万分之一毫米），立铣刀的直径成为 `route_tool_mm`；每次替换都会在标准错误输出中说明，钻头、激光和喷嘴会被拒绝，比 `min_tool_mm` 更细的刀具会连同设置名一起被拒绝。只有选择了刀具时才会读取该表。
 * **机器的限制**（`src/machine.rs`）：`machine_profile`（`ccd-mtc`：495 x 325 mm，`ccd2-mtc`：325 x 270 mm）或 `machine_x_mm` 与 `machine_y_mm` 给出工作台，`machine_margin_mm` 是与台面边缘保持的距离，`machine_max_depth_mm` 和 `machine_max_rpm` 是最深的切削和最快的主轴。G 代码在保存前逐个动作走一遍，当某个动作超出工作台、下刀过深或主轴转速过高时，连同行号一起被拒绝（`--force` 仍会写出并说明原因）；作业的深度或转速超过限制的设置在读取设置时被拒绝。一切默认关闭。
+* **无法判断的内容会被阻止：** 含有无法读取部分、`$` 命令、移动原点的代码（`G92`、`G28`、`G53`、`G10`）或结束之后还有程序段的程序，不能通过限值检查；即使没有以该转速移动，启动过快的主轴也会被发现；空运行会指出程序在主轴运转时停止（`M0`、`M1`）的位置。
 * **程序的空运行**（`src/simulate.rs`）：`eh3d-isocam simulate 程序.nc` 逐个动作走完任意 G 代码程序，输出长度、移动范围、最深切削和时间（按进给切削、按下刀进给下降、快速移动按 `rapid_mm_min`、`G4` 等待），并连同行号列出进入材料的快速移动、主轴停止或没有进给的切削、不会结束的程序以及违反的机器限制；有任何发现退出码即为 1。报告以八种语言给出。
 * **分层下刀与高度图**（`src/heightmap.rs`）：`depth_step_mm` 让每条路径在每个深度重新切一遍（闭合路径再绕一圈，开放路径沿原路返回切削，中途不抬刀）；`--height-map 文件`（`heightmap_file`）读取 EH3D-AUTOLEVEL 的高度图，使每次切削的 Z 为该点台面之下的深度，动作被切成不超过 `heightmap_max_segment_mm` 的小段；缺少测量点的高度图，或台面偏离平面过大（`heightmap_max_range_mm`）都会被拒绝。两者默认关闭。
 * **按走线宽度确定深度**（`src/crib.rs`）：`--crib-fine-width-mm W` 计算刀具库中的 V 形刀或雕刻刀切出宽度为 `W` 的走线所需的深度，并将其用作 `depth_mm`；刀具切不出的宽度或立铣刀会被拒绝。
@@ -256,7 +257,7 @@ cargo run --release --features gui -- --shot screen.png examples/sample.gtl   # 
 
 ## 🧪 测试
 
-测试套件有 597 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 601 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
