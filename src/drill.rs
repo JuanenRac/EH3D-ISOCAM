@@ -62,12 +62,41 @@ impl ExcellonFormat {
 /// The most a coordinate of the 2.4 format can hold: 99.9999 in, written as six digits.
 const MAX_TWO_FOUR: i64 = 999_999;
 
-/// A Bungard file in whole mils, read with the reader of those files; `None` when the file is not one.
-fn read_whole_mils(text: &str) -> Option<Result<Drills, String>> {
-    let f = ncd::parse(text).ok()?;
-    if f.metric || f.holes.is_empty() {
-        return None;
+pub use eh3d_bungard_formats::ncd::NumberFormat;
+
+/// The code a refusal for an undeclared format starts with.
+pub const FORMAT_NEEDED: &str = "EH3D-FORMATS-014";
+
+/// `error` as it is said to the person in the language of the code `lang`: after a refusal for an undeclared format, the names to choose from and how ISOCAM takes the choice.
+pub fn explain(error: &str, lang: &str) -> String {
+    if !error.contains(FORMAT_NEEDED) {
+        return error.to_string();
     }
+    let option = match lang {
+        "es" => "Opción --drill-format NOMBRE, o drill_format = NOMBRE en la configuración",
+        "de" => "Option --drill-format NAME oder drill_format = NAME in der Konfiguration",
+        "fr" => "Option --drill-format NOM, ou drill_format = NOM dans la configuration",
+        "it" => "Opzione --drill-format NOME, oppure drill_format = NOME nella configurazione",
+        "ja" => "オプション --drill-format 名前、または設定の drill_format = 名前",
+        "zh" => "使用选项 --drill-format 名称，或在配置中写 drill_format = 名称",
+        "pt" => "Opção --drill-format NOME, ou drill_format = NOME na configuração",
+        _ => "Option --drill-format NAME, or drill_format = NAME in the configuration",
+    };
+    format!(
+        "{error}. {}. {option}",
+        eh3d_bungard_formats::ncd::how_to_choose(lang)
+    )
+}
+
+/// Whether the header declares whole mils as the suite writes them (`ncd::MILS_DECLARATION`).
+fn declares_whole_mils(text: &str) -> bool {
+    ncd::MILS_DECLARATION
+        .lines()
+        .all(|declared| text.lines().any(|l| l.trim() == declared))
+}
+
+/// The holes of a file in whole mils, read with the reader of the Bungard formats.
+fn mils_drills(f: &ncd::DrillFile) -> Result<Drills, String> {
     let dia = |t: u8| {
         f.diameters
             .iter()
@@ -94,32 +123,12 @@ fn read_whole_mils(text: &str) -> Option<Result<Drills, String>> {
             first.text
         ));
     }
-    Some(check_holes(Drills { holes, notes }))
+    check_holes(Drills { holes, notes })
 }
 
-/// Reads an Excellon drill file. A Bungard file in mils is read with the reader of those files; a metric file, or one with decimal coordinates, with the reader of the suite.
+/// Reads an Excellon drill file that declares how its numbers are written. One that does not is refused with [`FORMAT_NEEDED`]; [`read_drills_chosen`] takes the choice of the person.
 pub fn read_drills(text: &str) -> Result<Drills, String> {
     read_drills_with_units(text, None)
-}
-
-/// Whether a file states the format of its coordinates itself: a `FILE_FORMAT=2:4` comment, or the digits after the units (`INCH,TZ,00.0000`). Such a file is read by the reader of the
-/// suite, which honours it, and never as whole mils.
-fn states_its_format(text: &str) -> bool {
-    text.lines().any(|raw| {
-        let t: String = raw
-            .trim()
-            .chars()
-            .filter(|c| !c.is_whitespace())
-            .collect::<String>()
-            .to_ascii_uppercase();
-        if let Some(c) = t.strip_prefix(';') {
-            return c.starts_with("FILE_FORMAT=");
-        }
-        (t.starts_with("INCH") || t.starts_with("METRIC"))
-            && t.split(',')
-                .skip(1)
-                .any(|p| p.contains('.') && p.chars().all(|c| c.is_ascii_digit() || c == '.'))
-    })
 }
 
 /// Like [`read_drills`] with the units of the file given by the person (`--units`): they win over what the file says. A file that does not say its units and whose holes are so
@@ -132,16 +141,27 @@ pub fn read_drills_with_units(
 }
 
 /// Like [`read_drills_with_units`] with the format of the coordinates given by the person (`--excellon-format`). With 2.4 the file is read by the reader of the suite as a file of two
-/// digits before the point and four after, unless it states a format of its own; the zeros are as its header says. A file that states its format is never read as whole mils.
+/// digits before the point and four after, unless it states a format of its own; the zeros are as its header says.
 pub fn read_drills_with_format(
     text: &str,
     forced: Option<eh3d_parser_excellon::Units>,
     format: ExcellonFormat,
 ) -> Result<Drills, String> {
+    read_drills_chosen(text, forced, format, None)
+}
+
+/// [`read_drills_with_format`] with the format the person chose for a file that does not declare one (`--drill-format`). What the file declares wins over the choice. Without a
+/// choice (and without 2.4) a file whose scale would have to be supposed is refused with [`FORMAT_NEEDED`].
+pub fn read_drills_chosen(
+    text: &str,
+    forced: Option<eh3d_parser_excellon::Units>,
+    format: ExcellonFormat,
+    chosen: Option<NumberFormat>,
+) -> Result<Drills, String> {
     let two_four = format == ExcellonFormat::TwoFour;
-    if !two_four && !states_its_format(text) {
-        if let Some(mils) = read_whole_mils(text) {
-            return mils;
+    if !two_four && declares_whole_mils(text) {
+        if let Ok(mils) = ncd::parse_as(text, None) {
+            return mils_drills(&mils);
         }
     }
     // the format asked for goes first as a comment, which the reader takes as a default: a format that the file states itself comes later and wins; the line it takes is not counted
@@ -152,17 +172,66 @@ pub fn read_drills_with_format(
     } else {
         (text, 0)
     };
-    let f = match forced {
+    let mut f = match forced {
         Some(units) => eh3d_parser_excellon::parse_with_units(text, units),
         None => eh3d_parser_excellon::parse(text),
     };
     if forced.is_none()
+        && chosen.is_none()
         && f.units.is_none()
         && f.diagnostics
             .iter()
             .any(|d| d.code == eh3d_parser_excellon::codes::UNITS_SUSPECT)
     {
         return Err("the file does not say its units and its holes are so close together that it may be in inches: give the units with --units mm or --units inch".into());
+    }
+    let supposed = f
+        .assumptions()
+        .next()
+        .map(|d| (d.line, d.message.clone()))
+        .filter(|_| !two_four);
+    if let Some((line, message)) = supposed {
+        let refused = || format!("{FORMAT_NEEDED}: line {line}: {message}");
+        match chosen {
+            None => return Err(refused()),
+            Some(NumberFormat::Mils) => {
+                let mils = ncd::parse_as(text, chosen).map_err(|e| e.to_string())?;
+                return mils_drills(&mils);
+            }
+            Some(NumberFormat::Digits {
+                metric,
+                integer,
+                decimal,
+                trailing_left_out,
+            }) => {
+                let units = if metric {
+                    eh3d_parser_excellon::Units::Millimetres
+                } else {
+                    eh3d_parser_excellon::Units::Inches
+                };
+                if f.units.is_some_and(|declared| declared != units) {
+                    return Err(format!(
+                        "{}: the chosen format does not fit the header",
+                        refused()
+                    ));
+                }
+                f = eh3d_parser_excellon::parse_with_format(
+                    text,
+                    &eh3d_parser_excellon::ExcellonDefaults {
+                        default_format: Some((integer, decimal)),
+                        default_zeros: Some(if trailing_left_out {
+                            eh3d_parser_excellon::ZeroSuppression::Trailing
+                        } else {
+                            eh3d_parser_excellon::ZeroSuppression::Leading
+                        }),
+                        default_units: Some(units),
+                    },
+                );
+                if let Some(units) = forced {
+                    f.units = Some(units);
+                }
+            }
+        }
     }
     let mut notes = Vec::new();
     let units = f.units.unwrap_or_else(|| {
@@ -315,6 +384,11 @@ fn position(mm: f64, format: ExcellonFormat, digits: u8) -> Result<String, Strin
 /// The first lines of a file in the 2.4 format, drills and routing alike: `INCH,TZ`, the format as a comment, and a note of how far a position can be off by the rounding.
 const TWO_FOUR_HEAD: &str = "M48\nINCH,TZ\n; FILE_FORMAT=2:4\n; coordinates are inches with 2 digits before the point and 4 after, in 6 digits; each is rounded to the nearest 0.0001 in, at most 0.00127 mm off\n";
 
+/// The first lines of a drill file in whole mils: a note, and the format declared (`ncd::MILS_DECLARATION`) so that no reader has to suppose it.
+const MILS_HEAD: &str = "M48\n; coordinates are whole mils (0.001 in) without a decimal point; each is rounded to the nearest mil, at most 0.0127 mm off\n;FILE_FORMAT=3:3\nINCH,TZ\n";
+/// The first lines of a routing file in whole mils.
+const MILS_ROUTE_HEAD: &str = "M48\n;FILE_FORMAT=3:3\nINCH,TZ\n";
+
 /// The holes as an Excellon file in whole mils, as `style` says.
 pub fn write_drills_as(holes: &[Hole], style: &DrillStyle) -> Result<String, String> {
     write_drills_in_format(holes, style, ExcellonFormat::Auto)
@@ -361,11 +435,7 @@ pub fn write_drills_in_format(
     }
     // the coordinates are whole mils with no decimal point (the convention of the Bungard programs), not the 2.4 format that other Excellon readers assume for inches: the file says so,
     // with the most a position can be off by the rounding to a mil
-    let mut s = String::from(if fixed {
-        TWO_FOUR_HEAD
-    } else {
-        "M48\nINCH\n; coordinates are whole mils (0.001 in) without a decimal point; each is rounded to the nearest mil, at most 0.0127 mm off\n"
-    });
+    let mut s = String::from(if fixed { TWO_FOUR_HEAD } else { MILS_HEAD });
     for (t, d) in &tools {
         if *d > 0.0 {
             s.push_str(&format!("T{t}C{}\n", inches(*d)));
@@ -408,7 +478,8 @@ fn write_plain_drills(holes: &[Hole], digits: u8) -> Result<String, String> {
             None => tools.push((h.tool, h.diameter_mm)),
         }
     }
-    let mut s = String::from("M48\r\n%\r\n");
+    // the two lines of `ncd::MILS_DECLARATION`, with the line ends of this style
+    let mut s = String::from("M48\r\n;FILE_FORMAT=3:3\r\nINCH,TZ\r\n%\r\n");
     for (t, _) in &tools {
         s.push_str(&format!("T{t}\r\n"));
         let mut last: Option<(i64, i64)> = None;
@@ -459,7 +530,7 @@ pub fn write_route_excellon_in_format(
     let head = if format == ExcellonFormat::TwoFour {
         TWO_FOUR_HEAD
     } else {
-        "M48\nINCH\n"
+        MILS_ROUTE_HEAD
     };
     let mut s = format!("{head}T{tool}C{}\n%\nT{tool}\n", inches(tool_mm));
     let xy = |p: &(f64, f64)| -> Result<String, String> {

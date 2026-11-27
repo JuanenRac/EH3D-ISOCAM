@@ -21,13 +21,23 @@ fn hole(tool: u8, x: f64, y: f64, d: f64) -> Hole {
     }
 }
 
+/// A file that declares nothing, read as whole mils because the person says so.
+fn read_as_mils(text: &str) -> Result<eh3d_isocam::drill::Drills, String> {
+    eh3d_isocam::drill::read_drills_chosen(
+        text,
+        None,
+        eh3d_isocam::drill::ExcellonFormat::Auto,
+        Some(eh3d_isocam::drill::NumberFormat::Mils),
+    )
+}
+
 fn rect(x0: f64, y0: f64, x1: f64, y1: f64) -> Vec<(f64, f64)> {
     vec![(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
 }
 
 #[test]
 fn a_bungard_drill_file_in_mils_is_read_with_its_tools() {
-    let text = "M48\nINCH\nT1C0.0315\nT2C0.0394\n%\nT1\nX1000Y2000\nX-500Y0\nT2\nX3937Y1\nM30\n";
+    let text = "M48\n;FILE_FORMAT=3:3\nINCH,TZ\nT1C0.0315\nT2C0.0394\n%\nT1\nX1000Y2000\nX-500Y0\nT2\nX3937Y1\nM30\n";
     let d = read_drills(text).unwrap();
     assert_eq!(d.holes.len(), 3);
     assert!((d.holes[0].x_mm - 25.4).abs() < 1e-9 && (d.holes[0].y_mm - 50.8).abs() < 1e-9);
@@ -36,13 +46,16 @@ fn a_bungard_drill_file_in_mils_is_read_with_its_tools() {
     assert_eq!(d.holes[2].tool, 2);
     assert!((d.holes[2].diameter_mm - 1.0).abs() < 0.01);
     // the bare body of an old teach-in file has no diameters
-    let bare = read_drills("%\nT06\nX100Y200\n").unwrap();
+    let old = "%\nT06\nX100Y200\n";
+    assert!(read_drills(old).unwrap_err().contains("EH3D-FORMATS-014"));
+    let bare = read_as_mils(old).unwrap();
     assert_eq!((bare.holes[0].tool, bare.holes[0].diameter_mm), (6, 0.0));
 }
 
 #[test]
 fn a_metric_file_with_decimal_coordinates_is_read_with_the_reader_of_the_suite() {
-    let text = "M48\nMETRIC,TZ\nT1C0.8\nT2C3.2\n%\nT1\nX10.5Y20.25\nX11Y21\nT2\nX1.5Y2.5\nM30\n";
+    let text =
+        "M48\nMETRIC,TZ\nT1C0.8\nT2C3.2\n%\nT1\nX10.5Y20.25\nX11.0Y21.0\nT2\nX1.5Y2.5\nM30\n";
     let d = read_drills(text).unwrap();
     assert_eq!(d.holes.len(), 3);
     assert!((d.holes[0].x_mm - 10.5).abs() < 1e-9 && (d.holes[0].y_mm - 20.25).abs() < 1e-9);
@@ -83,7 +96,7 @@ fn damaged_drill_files_are_errors_and_never_panic() {
         "X10Y10\n",
         "\u{0}\u{1}\u{2}",
         "M48\nMETRIC\nT1C0.8\n%\nT1\nX99999999999Y1\nM30\n",
-        "M48\nINCH\nT999999999999\n%\n",
+        "M48\n;FILE_FORMAT=3:3\nINCH,TZ\nT999999999999\n%\n",
     ] {
         let _ = read_drills(text);
     }
@@ -119,7 +132,10 @@ fn the_routing_excellon_puts_the_tool_down_moves_and_lifts() {
         closed: false,
     };
     let text = write_route_excellon(&[cut, open], 1.0, 3).unwrap();
-    assert!(text.starts_with("M48\nINCH\nT3C0.0394\n%\nT3\n"), "{text}");
+    assert!(
+        text.starts_with("M48\n;FILE_FORMAT=3:3\nINCH,TZ\nT3C0.0394\n%\nT3\n"),
+        "{text}"
+    );
     assert_eq!(text.matches("M15").count(), 2);
     assert_eq!(text.matches("M16").count(), 2);
     // the closed path comes back to where it began: 4 corners and the first again; the open run has its two points
@@ -608,9 +624,7 @@ fn a_file_without_units_and_with_tiny_holes_needs_the_units_and_with_them_it_is_
 fn the_drill_file_says_that_its_coordinates_are_whole_mils_and_still_reads_back() {
     let text = write_drills(&[hole(1, 25.4, 12.7, 0.8)]).unwrap();
     assert!(
-        text.starts_with(
-            "M48\nINCH\n; coordinates are whole mils (0.001 in) without a decimal point"
-        ),
+        text.starts_with("M48\n; coordinates are whole mils (0.001 in) without a decimal point"),
         "{text}"
     );
     assert!(text.contains("at most 0.0127 mm off\n"), "{text}");
@@ -636,7 +650,7 @@ fn run_cli(args: &[&str]) -> (bool, String, String) {
 
 fn scrambled_drill_file() -> &'static str {
     // whole mils: 0.2 in is 5.08 mm; the holes of tool 1 are scrambled along a line, tool 2 has two
-    "M48\nINCH\nT1C0.0315\nT2C0.0394\n%\nT1\nX800Y0\nX200Y0\nX600Y0\nX400Y0\nT2\nX1000Y0\nX100Y0\nM30\n"
+    "M48\n;FILE_FORMAT=3:3\nINCH,TZ\nT1C0.0315\nT2C0.0394\n%\nT1\nX800Y0\nX200Y0\nX600Y0\nX400Y0\nT2\nX1000Y0\nX100Y0\nM30\n"
 }
 
 #[test]
@@ -799,7 +813,7 @@ fn the_window_replaces_a_program_in_one_step() {
 #[test]
 fn the_slots_of_a_drill_file_in_mils_are_said_and_do_not_vanish() {
     let text = "%\nT01\nX1000Y1000\nG00X2000Y2000\nM15\nG01X3000Y2000\nM16\nX5000Y5000\n";
-    let d = read_drills(text).unwrap();
+    let d = read_as_mils(text).unwrap();
     assert_eq!(d.holes.len(), 2);
     assert_eq!(d.notes.len(), 1, "{:?}", d.notes);
     assert!(
@@ -808,7 +822,7 @@ fn the_slots_of_a_drill_file_in_mils_are_said_and_do_not_vanish() {
         d.notes
     );
     // a file with holes only says nothing
-    assert!(read_drills("%\nT01\nX1000Y1000\n")
+    assert!(read_as_mils("%\nT01\nX1000Y1000\n")
         .unwrap()
         .notes
         .is_empty());

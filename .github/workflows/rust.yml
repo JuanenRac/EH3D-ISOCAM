@@ -23,7 +23,7 @@ permissions:
 
 env:
   # The tag of each sibling repository this one is built against (name=tag, separated by spaces); a sibling that is not listed is taken at main.
-  SIBLING_REFS: "EH3D-COMMON=v0.3.8 EH3D-CORE-LIBS=v0.1.2 EH3D-GERBERVIEWER=v0.1.0"
+  SIBLING_REFS: "EH3D-COMMON=6e3c7b0d71f9c93c6fe77ed3c1fc0e02c7c6f7dd EH3D-CORE-LIBS=v0.1.4 EH3D-GERBERVIEWER=v0.1.0"
 
 jobs:
   rust:
@@ -61,8 +61,14 @@ jobs:
                       continue
                   seen.add(dep)
                   ref = refs.get(dep)
-                  command = ["git", "-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1"] + (["--branch", ref] if ref else [])
-                  subprocess.run(command + [f"https://github.com/{owner}/{dep}.git", dep], check=True)
+                  url = f"https://github.com/{owner}/{dep}.git"
+                  if ref and len(ref) == 40 and all(c in "0123456789abcdef" for c in ref):
+                      subprocess.run(["git", "init", "-q", dep], check=True)
+                      subprocess.run(["git", "-C", dep, "fetch", "-q", "--depth", "1", url, ref], check=True)
+                      subprocess.run(["git", "-C", dep, "checkout", "-q", "FETCH_HEAD"], check=True)
+                  else:
+                      command = ["git", "-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1"] + (["--branch", ref] if ref else [])
+                      subprocess.run(command + [url, dep], check=True)
                   print(f"{dep} at {ref or 'main'}")
                   pending.append(dep)
           PY
@@ -86,7 +92,7 @@ jobs:
         run: cargo clippy --all-targets --features gui -- -D warnings
         working-directory: EH3D-ISOCAM
       - name: Tests
-        run: cargo test --all-targets
+        run: cargo test --no-fail-fast --all-targets
         working-directory: EH3D-ISOCAM
 
   main-against-main:
@@ -124,8 +130,14 @@ jobs:
                       continue
                   seen.add(dep)
                   ref = refs.get(dep)
-                  command = ["git", "-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1"] + (["--branch", ref] if ref else [])
-                  subprocess.run(command + [f"https://github.com/{owner}/{dep}.git", dep], check=True)
+                  url = f"https://github.com/{owner}/{dep}.git"
+                  if ref and len(ref) == 40 and all(c in "0123456789abcdef" for c in ref):
+                      subprocess.run(["git", "init", "-q", dep], check=True)
+                      subprocess.run(["git", "-C", dep, "fetch", "-q", "--depth", "1", url, ref], check=True)
+                      subprocess.run(["git", "-C", dep, "checkout", "-q", "FETCH_HEAD"], check=True)
+                  else:
+                      command = ["git", "-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1"] + (["--branch", ref] if ref else [])
+                      subprocess.run(command + [url, dep], check=True)
                   print(f"{dep} at {ref or 'main'}")
                   pending.append(dep)
           PY

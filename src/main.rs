@@ -11,7 +11,7 @@ use eh3d_isocam::clearing::{fill_rings, Rings, Style as RuboutStyle};
 use eh3d_isocam::config::Settings;
 use eh3d_isocam::crib;
 use eh3d_isocam::drc;
-use eh3d_isocam::drill::{read_drills_with_format, read_outline};
+use eh3d_isocam::drill::{read_drills_chosen, read_outline};
 use eh3d_isocam::dxf;
 use eh3d_isocam::eh3dfile;
 use eh3d_isocam::fiducial::apply_to_passes;
@@ -81,6 +81,7 @@ hpgl_shift_negative = no keeps the coordinates of the board in a plot, negative 
 --outline FILE puts the cut round the outline (the tool of route_tool_mm) first in the plot, on hpgl_outline_pen (0 = the pen after the others), the isolation on hpgl_isolation_pen
 (0 = as usual). ncd_isocam_style = yes writes a drill file as the Bungard programs do (M48 and %, tools by number, a repeated coordinate left out, CR LF, M00), and ncd_digits fills
 the coordinates with zeros in front (5 for whole mils in five digits).
+--drill-format mils|inch-2.4-tz|inch-2.4-lz|metric-3.3-tz|metric-3.3-lz (drill_format) is how a drill file that does not declare its number format is read; without it such a file is refused.
 --excellon-format 2.4 (excellon_format = 2.4) reads and writes the coordinates of a drill file, and writes those of the routing file of route, as two digits before the point and four after, six digits in inches (X012340 is 1.2340 in),
 with the zeros as the header says (INCH,TZ or INCH,LZ); a file that states its own format (a FILE_FORMAT comment or INCH,TZ,00.0000) keeps it. The default, auto, is what the file says and whole mils
 for inches that say nothing. The plain style of ncd_isocam_style is whole mils only.
@@ -406,8 +407,13 @@ fn load_board(
     if let Some(d) = &cli.drills {
         let text = read(cli, d)?;
         filetype::expect_drills(d, filetype::detect(&text))?;
-        let drills = read_drills_with_format(&text, cli.units, cli.settings.excellon_format)
-            .map_err(|e| format!("{d}: {e}"))?;
+        let drills = read_drills_chosen(
+            &text,
+            cli.units,
+            cli.settings.excellon_format,
+            cli.settings.drill_format,
+        )
+        .map_err(|e| format!("{d}: {e}"))?;
         for n in &drills.notes {
             eprintln!("note: {d}: {n}");
         }
@@ -1400,7 +1406,7 @@ fn main() -> ExitCode {
     match run(args) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("error: {e}");
+            eprintln!("error: {}", eh3d_isocam::drill::explain(&e, language()));
             ExitCode::from(exit_code(&e))
         }
     }

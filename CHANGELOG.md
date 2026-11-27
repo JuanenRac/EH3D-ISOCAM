@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A drill file that does not declare its number format is refused until one is chosen (safety, changes what is accepted):** a file with no header, `INCH` alone (read as whole mils until now, while other programs read 2.4 inches, ten times less) or digits and zeros left to be supposed. The message says in the eight languages how to choose: `--drill-format` or `drill_format` of the configuration (`mils` gives the old reading, `inch-2.4-tz`, `inch-2.4-lz`, `metric-3.3-tz`, `metric-3.3-lz`); `--excellon-format 2.4` still counts as a choice. What a file declares always wins. The drill and routing files in whole mils that the program writes, the plain style included, now declare it with `;FILE_FORMAT=3:3` and `INCH,TZ`; the original program has not been tried with the two new lines.
+
 ## [0.2.0] - The machine check refuses what it does not understand and says what a drill file would drop
 
 - **Nothing of a drill file or of a plot is dropped without a word:** a drill file in mils with slots or routed moves says how many lines were left out and the first of them, and a plotter file used as the outline with a number that cannot be read, or a coordinate with no pair, is refused with its line instead of moving what follows. 2 new tests.
