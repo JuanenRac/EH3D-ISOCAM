@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Third-party notices in every package (`docs/THIRD_PARTY_NOTICES`):** the packages of the releases now carry the copyright notices and licence texts of the Rust crates and of the data the program is built with, and the CI fails when a new dependency or licence is not in the file.
+
 - **The picture of the window in the README was taken again**, with the list of the number format of a drill file.
 
 - **A refused drill file asks for its format in the window:** when a drill file does not declare how its numbers are written, the window shows the formats with their explanation in the eight languages; none is marked, and cancelling leaves the file refused. A box in the drill section shows and changes the choice, and holes read with another choice do not stay. The window keeps the choice only while it is open (`drill_format` of a configuration file keeps it for the command line). 2 new tests; not tried on a machine.
