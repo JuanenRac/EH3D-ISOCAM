@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - The machine check refuses what it does not understand and says what a drill file would drop
+
 - **Nothing of a drill file or of a plot is dropped without a word:** a drill file in mils with slots or routed moves says how many lines were left out and the first of them, and a plotter file used as the outline with a number that cannot be read, or a coordinate with no pair, is refused with its line instead of moving what follows. 2 new tests.
 - **A program made at the command line or in the window is not kept over what another program saved:** the write is made with the mark of the moment the project was read, taken before its layers, so a save by another program while the programs were being made, or between the last look and the write, is refused (`EH3D-PKG-025`) and nothing is written. 1 new test.
 - **Built against the tag v0.3.8 of EH3D-COMMON** (it was v0.3.7).
