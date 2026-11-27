@@ -285,7 +285,11 @@ fn drills_can_be_turned_over_and_written_plain_from_the_command_line() {
     let drd = format!("{dir}/two_sided.drd");
     let dim = format!("{dir}/two_sided_dim.gbr");
     let out = format!("{dir}/two_sided.ncd");
-    std::fs::write(&drd, "%\nT01\nX866Y104\nX866Y504\nT02\nX1084Y445\nM30\n").unwrap();
+    std::fs::write(
+        &drd,
+        "M48\n;FILE_FORMAT=3:3\nINCH,TZ\n%\nT01\nX866Y104\nX866Y504\nT02\nX1084Y445\nM30\n",
+    )
+    .unwrap();
     // an outline 0 to 73.22 mm wide: the middle is 36.61 mm = 1441.3 mil
     std::fs::write(
         &dim,

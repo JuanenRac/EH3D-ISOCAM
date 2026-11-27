@@ -822,7 +822,7 @@ fn the_slots_of_a_drill_file_in_mils_are_said_and_do_not_vanish() {
         d.notes
     );
     // a file with holes only says nothing
-    assert!(read_drills("%\nT01\nX1000Y1000\n")
+    assert!(read_as_mils("%\nT01\nX1000Y1000\n")
         .unwrap()
         .notes
         .is_empty());
