@@ -2,7 +2,7 @@
 
 ## Current state
 
-EH3D-ISOCAM is a working program on a computer: a library (`eh3d_isocam`), a command line (`eh3d-isocam`) and a window (built with `--features gui`). It isolates, drills and routes the layers of the example boards, checks the design rules and the limits of a machine table, and walks its G-code against a simulated machine. The suite of tests runs on Windows and Linux in the CI. It also writes arcs where a run of short moves lies on a circle, engraves a silkscreen layer and tells what to look at before a job (`report`). The window has not been looked at on a screen; its logic makes the checks and the report of the job, but the buttons that call them are not written and it does not cover `info`, `rubout-area` and the other commands; no board has been milled and the files have not been read by other programs.
+EH3D-ISOCAM is a working program on a computer: a library (`eh3d_isocam`), a command line (`eh3d-isocam`) and a window (built with `--features gui`). It isolates, drills and routes the layers of the example boards, checks the design rules and the limits of a machine table, and walks its G-code against a simulated machine. The suite of tests runs on Windows and Linux in the CI. It also writes arcs where a run of short moves lies on a circle, engraves a silkscreen layer and tells what to look at before a job (`report`). The window has not been looked at on a screen; its logic makes the checks and the report of the job, but the buttons that call them are not written and it does not cover `info`, `rubout-area` and the other commands; no board has been milled and the files have not been read by other programs. The window does not write over a project that another program saved since it was read there, and offers to read it again or to save a copy under another name.
 
 ## Capabilities
 
@@ -17,7 +17,7 @@ The official state of each capability is in `REQUIREMENTS.md`. The register has 
 
 ## What it needs from other repositories
 
-* `EH3D-CORE-LIBS`, `EH3D-GERBERVIEWER` and `EH3D-COMMON`, as sibling folders at the versions named in the workflows (EH3D-COMMON at the tag v0.3.3; EH3D-GERBERVIEWER at the tag v0.1.0).
+* `EH3D-CORE-LIBS`, `EH3D-GERBERVIEWER` and `EH3D-COMMON`, as sibling folders at the versions named in the workflows (EH3D-COMMON at the tag v0.3.7; EH3D-GERBERVIEWER at the tag v0.1.0).
 * The tool crib program for the CSV table, and the autolevel program for the height map.
 * A milling machine, a board and a person, for the only validation that counts.
 

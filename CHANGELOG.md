@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A project saved by another program is not written over:** the window keeps the mark of the project from the moment it opens or saves it, looks at it again after a question and just before the write, and refuses to keep the program when another program wrote the file meanwhile. It says so in the eight languages and offers to read the project again, to save a copy under another name or to close. 2 new tests.
+- **Built against the tag v0.3.7 of EH3D-COMMON** (it was v0.3.3): every write of a project is checked once more just before the file is replaced.
+
 - **A program is written in one step:** every output of the command line and of the window goes to a new file beside the real one and is renamed over it, so that a cut or a full disk leaves the old program whole and never half of a new one for the machine. A read-only file is not replaced, and a device or a pipe is written to directly.
 - **The window asks before it removes a signature:** saving into a project that is signed, or whose branch `isocam/` is, shows what would be removed and writes nothing until it is agreed.
 - 3 new tests.
