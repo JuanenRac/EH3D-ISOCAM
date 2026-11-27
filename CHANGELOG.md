@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The picture of the window in the README was taken again**, with the list of the number format of a drill file.
+
 - **A refused drill file asks for its format in the window:** when a drill file does not declare how its numbers are written, the window shows the formats with their explanation in the eight languages; none is marked, and cancelling leaves the file refused. A box in the drill section shows and changes the choice, and holes read with another choice do not stay. The window keeps the choice only while it is open (`drill_format` of a configuration file keeps it for the command line). 2 new tests; not tried on a machine.
 
 - **A drill file that does not declare its number format is refused until one is chosen (safety, changes what is accepted):** a file with no header, `INCH` alone (read as whole mils until now, while other programs read 2.4 inches, ten times less) or digits and zeros left to be supposed. The message says in the eight languages how to choose: `--drill-format` or `drill_format` of the configuration (`mils` gives the old reading, `inch-2.4-tz`, `inch-2.4-lz`, `metric-3.3-tz`, `metric-3.3-lz`); `--excellon-format 2.4` still counts as a choice. What a file declares always wins. The drill and routing files in whole mils that the program writes, the plain style included, now declare it with `;FILE_FORMAT=3:3` and `INCH,TZ`; the original program has not been tried with the two new lines.
