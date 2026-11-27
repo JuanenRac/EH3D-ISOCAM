@@ -723,6 +723,8 @@ fn project(mut args: Vec<String>) -> Result<(), String> {
             };
             let plt = args.iter().any(|a| a == "--plt");
             args.retain(|a| a != "--plt");
+            // the mark is taken before the layers are read: what another program saves after it is not written over
+            let seen = eh3dfile::mark_of(&file)?;
             let layers = eh3dfile::copper_layers(&file)?;
             let chosen = match &named {
                 Some(name) => vec![eh3dfile::choose(&layers, name)?.clone()],
@@ -753,7 +755,7 @@ fn project(mut args: Vec<String>) -> Result<(), String> {
                 made.push((layer, name, bytes?));
             }
             for (layer, name, bytes) in made {
-                for notice in eh3dfile::save_program(&file, &layer, &name, bytes)? {
+                for notice in eh3dfile::save_program_since(&file, &seen, &layer, &name, bytes)? {
                     eprintln!("note: {notice}");
                 }
                 println!(

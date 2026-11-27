@@ -1178,16 +1178,9 @@ impl Window {
         let Some(bytes) = bytes else {
             return false;
         };
-        // the person may have taken long to answer, and the program takes time to make: look again just before the write
-        if let Some(Err(why)) = self
-            .seen
-            .as_deref()
-            .map(|seen| suiteview::check_unchanged(&project, seen))
-        {
-            self.refused(&project, why);
-            return false;
-        }
-        match eh3dfile::save_program(&project, &file, &name, bytes) {
+        // the person may have taken long to answer, and the program takes time to make: the write looks at the project again
+        let seen = self.seen.clone().unwrap_or_default();
+        match eh3dfile::save_program_since(&project, &seen, &file, &name, bytes) {
             Ok(said) => {
                 // a signature that the write removed is told in the words of the window
                 let (words, other) = eh3d_project::suiteview::notices(&said);

@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Nothing of a drill file or of a plot is dropped without a word:** a drill file in mils with slots or routed moves says how many lines were left out and the first of them, and a plotter file used as the outline with a number that cannot be read, or a coordinate with no pair, is refused with its line instead of moving what follows. 2 new tests.
+- **A program made at the command line or in the window is not kept over what another program saved:** the write is made with the mark of the moment the project was read, taken before its layers, so a save by another program while the programs were being made, or between the last look and the write, is refused (`EH3D-PKG-025`) and nothing is written. 1 new test.
+- **Built against the tag v0.3.8 of EH3D-COMMON** (it was v0.3.7).
 - **The check against the machine stops what it cannot judge:** a program with an unreadable part, a `$` command, a code that moves the origin (`G92`, `G28`, `G53`, `G10`) or blocks after its end kept the limits without being looked at; a spindle started too fast with no move at that speed is found; the dry run says when the program stops (`M0`, `M1`) with the spindle on; the name of a height map written in a comment holds no character that the controller obeys at once. Host-tested only.
 
 ## [0.1.9] - A project saved by another program is not written over, and a copy can be saved under another name
