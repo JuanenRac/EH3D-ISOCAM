@@ -88,6 +88,13 @@ pub fn explain(error: &str, lang: &str) -> String {
     )
 }
 
+/// Whether the header declares whole mils as the suite writes them (`ncd::MILS_DECLARATION`).
+fn declares_whole_mils(text: &str) -> bool {
+    ncd::MILS_DECLARATION
+        .lines()
+        .all(|declared| text.lines().any(|l| l.trim() == declared))
+}
+
 /// The holes of a file in whole mils, read with the reader of the Bungard formats.
 fn mils_drills(f: &ncd::DrillFile) -> Result<Drills, String> {
     let dia = |t: u8| {
@@ -152,6 +159,11 @@ pub fn read_drills_chosen(
     chosen: Option<NumberFormat>,
 ) -> Result<Drills, String> {
     let two_four = format == ExcellonFormat::TwoFour;
+    if !two_four && declares_whole_mils(text) {
+        if let Ok(mils) = ncd::parse_as(text, None) {
+            return mils_drills(&mils);
+        }
+    }
     // the format asked for goes first as a comment, which the reader takes as a default: a format that the file states itself comes later and wins; the line it takes is not counted
     let framed;
     let (text, shift) = if two_four {
@@ -164,6 +176,15 @@ pub fn read_drills_chosen(
         Some(units) => eh3d_parser_excellon::parse_with_units(text, units),
         None => eh3d_parser_excellon::parse(text),
     };
+    if forced.is_none()
+        && chosen.is_none()
+        && f.units.is_none()
+        && f.diagnostics
+            .iter()
+            .any(|d| d.code == eh3d_parser_excellon::codes::UNITS_SUSPECT)
+    {
+        return Err("the file does not say its units and its holes are so close together that it may be in inches: give the units with --units mm or --units inch".into());
+    }
     let supposed = f
         .assumptions()
         .next()
@@ -211,14 +232,6 @@ pub fn read_drills_chosen(
                 }
             }
         }
-    }
-    if forced.is_none()
-        && f.units.is_none()
-        && f.diagnostics
-            .iter()
-            .any(|d| d.code == eh3d_parser_excellon::codes::UNITS_SUSPECT)
-    {
-        return Err("the file does not say its units and its holes are so close together that it may be in inches: give the units with --units mm or --units inch".into());
     }
     let mut notes = Vec::new();
     let units = f.units.unwrap_or_else(|| {

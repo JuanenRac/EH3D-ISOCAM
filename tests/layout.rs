@@ -577,7 +577,7 @@ fn drills_are_read_turned_over_and_given_alignment_holes() {
     let input = tmp("isocam_in.ncd");
     std::fs::write(
         &input,
-        "M48\nINCH\nT1C0.0315\n%\nT1\nX1000Y1000\nX3000Y2000\nM30\n",
+        "M48\n;FILE_FORMAT=3:3\nINCH,TZ\nT1C0.0315\n%\nT1\nX1000Y1000\nX3000Y2000\nM30\n",
     )
     .unwrap();
     let outline = tmp("isocam_outline.gko");
@@ -839,7 +839,11 @@ fn the_cut_gets_bridges_and_the_alignment_holes_come_in_six() {
     assert!(!ok && err.contains("tab_min_length_mm"), "{err}");
     // six holes, and a special pattern with the distances of the settings
     let input = tmp("isocam_six.ncd");
-    std::fs::write(&input, "M48\nINCH\nT1C0.0315\n%\nT1\nX1000Y1000\nM30\n").unwrap();
+    std::fs::write(
+        &input,
+        "M48\n;FILE_FORMAT=3:3\nINCH,TZ\nT1C0.0315\n%\nT1\nX1000Y1000\nM30\n",
+    )
+    .unwrap();
     let out_file = tmp("isocam_six_out.ncd");
     let (ok, text, err) = run(&[
         "drills",

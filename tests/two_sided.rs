@@ -120,7 +120,7 @@ fn the_plain_drill_file_is_written_as_the_bungard_programs_write_it() {
     .unwrap();
     assert_eq!(
         text,
-        "M48\r\n%\r\nT1\r\nX02017Y00104\r\nY00504\r\nT2\r\nX01799Y00445\r\nY00150\r\nX01012\r\nX00874Y00445\r\nM00\r\n"
+        "M48\r\n;FILE_FORMAT=3:3\r\nINCH,TZ\r\n%\r\nT1\r\nX02017Y00104\r\nY00504\r\nT2\r\nX01799Y00445\r\nY00150\r\nX01012\r\nX00874Y00445\r\nM00\r\n"
     );
     // and it reads back to the same holes (the diameters are not in the file)
     let back = read_drills(&text).unwrap();
@@ -162,7 +162,14 @@ fn the_usual_drill_file_can_fill_its_coordinates_with_zeros() {
 fn a_drill_file_with_no_header_line_is_known() {
     let text = "%\nT01\nX866Y104\nX866Y504\nT02\nX1084Y445\nM30\n";
     assert_eq!(detect(text), FileKind::Excellon);
-    let drills = read_drills(text).unwrap();
+    assert!(read_drills(text).unwrap_err().contains("EH3D-FORMATS-014"));
+    let drills = eh3d_isocam::drill::read_drills_chosen(
+        text,
+        None,
+        eh3d_isocam::drill::ExcellonFormat::Auto,
+        Some(eh3d_isocam::drill::NumberFormat::Mils),
+    )
+    .unwrap();
     assert_eq!(drills.holes.len(), 3);
     assert_eq!(detect("%\nnothing here\n"), FileKind::Unknown);
 }
@@ -310,7 +317,7 @@ fn drills_can_be_turned_over_and_written_plain_from_the_command_line() {
     // 2882.7 mil less 866 = 2016.7 -> 2017; less 1084 = 1798.7 -> 1799
     assert_eq!(
         text,
-        "M48\r\n%\r\nT1\r\nX02017Y00104\r\nY00504\r\nT2\r\nX01799Y00445\r\nM00\r\n"
+        "M48\r\n;FILE_FORMAT=3:3\r\nINCH,TZ\r\n%\r\nT1\r\nX02017Y00104\r\nY00504\r\nT2\r\nX01799Y00445\r\nM00\r\n"
     );
 }
 
