@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.9] - A project saved by another program is not written over, and a copy can be saved under another name
+
 - **A project saved by another program is not written over:** the window keeps the mark of the project from the moment it opens or saves it, looks at it again after a question and just before the write, and refuses to keep the program when another program wrote the file meanwhile. It says so in the eight languages and offers to read the project again, to save a copy under another name or to close. 2 new tests.
 - **Built against the tag v0.3.7 of EH3D-COMMON** (it was v0.3.3): every write of a project is checked once more just before the file is replaced.
 
